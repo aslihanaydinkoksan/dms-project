@@ -2,47 +2,76 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use Notifiable, SoftDeletes, HasRoles;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'name',
         'email',
         'password',
+        'vault_password',
+        'department_id',
+        'is_active',
+        'last_login_at'
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
-     */
     protected $hidden = [
         'password',
+        'vault_password',
         'remember_token',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'password' => 'hashed',
+        'is_active' => 'boolean',
+        'last_login_at' => 'datetime',
+    ];
+
+    public function department(): BelongsTo
     {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-        ];
+        return $this->belongsTo(Department::class);
+    }
+
+    public function approvals(): HasMany
+    {
+        return $this->hasMany(DocumentApproval::class);
+    }
+    // Benim başkalarına verdiğim vekaletler
+    public function givenDelegations()
+    {
+        return $this->hasMany(UserDelegation::class, 'delegator_id');
+    }
+
+    // Başkalarının bana verdiği vekaletler
+    public function receivedDelegations()
+    {
+        return $this->hasMany(UserDelegation::class, 'proxy_id');
+    }
+
+    // ŞU ANDA KİMLERİN YERİNE İMZA ATABİLİRİM? 
+    public function getActiveDelegatorIds(): array
+    {
+        return $this->receivedDelegations()
+            ->where('is_active', true)
+            ->where('start_date', '<=', now())
+            ->where('end_date', '>=', now())
+            ->pluck('delegator_id')
+            ->toArray();
+    }
+    /**
+     * Şifre sıfırlama bildirimini ezer (Override) ve kendi Türkçe şablonumuzu yollar.
+     */
+    public function sendPasswordResetNotification($token)
+    {
+        $this->notify(new \App\Notifications\CustomResetPasswordNotification($token));
     }
 }

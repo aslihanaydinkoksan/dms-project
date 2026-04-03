@@ -15,11 +15,15 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        // İşlem sırası Foreign Key hatalarını önlemek için çok önemlidir:
+        // 1. Önce departmanlar (Kullanıcıların bağlanacağı yer)
+        // 2. Sonra Roller ve Yetkiler (Kullanıcılara atanacak güçler)
+        // 3. En son Kullanıcılar
+        
+        $this->call([
+            DepartmentSeeder::class,
+            RoleAndPermissionSeeder::class,
+            AdminUserSeeder::class,
         ]);
     }
 }
