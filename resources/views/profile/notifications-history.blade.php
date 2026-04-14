@@ -29,14 +29,20 @@
                         <div class="content-box">
                             <h4
                                 style="margin: 0 0 5px 0; font-size: 1.05rem; color: {{ empty($notification->read_at) ? 'var(--primary-color)' : 'var(--text-color)' }};">
-                                {{ $notification->data['title'] ?? __('Sistem Bildirimi') }}
+                                {{ __($notification->data['title'] ?? 'Sistem Bildirimi') }}
+
                                 @if (empty($notification->read_at))
                                     <span class="badge badge-danger"
                                         style="font-size: 0.65rem; padding: 2px 6px; margin-left: 5px;">{{ __('YENİ') }}</span>
                                 @endif
                             </h4>
                             <p style="margin: 0; font-size: 0.9rem; color: var(--text-muted);">
-                                {{ $notification->data['message'] ?? '' }}
+                                {{-- Yeni mimari varsa çevirerek bas, yoksa (eski veriyse) yedeği bas --}}
+                                @if (isset($notification->data['message_key']))
+                                    {{ __($notification->data['message_key'], $notification->data['message_params'] ?? []) }}
+                                @else
+                                    {{ __($notification->data['message'] ?? '') }}
+                                @endif
                             </p>
                         </div>
                     </div>

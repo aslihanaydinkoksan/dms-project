@@ -259,9 +259,17 @@
                                                 <i data-lucide="{{ $notification->data['icon'] ?? 'info' }}"></i>
                                             </div>
                                             <div class="notif-content">
-                                                <div class="notif-title">{{ __($notification->data['title'] ?? 'Bildirim') }}
+                                                <div class="notif-title">
+                                                    {{ __($notification->data['title'] ?? 'Bildirim') }}
                                                 </div>
-                                                <div class="notif-desc">{{ __($notification->data['message'] ?? '') }}</div>
+                                                <div class="notif-desc">
+                                                    {{-- Yeni mimari varsa çevirerek bas, yoksa (eski veriyse) yedeği bas --}}
+                                                    @if (isset($notification->data['message_key']))
+                                                        {{ __($notification->data['message_key'], $notification->data['message_params'] ?? []) }}
+                                                    @else
+                                                        {{ __($notification->data['message'] ?? '') }}
+                                                    @endif
+                                                </div>
                                                 <div class="notif-time">{{ $notification->created_at->diffForHumans() }}
                                                 </div>
                                             </div>
@@ -284,7 +292,8 @@
                                     </a>
                                     <a href="{{ route('profile.notifications') }}"
                                         style="font-size: 0.85rem; color: var(--text-muted); text-decoration: none; display: flex; align-items: center; gap: 4px;">
-                                        <i data-lucide="settings" style="width: 14px; height: 14px;"></i> {{ __('Ayarlar') }}
+                                        <i data-lucide="settings" style="width: 14px; height: 14px;"></i>
+                                        {{ __('Ayarlar') }}
                                     </a>
                                 </div>
                             </div>
@@ -335,22 +344,26 @@
                                 style="display: none; position: absolute; top: 110%; right: 0; min-width: 220px; z-index: 1000; padding: 8px; border: 1px solid var(--border-color); border-radius: 12px;">
                                 <a href="{{ route('profile.edit') }}"
                                     style="display: flex; align-items: center; gap: 10px; padding: 12px; color: var(--text-color); text-decoration: none; border-bottom: 1px solid var(--border-color); border-radius: 6px; transition: background 0.2s;">
-                                    <i data-lucide="settings" style="width: 18px; height: 18px;"></i> {{ __('Profilimi Düzenle') }}
+                                    <i data-lucide="settings" style="width: 18px; height: 18px;"></i>
+                                    {{ __('Profilimi Düzenle') }}
                                 </a>
                                 <a href="{{ route('profile.show') }}"
                                     style="display: flex; align-items: center; gap: 10px; padding: 12px; color: var(--text-color); text-decoration: none; border-bottom: 1px solid var(--border-color); border-radius: 6px; transition: background 0.2s;">
-                                    <i data-lucide="chart-area" style="width: 18px; height: 18px;"></i> {{ __('Performansımı İncele') }}
+                                    <i data-lucide="chart-area" style="width: 18px; height: 18px;"></i>
+                                    {{ __('Performansımı İncele') }}
                                 </a>
                                 <a href="{{ route('profile.delegations') }}"
                                     style="display: flex; align-items: center; gap: 10px; padding: 12px; color: var(--text-color); text-decoration: none; border-bottom: 1px solid var(--border-color); border-radius: 6px; transition: background 0.2s;">
-                                    <i data-lucide="users" style="width: 18px; height: 18px;"></i> {{ __('Vekalet İşlemleri') }}
+                                    <i data-lucide="users" style="width: 18px; height: 18px;"></i>
+                                    {{ __('Vekalet İşlemleri') }}
                                 </a>
                                 <form action="{{ route('logout') }}" method="POST"
                                     style="margin: 0; padding-top: 8px;">
                                     @csrf
                                     <button type="submit"
                                         style="width: 100%; display: flex; align-items: center; gap: 10px; background: none; border: none; padding: 12px; color: var(--danger-color); cursor: pointer; font-size: 0.95rem; font-weight: 500; border-radius: 6px; transition: background 0.2s;">
-                                        <i data-lucide="log-out" style="width: 18px; height: 18px;"></i> {{ __('Çıkış Yap') }}
+                                        <i data-lucide="log-out" style="width: 18px; height: 18px;"></i>
+                                        {{ __('Çıkış Yap') }}
                                     </button>
                                 </form>
                             </div>

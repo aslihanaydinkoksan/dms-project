@@ -101,11 +101,13 @@ class WorkflowActionRequired extends Notification implements ShouldQueue
             default => "İş Akışı Bildirimi",
         };
 
-        $message = match ($this->actionType) {
-            'pending_your_approval' => "{$this->document->title} onayınızı bekliyor.",
-            'approved' => "{$this->document->title} tüm onaylardan geçti.",
-            'rejected' => "{$this->document->title} reddedildi. Sebep: {$this->comment}",
-            default => "İşlem yapıldı: {$this->document->title}",
+        // MİMARİ DOKUNUŞ: Artık veritabanına değişkenlerle çevrilmiş statik metni değil,
+        // Blade üzerinde anlık çevrilecek şablonları (key) gönderiyoruz.
+        $messageKey = match ($this->actionType) {
+            'pending_your_approval' => ":doc_title onayınızı bekliyor.",
+            'approved' => ":doc_title tüm onaylardan geçti.",
+            'rejected' => ":doc_title reddedildi. Sebep: :comment",
+            default => "İşlem yapıldı: :doc_title",
         };
 
         $icon = match ($this->actionType) {
@@ -117,8 +119,19 @@ class WorkflowActionRequired extends Notification implements ShouldQueue
 
         return [
             'document_id' => $this->document->id,
-            'title' => $title,
-            'message' => $message,
+            'title' => $title, // Başlıklar sabit metin olduğu için Blade'de direkt __() ile çevrilebilir.
+            'message_key' => $messageKey, // Çeviri motoru için anahtar
+            'message_params' => [         // Çeviri motoru için dinamik değişkenler
+                'doc_title' => $this->document->title,
+                'comment' => $this->comment ?? '',
+            ],
+            // Eski bildirimler hata vermesin diye statik metni yedek olarak tutmaya devam ediyoruz (Geriye Dönük Uyumluluk)
+            'message' => match ($this->actionType) {
+                'pending_your_approval' => "{$this->document->title} onayınızı bekliyor.",
+                'approved' => "{$this->document->title} tüm onaylardan geçti.",
+                'rejected' => "{$this->document->title} reddedildi. Sebep: {$this->comment}",
+                default => "İşlem yapıldı: {$this->document->title}",
+            },
             'icon' => $icon,
             'url' => route('documents.show', $this->document->id)
         ];

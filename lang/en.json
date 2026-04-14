@@ -255,7 +255,6 @@
     "-- Kullanıcı Seçin --": "-- Select User --",
     "Yeni Onaycı Ekle": "Add New Approver",
     "Akışı Başlat": "Start Workflow",
-    
     "Yeni Belge Yüklendi": "New Document Uploaded",
     "Yayına Alındı": "Published",
     "Belge Güncellendi": "Document Updated",
@@ -605,5 +604,13 @@
     "Erişilebilir Belge": "Accessible Documents",
     "Sistem Arşivi": "System Archive",
     "Taslak ve Reddedilmiş Belgelerim": "My Draft & Rejected Documents",
-    "Henüz sisteme yüklediğiniz bir belge bulunmuyor.": "You haven't uploaded any documents to the system yet."
+    "Henüz sisteme yüklediğiniz bir belge bulunmuyor.": "You haven't uploaded any documents to the system yet.",
+    "İşlem Bekleyen Belge": "Document Pending Action",
+    "Belge Onaylandı": "Document Approved",
+    "Belge Reddedildi": "Document Rejected",
+    "İş Akışı Bildirimi": "Workflow Notification",
+    ":doc_title onayınızı bekliyor.": ":doc_title is waiting for your approval.",
+    ":doc_title tüm onaylardan geçti.": ":doc_title has passed all approvals.",
+    ":doc_title reddedildi. Sebep: :comment": ":doc_title was rejected. Reason: :comment",
+    "İşlem yapıldı: :doc_title": "Action taken: :doc_title"
 }
