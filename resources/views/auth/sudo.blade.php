@@ -9,16 +9,16 @@
                 🔐
             </div>
 
-            <h2 style="color: var(--danger-color); margin-bottom: 10px;">Çok Gizli Alan</h2>
+            <h2 style="color: var(--danger-color); margin-bottom: 10px;">{{__('Çok Gizli Alan')}}</h2>
             <p class="text-muted" style="font-size: 0.95rem; margin-bottom: 25px;">
-                Erişmeye çalıştığınız bu alan ekstra güvenlik katmanı ile korunmaktadır. Devam etmek için lütfen
-                <strong>Kasa Şifrenizi</strong> (belirlemediyseniz sistem şifrenizi) giriniz.
+                {{__('Erişmeye çalıştığınız bu alan ekstra güvenlik katmanı ile korunmaktadır. Devam etmek için lütfen')}}
+                <strong>{{__('Kasa Şifrenizi')}}</strong> {{__('(belirlemediyseniz sistem şifrenizi) giriniz.')}}
             </p>
 
             <form action="{{ route('sudo.verify') }}" method="POST" class="modern-form">
                 @csrf
                 <div class="form-group text-left">
-                    <label>Kasa Şifreniz <span class="text-danger">*</span></label>
+                    <label>{{__('Kasa Şifreniz')}} <span class="text-danger">*</span></label>
                     <input type="password" name="password" class="form-control @error('password') is-invalid @enderror"
                         required autofocus placeholder="••••••••">
                     @error('password')
@@ -30,14 +30,14 @@
                 <div class="form-actions mt-25">
                     <button type="submit" class="btn btn-danger btn-block"
                         style="padding: 12px; font-weight: bold; font-size: 1.05rem;">
-                        Kilidi Aç ve Devam Et
+                        {{__('Kilidi Aç ve Devam Et')}}
                     </button>
                 </div>
 
                 <div class="mt-15">
                     <a href="{{ route('dashboard') }}"
-                        style="color: var(--text-muted); font-size: 0.85rem; text-decoration: none;">İptal Et ve Ana Sayfaya
-                        Dön</a>
+                        style="color: var(--text-muted); font-size: 0.85rem; text-decoration: none;">{{__('İptal Et ve Ana Sayfaya
+                        Dön')}}</a>
                 </div>
             </form>
         </div>

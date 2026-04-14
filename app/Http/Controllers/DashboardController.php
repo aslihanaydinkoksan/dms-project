@@ -15,7 +15,7 @@ class DashboardController extends Controller
         $user = Auth::user();
 
         // --- VEKALET KONTROLÜ ---
-        $proxyForIds = $user->getActiveDelegatorIds();
+        $proxyForIds = $user->getActiveDelegatorIds() ?? [];
         $allIdsToCheck = array_merge([$user->id], $proxyForIds);
 
         // 1. ACİL AKSİYONLAR: Bekleyen Onaylar
@@ -41,14 +41,21 @@ class DashboardController extends Controller
             ->where('physical_receipt_status', 'pending')
             ->get();
 
-        // Toplam Bekleyen İşlem Sayısı (Karşılama mesajı için)
+        // Toplam Bekleyen İşlem Sayısı (Rozet ve Karşılama mesajı için gerçek sayı)
         $totalPendingTasks = $pendingApprovals->count() + $pendingPhysicalReceipts->count();
 
+        // YENİ: Arayüzü şişirmemek için sadece en eski/acil 5 tanesini ekrana gönderiyoruz
+        $displayPendingApprovals = $pendingApprovals->take(5);
+        $displayPhysicalReceipts = $pendingPhysicalReceipts->take(5);
+
         // 3. ÜZERİMDEKİ BELGELER: Revize için kilitlediğim belgeler
-        $myLockedDocuments = Document::with('currentVersion')
+        $allLockedDocs = Document::with('currentVersion')
             ->where('is_locked', true)
             ->where('locked_by', $user->id)
             ->get();
+
+        $totalLockedCount = $allLockedDocs->count();
+        $myLockedDocuments = $allLockedDocs->take(5); // YENİ: Arayüze sadece 5 tane gidecek
 
         // 4. SON AKTİVİTELERİM: Sadece kendi başlattığım/yüklediğim son belgeler
         $myRecentUploads = Document::with(['currentVersion'])
@@ -56,7 +63,7 @@ class DashboardController extends Controller
                 $q->where('created_by', $user->id);
             })
             ->orderBy('created_at', 'desc')
-            ->take(5)
+            ->take(5) // Zaten 5 limitliydi
             ->get();
 
         // 5. YAKLAŞAN SÖZLEŞMELER (Kritik! Sadece Hukuk ve Yöneticiler)
@@ -64,9 +71,9 @@ class DashboardController extends Controller
         if ($user->hasAnyRole(['Super Admin', 'Admin', 'Hukuk'])) {
             $expiringContracts = Document::whereNotNull('expire_at')
                 ->where('expire_at', '<=', Carbon::now()->addDays(30))
-                ->whereNotIn('status', ['archived', 'rejected']) // Sadece aktif sözleşmeler
+                ->whereNotIn('status', ['archived', 'rejected'])
                 ->orderBy('expire_at', 'asc')
-                ->take(5)
+                ->take(5) // Zaten 5 limitliydi
                 ->get();
         }
 
@@ -81,10 +88,11 @@ class DashboardController extends Controller
         $currentDate = Carbon::now()->translatedFormat('d F Y, l');
 
         return view('dashboard', compact(
-            'pendingApprovals',
-            'pendingPhysicalReceipts',
+            'displayPendingApprovals', // YENİ İSİM
+            'displayPhysicalReceipts', // YENİ İSİM
             'totalPendingTasks',
             'myLockedDocuments',
+            'totalLockedCount', // YENİ DEĞİŞKEN
             'myRecentUploads',
             'expiringContracts',
             'totalAccessible',

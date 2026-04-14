@@ -21,6 +21,7 @@ Route::get('/', function () {
     // Kullanıcı giriş yapmışsa Gösterge Paneline, yapmamışsa Login'e yönlendir.
     return redirect()->route(Auth::check() ? 'dashboard' : 'login');
 });
+Route::get('/language/{locale}', [\App\Http\Controllers\LanguageController::class, 'switch'])->name('language.switch');
 
 // SADECE YÖNETİCİLER (Super Admin & Admin)
 // --------------------------------------------------------------------------
@@ -44,6 +45,12 @@ Route::middleware(['role:Super Admin|Admin'])->group(function () {
     Route::post('/settings/departments', [PermissionSettingsController::class, 'storeDepartment'])->name('settings.departments.store');
     Route::put('/settings/departments/{department}', [PermissionSettingsController::class, 'updateDepartment'])->name('settings.departments.update');
     Route::delete('/settings/departments/{department}', [PermissionSettingsController::class, 'destroyDepartment'])->name('settings.departments.destroy');
+
+    Route::get('/settings/folders/{folder}/permissions', [\App\Http\Controllers\FolderPermissionController::class, 'getPermissions'])->name('settings.folders.permissions.get');
+    Route::post('/settings/folders/{folder}/permissions', [\App\Http\Controllers\FolderPermissionController::class, 'sync'])->name('settings.folders.permissions.sync');
+    // --- KLASÖR BAZLI ÖZEL YETKİLER (ACL) ---
+    Route::post('/folders/{folder}/permissions', [\App\Http\Controllers\FolderPermissionController::class, 'store'])->name('folders.permissions.store');
+    Route::delete('/folders/{folder}/permissions/{user}', [\App\Http\Controllers\FolderPermissionController::class, 'destroy'])->name('folders.permissions.destroy');
     // SİSTEM AYARLARI VE MAİL YÖNETİMİ
     Route::get('/settings/mail', [MailSettingsController::class, 'index'])->name('settings.mail');
     Route::match(['post', 'put'], '/settings/mail', [MailSettingsController::class, 'update'])->name('settings.mail.update');
@@ -90,6 +97,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::put('/profile/vault-password', [ProfileController::class, 'updateVaultPassword'])->name('profile.vault-password.update');
     Route::delete('/profile/vault-password', [ProfileController::class, 'resetVaultPassword'])->name('profile.vault-password.destroy');
+    Route::get('/profile/show/{id?}', [App\Http\Controllers\ProfileController::class, 'show'])->name('profile.show');
 
     // Doküman Yönetimi (CRUD ve Listeleme)
     // --- ÇOK GİZLİ KASA KİLİDİ (SUDO MODE) ROTALARI ---
@@ -98,6 +106,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/documents', [DocumentController::class, 'index'])->name('documents.index');
     Route::get('/documents/create', [DocumentController::class, 'create'])->name('documents.create');
     Route::post('/documents', [DocumentController::class, 'store'])->name('documents.store');
+    Route::get('/documents/{document}/edit', [App\Http\Controllers\DocumentController::class, 'edit'])->name('documents.edit');
+    Route::put('/documents/{document}', [App\Http\Controllers\DocumentController::class, 'update'])->name('documents.update');
     Route::delete('/documents/{document}', [DocumentController::class, 'destroy'])->name('documents.destroy');
     Route::middleware(['sensitive'])->group(function () {
         Route::get('/documents/{document}', [DocumentController::class, 'show'])->name('documents.show');
@@ -118,7 +128,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/documents/{document}/start-workflow', [DocumentApprovalController::class, 'start'])->name('documents.workflow.start');
     Route::post('/documents/{document}/approve', [DocumentApprovalController::class, 'approve'])->name('documents.approve');
     Route::post('/documents/{document}/reject', [DocumentApprovalController::class, 'reject'])->name('documents.reject');
-
+    // --- DİNAMİK FORM (API) ROTALARI ---
+    Route::get('/api/document-types/{id}/fields', [DocumentController::class, 'getCustomFields'])->name('api.document-types.fields');
     // --- BİLDİRİM VE TERCİH ROTALARI ---
     Route::get('/profile/notifications', [ProfileController::class, 'notificationSettings'])->name('profile.notifications');
     Route::post('/profile/notifications', [ProfileController::class, 'updateNotificationSettings'])->name('profile.notifications.update');

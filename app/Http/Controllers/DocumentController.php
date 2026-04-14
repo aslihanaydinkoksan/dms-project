@@ -79,17 +79,41 @@ class DocumentController extends Controller
         $this->stamperService = $stamperService;
     }
     /**
-     * Tüm belgeleri listeler ve Full-Text Search araması yapar.
+     * Tüm belgeleri listeler, Full-Text Search araması yapar ve İstatistik Kartlarını dondürür.
      */
     public function index(Request $request)
     {
-        $keyword = $request->query('q');
+        $user = Auth::user();
 
-        // Servisimiz kullanıcının yetkilerine göre arama yapıp Pagination dönecek
+        $keyword = $request->query('q');
+        $status = $request->query('status');
+        $privacy = $request->query('privacy');
+        $startDate = $request->query('start_date'); // YENİ: Başlangıç Tarihi
+        $endDate = $request->query('end_date');     // YENİ: Bitiş Tarihi
+
+        // --- YENİ: HIZLI DURUM KARTLARI (WIDGETS) İÇİN İSTATİSTİKLER ---
+        // Kullanıcının sadece görebilmeye yetkisi olduğu belgeleri (authorizedForUser) filtrelerden bağımsız alıyoruz.
+        $baseQuery = Document::where(function ($q) use ($user) {
+            $q->authorizedForUser($user);
+        });
+
+        // Query'i 'clone' ile çoğaltıyoruz ki bir sonraki hesaplamayı etkilemesin (Memory Leak koruması)
+        $stats = (object) [
+            'approved' => (clone $baseQuery)->whereIn('status', ['published', 'approved'])->count(),
+            'rejected' => (clone $baseQuery)->where('status', 'rejected')->count(),
+            'public'   => (clone $baseQuery)->where('privacy_level', 'public')->count(),
+            'secret'   => (clone $baseQuery)->whereIn('privacy_level', ['confidential', 'strictly_confidential'])->count(),
+        ];
+
+        // --- SERVİS ARAMASI ---
         $documents = $this->searchService->searchDocuments(
             $keyword,
-            Auth::user(),
-            15
+            $user,
+            15,
+            $status,
+            $privacy,
+            $startDate,
+            $endDate
         );
 
         // KESİN KONTROL: Eğer istek AJAX ise SADECE tabloyu (partial) gönder
@@ -97,8 +121,8 @@ class DocumentController extends Controller
             return view('documents.partials.list', compact('documents', 'keyword'))->render();
         }
 
-        // Normal ziyaret ise tüm sayfayı gönder
-        return view('documents.index', compact('documents', 'keyword'));
+        // Normal ziyaret ise tüm sayfayı ve istatistikleri gönder
+        return view('documents.index', compact('documents', 'keyword', 'status', 'privacy', 'startDate', 'endDate', 'stats'));
     }
     public function show(Document $document): View
     {
@@ -119,7 +143,7 @@ class DocumentController extends Controller
         $breadcrumb = $this->folderService->getFlatFolderList()[$document->folder_id] ?? ($document->folder->name ?? 'Ana Dizin');
 
         // 3. Yetki Kontrolü ve Logların Çekilmesi (Sadece Yetkililere)
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = Auth::user();
         $isOwner = $document->currentVersion && $document->currentVersion->created_by === $user->id;
 
@@ -166,12 +190,21 @@ class DocumentController extends Controller
 
         $departments = Department::orderBy('name')->get();
         $documentTypes = DocumentType::where('is_active', true)
-            ->orderBy('category')
             ->orderBy('name')
-            ->get()
-            ->groupBy('category');
+            ->get();
 
         return view('documents.create', compact('flatFolders', 'privacyLevels', 'tags', 'users', 'departments', 'documentTypes'));
+    }
+    /**
+     * AJAX İsteği: Seçilen Doküman Tipinin Dinamik Form Alanlarını (JSON) döner
+     */
+    public function getCustomFields($id): JsonResponse
+    {
+        $documentType = DocumentType::findOrFail($id);
+
+        // Veritabanındaki 'custom_fields' JSON sütununu direkt döndürüyoruz.
+        // Eğer boşsa hata vermemesi için boş dizi [] döner.
+        return response()->json($documentType->custom_fields ?? []);
     }
 
     /**
@@ -301,6 +334,117 @@ class DocumentController extends Controller
             'Content-Type' => $mimeType,
             'Content-Disposition' => 'inline; filename="' . $cleanFilename . '"'
         ]);
+    }
+    /**
+     * Belge üst verilerini (Metadata) düzenleme formunu gösterir.
+     */
+    public function edit(Document $document): View
+    {
+        // 1. ZIRH: Bu kullanıcının bu belgeyi güncelleme yetkisi var mı?
+        Gate::authorize('update', $document);
+
+        // 2. Form için gerekli tüm listeleri (Create metodundaki gibi) çekiyoruz
+        $flatFolders = $this->folderService->getFlatFolderList();
+        $privacyLevels = SystemSetting::getByKey('privacy_levels', [
+            'public' => 'Herkese Açık (Public)',
+            'confidential' => 'Hizmete Özel (Confidential)',
+            'strictly_confidential' => 'Çok Gizli (Strictly Confidential)'
+        ]);
+        $tags = Tag::orderBy('name')->get();
+        $departments = Department::orderBy('name')->get();
+        $documentTypes = DocumentType::where('is_active', true)
+            ->orderBy('name')->get();
+
+        return view('documents.edit', compact('document', 'flatFolders', 'privacyLevels', 'tags', 'departments', 'documentTypes'));
+    }
+    /**
+     * Belge üst verilerini (Metadata) günceller ve klasör değiştiyse numarasını yeniden üretir.
+     */
+    public function update(Request $request, Document $document): RedirectResponse
+    {
+        // 1. ZIRH: İşlemi yapmadan önce yetkiyi tekrar doğrula
+        Gate::authorize('update', $document);
+
+        // 2. Gelen verileri doğrula (Validation)
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'folder_id' => 'required|exists:folders,id',
+            'document_type_id' => 'required|exists:document_types,id',
+            'privacy_level' => 'required|string',
+            'related_department_id' => 'nullable|exists:departments,id',
+            'department_retention_years' => 'required|integer|min:0',
+            'archive_retention_years' => 'required|integer|min:0',
+            'expire_at' => 'nullable|date',
+            'tags' => 'nullable|array',
+        ]);
+
+        try {
+            DB::transaction(function () use ($validated, $document, $request) {
+                // 3. ZEKİ KATEGORİ GÜNCELLEYİCİ
+                $documentType = DocumentType::find($validated['document_type_id']);
+                $categoryName = $documentType ? $documentType->category : 'Genel';
+
+                // Eski durumları loglamak için saklayalım
+                $oldFolderId = $document->folder_id;
+                $oldDocumentNumber = $document->document_number;
+
+                // Varsayılan olarak numara aynı kalır
+                $newDocumentNumber = $oldDocumentNumber;
+
+                // 4. ZEKİ NUMARA MOTORU: KLASÖR DEĞİŞTİ Mİ?
+                if ($oldFolderId != $validated['folder_id']) {
+                    // Evet! O zaman yeni klasörün sıradaki numarasını üret (Örn: IK-005 -> HUKUK-012)
+                    $newDocumentNumber = $this->numberService->generateNextNumber($validated['folder_id']);
+                }
+
+                // 5. Belgeyi Güncelle
+                $document->update([
+                    'title' => $validated['title'],
+                    'folder_id' => $validated['folder_id'],
+                    'document_number' => $newDocumentNumber, // Yeni Veya Eski Numara
+                    'document_type_id' => $validated['document_type_id'],
+                    'category' => $categoryName, // Yeni kategori!
+                    'privacy_level' => $validated['privacy_level'],
+                    'related_department_id' => $validated['related_department_id'],
+                    'department_retention_years' => $validated['department_retention_years'],
+                    'archive_retention_years' => $validated['archive_retention_years'],
+                    'expire_at' => $validated['expire_at'],
+                ]);
+
+                // 6. Etiketleri Güncelle (Sync: Eskileri siler, yenileri ekler)
+                if (isset($validated['tags'])) {
+                    $document->tags()->sync($validated['tags']);
+                } else {
+                    $document->tags()->detach(); // Hiç etiket seçilmediyse hepsini temizle
+                }
+
+                // 7. İzlenebilirlik (Audit Log): Klasör (ve Numara) değiştiyse KRİTİK LOG at!
+                if ($oldFolderId != $validated['folder_id']) {
+                    AuditLog::create([
+                        'user_id' => Auth::id(),
+                        'event' => 'document_moved_and_renumbered', // Özel Event Adı
+                        'auditable_type' => Document::class,
+                        'auditable_id' => $document->id,
+                        'old_values' => [
+                            'folder_id' => $oldFolderId,
+                            'document_number' => $oldDocumentNumber
+                        ],
+                        'new_values' => [
+                            'folder_id' => $validated['folder_id'],
+                            'document_number' => $newDocumentNumber
+                        ],
+                        'ip_address' => $request->ip(),
+                        'user_agent' => $request->userAgent(),
+                    ]);
+                }
+            });
+
+            return redirect()->route('documents.show', $document->id)
+                ->with('success', 'Belge bilgileri başarıyla güncellendi.');
+        } catch (Exception $e) {
+            Log::error('Belge Güncelleme Hatası: ' . $e->getMessage());
+            return back()->withInput()->with('error', 'Güncelleme sırasında bir hata oluştu: ' . $e->getMessage());
+        }
     }
     /**
      * Belgeyi revizyon için kilitler (Check-out)
@@ -453,14 +597,14 @@ class DocumentController extends Controller
     public function destroy(Document $document)
     {
         // 1. Yetki Kontrolü (Policy)
-       Gate::authorize('delete', $document);
+        Gate::authorize('delete', $document);
 
         try {
             $folderId = $document->folder_id;
 
             // 2. Silinme Logunu AuditLog'a Yaz (İzlenebilirlik)
             AuditLog::create([
-                'user_id' =>Auth::id(),
+                'user_id' => Auth::id(),
                 'event' => 'document_deleted',
                 'auditable_type' => Document::class,
                 'auditable_id' => $document->id,
@@ -473,9 +617,8 @@ class DocumentController extends Controller
             $document->delete();
 
             return redirect()->route('folders.show', $folderId)->with('success', '🗑️ Belge başarıyla sistem arşivine kaldırıldı (Soft Delete).');
-            
         } catch (Exception $e) {
-           Log::error('Belge Silme Hatası: ' . $e->getMessage());
+            Log::error('Belge Silme Hatası: ' . $e->getMessage());
             return back()->with('error', 'Belge silinirken kritik bir hata oluştu.');
         }
     }

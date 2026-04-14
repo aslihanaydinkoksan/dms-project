@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sisteme Giriş - Kurumsal DMS</title>
+    <title>{{ __('Sisteme Giriş') }} - {{ __('Kurumsal DMS') }}</title>
     <link rel="stylesheet" href="{{ asset('css/style.css') }}">
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -103,8 +103,9 @@
                     <i data-lucide="layers" style="width: 32px; height: 32px;"></i>
                 </div>
                 <h2 class="page-title" style="margin-bottom: 5px; font-size: 1.5rem; color: var(--primary-color);">
-                    Sisteme Giriş</h2>
-                <p class="text-muted" style="font-size: 0.9rem;">Lütfen kurumsal kimlik bilgilerinizle giriş yapın.</p>
+                    {{ __('Sisteme Giriş') }}</h2>
+                <p class="text-muted" style="font-size: 0.9rem;">
+                    {{ __('Lütfen kurumsal kimlik bilgilerinizle giriş yapın.') }}</p>
             </div>
 
             @include('partials.alerts')
@@ -114,25 +115,24 @@
 
                 <div class="form-group" style="margin-bottom: 20px;">
                     <label for="email" class="form-label"
-                        style="font-weight: 600; color: var(--secondary-color);">E-Posta Adresi</label>
+                        style="font-weight: 600; color: var(--secondary-color);">{{ __('E-Posta Adresi') }}</label>
                     <div class="input-icon-wrapper">
                         <i data-lucide="mail"></i>
                         <input type="email" name="email" id="email" class="form-control"
-                            value="{{ old('email') }}" required autofocus placeholder="isim@sirket.com">
+                            value="{{ old('email') }}" required autofocus placeholder="ornek@koksan.com">
                     </div>
                 </div>
 
                 <div class="form-group" style="margin-bottom: 20px;">
                     <label for="password" class="form-label"
-                        style="font-weight: 600; color: var(--secondary-color);">Şifre</label>
+                        style="font-weight: 600; color: var(--secondary-color);">{{ __('Şifre') }}</label>
                     <div class="input-icon-wrapper">
                         <i data-lucide="lock"></i>
                         <input type="password" name="password" id="password" class="form-control" required
                             placeholder="••••••••">
                     </div>
                     <a href="{{ route('password.request') }}"
-                        style="font-size: 0.8rem; color: var(--primary-color); text-decoration: none; font-weight: 500;">Şifreni
-                        mi unuttun?</a>
+                        style="font-size: 0.8rem; color: var(--primary-color); text-decoration: none; font-weight: 500;">{{ __('Şifreni mi unuttun?') }}</a>
                 </div>
 
                 <div class="form-group"
@@ -140,8 +140,8 @@
                     <input type="checkbox" name="kvkk" id="kvkkCheckbox" required
                         style="width: 18px; height: 18px; margin-top: 2px; cursor: pointer; accent-color: var(--accent-color);">
                     <label for="kvkkCheckbox" class="kvkk-label">
-                        <a href="#" id="openKvkkModal">KVKK Aydınlatma Metni</a>'ni okudum, anladım ve sistemin
-                        işleyişi kapsamında kişisel verilerimin işlenmesini kabul ediyorum.
+                        <a href="#"
+                            id="openKvkkModal">{{ __('\'ni okudum, anladım ve sistemin işleyişi kapsamında kişisel verilerimin işlenmesini kabul ediyorum.') }}
                     </label>
                 </div>
 
@@ -150,9 +150,9 @@
                 </div>
 
                 <div class="form-actions">
-                    <button type="submit" class="btn btn-primary btn-block"
-                        style="padding: 14px; font-size: 1.05rem; display: flex; align-items: center; justify-content: center; gap: 10px;">
-                        Giriş Yap <i data-lucide="log-in" style="width: 18px;"></i>
+                    <button type="submit" class="btn btn-primary"
+                        style="padding: 14px; font-size: 1.05rem; display: flex; align-items: center; justify-content: center; gap: 20px; margin: 0 auto;">
+                        {{ __('Giriş Yap') }} <i data-lucide="log-in" style="width: 18px;"></i>
                     </button>
                 </div>
             </form>
@@ -160,7 +160,7 @@
             <div class="login-footer text-muted" style="text-align: center; margin-top: 25px; font-size: 0.8rem;">
                 <i data-lucide="shield-check"
                     style="width: 14px; display: inline-block; vertical-align: middle; margin-right: 4px;"></i>
-                &copy; {{ date('Y') }} Kurumsal Doküman Yönetim Sistemi
+                &copy; {{ date('Y') }} {{ __('Köksan Doküman Yönetim Sistemi') }}
             </div>
 
         </div>
@@ -175,8 +175,8 @@
                 style="padding: 20px 25px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
                 <h2
                     style="margin: 0; font-size: 1.15rem; color: var(--primary-color); font-weight: bold; display: flex; align-items: center; gap: 8px;">
-                    <i data-lucide="file-text" style="color: var(--accent-color);"></i> Kişisel Verilerin Korunması
-                    (KVKK) Aydınlatma Metni
+                    <i data-lucide="file-text" style="color: var(--accent-color);"></i>
+                    {{ __('Kişisel Verilerin Korunması (KVKK) Aydınlatma Metni') }}
                 </h2>
                 <button type="button" id="closeKvkkBtn"
                     style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); transition: color 0.2s;">&times;</button>
@@ -191,7 +191,7 @@
                 style="padding: 15px 25px; text-align: right; border-top: 1px solid var(--border-color); background: #f8fafc;">
                 <button type="button" id="acceptKvkkBtn" class="btn btn-primary"
                     style="padding: 10px 25px; font-size: 1rem; display: inline-flex; align-items: center; gap: 8px;">
-                    <i data-lucide="check-square" style="width: 18px;"></i> Okudum, Onaylıyorum
+                    <i data-lucide="check-square" style="width: 18px;"></i>{{ __('Okudum, Onaylıyorum') }}
                 </button>
             </div>
 

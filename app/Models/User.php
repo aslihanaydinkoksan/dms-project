@@ -20,7 +20,9 @@ class User extends Authenticatable
         'vault_password',
         'department_id',
         'is_active',
-        'last_login_at'
+        'last_login_at',
+        'can_manage_acl',
+        'locale',
     ];
 
     protected $hidden = [
@@ -73,5 +75,12 @@ class User extends Authenticatable
     public function sendPasswordResetNotification($token)
     {
         $this->notify(new \App\Notifications\CustomResetPasswordNotification($token));
+    }
+    //  Kullanıcının özel yetkisi olduğu klasörler
+    public function specificFolders()
+    {
+        return $this->belongsToMany(Folder::class, 'folder_user_permissions')
+            ->withPivot('access_level')
+            ->withTimestamps();
     }
 }

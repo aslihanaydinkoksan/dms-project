@@ -16,9 +16,10 @@ class PermissionSettingsController extends Controller
         $roles = Role::where('name', '!=', 'Super Admin')->orderBy('hierarchy_level', 'desc')->get();
         $departments = \App\Models\Department::orderBy('name')->get();
         $documentTypes = DocumentType::where('is_active', true)->orderBy('name')->get();
+        $folders = \App\Models\Folder::orderBy('name')->get();
 
         // 2. Kategori Matrisi (3D)
-        $categories = ['Sözleşme', 'Vekaletname', 'İpotek/Rehin', 'Dava Dosyası'];
+       $categories = DocumentType::where('is_active', true)->pluck('name')->toArray();
         $existingPermissions = DB::table('role_category_permissions')
             ->get()
             ->groupBy('role_id')
@@ -34,7 +35,7 @@ class PermissionSettingsController extends Controller
             'document.force_unlock'
         ])->get();
 
-        return view('settings.permissions', compact('roles', 'categories', 'existingPermissions', 'specialPermissions', 'departments', 'documentTypes'));
+        return view('settings.permissions', compact('roles', 'categories', 'existingPermissions', 'specialPermissions', 'departments', 'documentTypes', 'folders'));
     }
 
     public function update(Request $request)
@@ -158,23 +159,25 @@ class PermissionSettingsController extends Controller
         ]);
     }
     /**
-     * Yeni bir Doküman Tipi ekler.
+     * Yeni bir Doküman Tipi ekler ve Özel Form Alanlarını bağlar.
      */
     public function storeDocumentType(Request $request)
     {
         $request->validate([
-            'category' => 'required|string|max:255',
-            'name' => 'required|string|max:255|unique:document_types,name'
+            'name' => 'required|string|max:255|unique:document_types,name',
+            'custom_fields' => 'nullable|array' // YENİ
         ]);
 
-        // Model Observer'ımız (yukarıda yazdığımız created olayı) sayesinde 
-        // Spatie yetkileri arkaplanda otomatik olarak üretilecek!
+        // Gelen dinamik alanları temizle ve hazırla
+        $fields = $this->processCustomFields($request->custom_fields);
+
+        // Model Observer'ımız (created olayı) Spatie yetkilerini otomatik üretecek!
         DocumentType::create([
-            'category' => $request->category,
-            'name' => $request->name
+            'name' => $request->name,
+            'custom_fields' => empty($fields) ? null : $fields // Boşsa null yap
         ]);
 
-        return back()->with('success', '📄 Yeni doküman tipi ve bağlı yetkileri başarıyla oluşturuldu.');
+        return back()->with('success', '📄 Yeni doküman tipi ve özel form alanları başarıyla oluşturuldu.');
     }
 
     /**
@@ -183,36 +186,45 @@ class PermissionSettingsController extends Controller
     public function updateDocumentType(Request $request, DocumentType $documentType)
     {
         $request->validate([
-            'category' => 'required|string|max:255',
             'name' => 'required|string|max:255|unique:document_types,name,' . $documentType->id,
-            'custom_fields' => 'nullable|array' // YENİ: Dinamik alanları dizi olarak bekle
+            'custom_fields' => 'nullable|array'
         ]);
 
+        // Gelen dinamik alanları temizle ve hazırla
+        $fields = $this->processCustomFields($request->custom_fields);
+
+        $documentType->update([
+            'name' => $request->name,
+            'custom_fields' => empty($fields) ? null : $fields
+        ]);
+
+        return back()->with('success', 'Doküman tipi ve özel form alanları başarıyla güncellendi.');
+    }
+    /**
+     * YARDIMCI METOT: Arayüzden gelen karmaşık dinamik form verisini temizler ve JSON'a hazırlar.
+     */
+    private function processCustomFields(?array $customFields): array
+    {
         $fields = [];
 
-        // Eğer arayüzden özel alanlar gönderildiyse bunları temizleyip JSON'a hazırla
-        if ($request->has('custom_fields')) {
-            foreach ($request->custom_fields as $field) {
-                // Boş satırları yoksay
+        if ($customFields) {
+            foreach ($customFields as $field) {
+                // Sadece adı ve etiketi dolu olan geçerli satırları al
                 if (!empty($field['label']) && !empty($field['name'])) {
                     $fields[] = [
                         'label' => $field['label'],
-                        // Sistem adını (name) otomatik olarak boşluksuz İngilizce karaktere (slug) çeviriyoruz ki hata olmasın
+                        // Sistem adını (name) otomatik olarak boşluksuz karaktere (slug) çeviriyoruz
                         'name' => \Illuminate\Support\Str::slug($field['name'], '_'),
-                        'type' => $field['type'],
-                        'placeholder' => $field['placeholder'] ?? ''
+                        'type' => $field['type'] ?? 'text',
+                        'placeholder' => $field['placeholder'] ?? '',
+                        // Checkbox işaretliyse true, değilse false kaydet!
+                        'required' => isset($field['required']) ? true : false,
                     ];
                 }
             }
         }
 
-        $documentType->update([
-            'category' => $request->category,
-            'name' => $request->name,
-            'custom_fields' => empty($fields) ? null : $fields // Boşsa null yap, doluysa kaydet
-        ]);
-
-        return back()->with('success', 'Doküman tipi ve özel form alanları başarıyla güncellendi.');
+        return $fields;
     }
 
     /**

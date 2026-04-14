@@ -12,7 +12,7 @@
 
 @if ($errors->any())
     <div class="alert alert-danger">
-        <p style="margin-bottom: 5px; font-weight: bold;">Lütfen formdaki hataları düzeltin:</p>
+        <p style="margin-bottom: 5px; font-weight: bold;">{{__('Lütfen formdaki hataları düzeltin:')}}</p>
         <ul style="margin-left: 20px;">
             @foreach ($errors->all() as $error)
                 <li>{{ $error }}</li>

@@ -1,301 +1,224 @@
 @extends('layouts.app')
 
 @section('content')
-    <div class="page-header">
-        <h1 class="page-title">🛡️ Roller ve Yetki Matrisi</h1>
-        <p class="text-muted">Sistemdeki kullanıcı rollerini, departman onaylarını ve doküman tiplerini yönetin.</p>
+    <div class="page-header mb-30">
+        <h1 class="page-title" style="font-size: 1.8rem; color: var(--primary-color);">🛡️
+            {{ __('Sistem ve Yetki Yönetimi') }}</h1>
+        <p class="text-muted">
+            {{ __('Sistemdeki organizasyon yapısını, belge tiplerini ve tüm güvenlik/erişim kurallarını buradan yönetin.') }}
+        </p>
     </div>
 
     @if (session('success'))
-        <div class="alert alert-success">{{ session('success') }}</div>
+        <div class="alert alert-success d-flex align-items-center"
+            style="border-radius: 8px; padding: 15px; font-weight: 500; gap: 8px;">
+            <i data-lucide="check-circle" style="width: 20px;"></i>
+            <span>{{ session('success') }}</span>
+        </div>
     @endif
+
     @error('name')
-        <div class="alert alert-danger">⚠️ {{ $message }}</div>
+        <div class="alert alert-danger d-flex align-items-center"
+            style="border-radius: 8px; padding: 15px; font-weight: 500; gap: 8px;">
+            <i data-lucide="alert-triangle" style="width: 20px;"></i>
+            <span>{{ $message }}</span>
+        </div>
     @enderror
 
-    <div class="layout-split mb-30"
-        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(480px, 1fr)); gap: 25px;">
-        <div class="card glass-card" style="border-top: 4px solid var(--accent-color);">
-            <div class="card-header flex-between">
-                <h4 style="margin: 0; font-size: 1.1rem; display: flex; align-items: center;">
-                    <i data-lucide="file-type" style="width: 20px; color: var(--accent-color); margin-right: 8px;"></i>
-                    Doküman Tiplerini Yönet
+    <div class="form-section-divider mb-20" style="border-top: 2px solid #e2e8f0; padding-top: 20px;">
+        <h3
+            style="color: var(--secondary-color); font-size: 1.2rem; margin: 0; display: flex; align-items: center; gap: 8px;">
+            <i data-lucide="blocks" style="width: 22px;"></i> 1. {{ __('Organizasyon ve Tanımlamalar') }}
+        </h3>
+    </div>
+
+    <div class="admin-dashboard-grid mb-40">
+
+        <div class="card glass-card admin-card-full"
+            style="border-top: 4px solid var(--accent-color); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+            <div class="card-header flex-between"
+                style="background: #f8fafc; padding: 18px 24px; border-bottom: 1px solid var(--border-color);">
+                <h4
+                    style="margin: 0; font-size: 1.1rem; color: var(--text-color); display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="file-type" style="width: 20px; color: var(--accent-color);"></i>
+                    {{ __('Doküman Tipleri ve Dinamik Formlar') }}
                 </h4>
             </div>
+
             <div class="card-body p-0">
-                <div style="padding: 15px 20px; border-bottom: 1px solid var(--border-color); background: #f8fafc;">
-                    <form action="{{ route('settings.document-types.store') }}" method="POST"
-                        style="display: flex; gap: 10px; flex-wrap: wrap;">
-                        @csrf
-                        <input type="text" name="category" class="form-control form-control-sm"
-                            placeholder="Kategori (Örn: Hukuk)" required style="flex: 1; min-width: 120px;"
-                            list="category-list">
-                        <datalist id="category-list">
-                            <option value="Hukuk">
-                            <option value="İnsan Kaynakları">
-                            <option value="Kalite Yönetimi">
-                            <option value="Üretim">
-                        </datalist>
+                <div style="display: flex; flex-wrap: wrap;">
 
-                        <input type="text" name="name" class="form-control form-control-sm"
-                            placeholder="Tip Adı (Örn: Sözleşme)" required style="flex: 1; min-width: 150px;">
-                        <button type="submit" class="btn btn-sm btn-primary" style="padding: 0 20px;">Ekle</button>
-                    </form>
-                </div>
-
-                <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
-                    <table class="table modern-table" style="margin: 0;">
-                        <thead
-                            style="background: var(--bg-color); position: sticky; top: 0; z-index: 5; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-                            <tr>
-                                <th style="padding: 15px 20px;">Kategori</th>
-                                <th style="padding: 15px 20px;">Tip Adı</th>
-                                <th class="text-right" style="padding: 15px 20px;">İşlemler</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($documentTypes->sortBy('category') as $type)
-                                <tr id="edit-type-{{ $type->id }}" style="display: none; background: #f1f5f9;">
-                                    <td colspan="3" style="padding: 20px; border-bottom: 3px solid var(--accent-color);">
-                                        <form action="{{ route('settings.document-types.update', $type->id) }}"
-                                            method="POST"
-                                            style="background: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
-                                            @csrf @method('PUT')
-
-                                            <div
-                                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 15px;">
-                                                <h5
-                                                    style="margin: 0; color: var(--primary-color); display: flex; align-items: center; gap: 8px; font-size: 1.05rem;">
-                                                    <i data-lucide="settings-2" style="width: 20px;"></i> Tipi ve Form
-                                                    Alanlarını Düzenle
-                                                </h5>
-                                                <div style="display: flex; gap: 10px;">
-                                                    <button type="submit" class="btn btn-sm btn-success"
-                                                        style="padding: 6px 15px;">💾 Kaydet</button>
-                                                    <button type="button" class="btn btn-sm btn-secondary"
-                                                        onclick="toggleTypeEdit('{{ $type->id }}')"
-                                                        style="padding: 6px 15px;">İptal</button>
-                                                </div>
-                                            </div>
-
-                                            <div class="form-grid"
-                                                style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
-                                                <div>
-                                                    <label
-                                                        style="font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 6px; display: block;">Kategori</label>
-                                                    <input type="text" name="category" class="form-control"
-                                                        value="{{ $type->category }}" required>
-                                                </div>
-                                                <div>
-                                                    <label
-                                                        style="font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 6px; display: block;">Doküman
-                                                        Tipi Adı</label>
-                                                    <input type="text" name="name" class="form-control"
-                                                        value="{{ $type->name }}" required>
-                                                </div>
-                                            </div>
-
-                                            <div
-                                                style="background: #f8fafc; border: 1px dashed #94a3b8; border-radius: 8px; padding: 20px;">
+                    <div
+                        style="flex: 1 1 50%; min-width: 400px; padding: 24px; border-right: 1px solid var(--border-color);">
+                        <h5
+                            style="margin-top: 0; margin-bottom: 15px; color: var(--text-muted); font-size: 0.95rem; font-weight: 600;">
+                            {{ __('Kayıtlı Tipler') }}</h5>
+                        <div class="table-responsive custom-scrollbar"
+                            style="max-height: 420px; border: 1px solid var(--border-color); border-radius: 8px;">
+                            <table class="table modern-table" style="margin: 0; font-size: 0.9rem;">
+                                <thead
+                                    style="background: #f1f5f9; position: sticky; top: 0; z-index: 5; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                                    <tr>
+                                        <th style="padding: 12px 15px;">{{ __('Doküman Tipi Adı') }}</th>
+                                        <th class="text-right" style="padding: 12px 15px; width: 100px;">{{ __('İşlem') }}
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($documentTypes->sortBy('category') as $type)
+                                        <tr class="hover-row">
+                                            <td style="padding: 12px 15px; vertical-align: middle;">
                                                 <div
-                                                    style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
-                                                    <div>
-                                                        <strong style="font-size: 0.95rem; color: #334155;">Bu Tipe Özel
-                                                            Ekstra Form Alanları</strong>
-                                                        <small
-                                                            style="display: block; color: var(--text-muted); margin-top: 4px;">Kullanıcılar
-                                                            bu belge tipini seçtiğinde aşağıdaki alanlar
-                                                            açılacaktır.</small>
-                                                    </div>
-                                                    <button type="button" class="btn btn-sm btn-outline-primary"
-                                                        onclick="addCustomField('{{ $type->id }}')"
-                                                        style="background: #fff;">
-                                                        + Yeni Alan Ekle
+                                                    style="font-weight: 600; color: var(--primary-color); font-size: 0.95rem;">
+                                                    {{ $type->name }}</div>
+                                            </td>
+                                            <td style="padding: 12px 15px; vertical-align: middle;">
+                                                <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                                                    <button type="button" class="btn btn-sm btn-outline-primary action-btn"
+                                                        onclick="editDocType({{ $type->id }}, '{{ $type->name }}', {{ json_encode($type->custom_fields ?? []) }})"
+                                                        title="{{ __('Düzenle') }}">
+                                                        <i data-lucide="edit"></i>
                                                     </button>
+
+                                                    <form
+                                                        action="{{ route('settings.document-types.destroy', $type->id) }}"
+                                                        method="POST"
+                                                        onsubmit="return confirm('{{ __('Emin misiniz?') }}')"
+                                                        style="margin: 0;">
+                                                        @csrf @method('DELETE')
+                                                        <button type="submit"
+                                                            class="btn btn-sm btn-outline-danger action-btn"
+                                                            title="{{ __('Sil') }}">
+                                                            <i data-lucide="trash-2"></i>
+                                                        </button>
+                                                    </form>
                                                 </div>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
 
-                                                <div id="fields-container-{{ $type->id }}"
-                                                    style="display: flex; flex-direction: column; gap: 12px;">
-                                                    @php $fields = $type->custom_fields ?? []; @endphp
+                    <div style="flex: 1 1 50%; min-width: 400px; padding: 24px;">
+                        <form id="docTypeForm" action="{{ route('settings.document-types.store') }}" method="POST"
+                            class="p-3"
+                            style="background: #f8fafc; border-radius: 8px; border: 1px solid var(--border-color); height: 100%;">
+                            @csrf
+                            <div id="methodSpoofer"></div>
 
-                                                    @if (empty($fields))
-                                                        <div class="empty-field-msg text-center text-muted"
-                                                            style="padding: 15px; font-size: 0.9rem; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px;">
-                                                            Şu an bu tipe özel ekstra bir alan yok. Sağ üstten
-                                                            ekleyebilirsiniz.
-                                                        </div>
-                                                    @endif
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                                <h5 id="formTitle"
+                                    style="margin: 0; color: var(--primary-color); font-size: 1.05rem; display: flex; align-items: center; gap: 6px;">
+                                    ✨ {{ __('Yeni Doküman Tipi Ekle') }}
+                                </h5>
+                                <button type="button" id="cancelEditBtn" class="btn btn-sm btn-outline-secondary"
+                                    style="display: none; padding: 4px 10px; font-weight: 500;">
+                                    {{ __('Vazgeç & Yeni Ekle') }}
+                                </button>
+                            </div>
 
-                                                    @foreach ($fields as $index => $field)
-                                                        <div class="field-row"
-                                                            style="display: flex; gap: 15px; align-items: center; background: #ffffff; padding: 12px 15px; border: 1px solid #cbd5e1; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
-                                                            <div style="flex: 2;">
-                                                                <input type="text"
-                                                                    name="custom_fields[{{ $index }}][label]"
-                                                                    value="{{ $field['label'] }}" class="form-control"
-                                                                    placeholder="Ekranda Görünen Ad (Örn: Sözleşme Bedeli)"
-                                                                    required title="Kullanıcının formda göreceği isim">
-                                                            </div>
-                                                            <div style="flex: 2;">
-                                                                <input type="text"
-                                                                    name="custom_fields[{{ $index }}][name]"
-                                                                    value="{{ $field['name'] }}" class="form-control"
-                                                                    placeholder="Sistem Adı (Örn: bedel)" required
-                                                                    title="Veritabanına kaydedilecek JSON anahtarı (Boşluksuz yazın)">
-                                                            </div>
-                                                            <div style="flex: 1;">
-                                                                <select name="custom_fields[{{ $index }}][type]"
-                                                                    class="form-control">
-                                                                    <option value="text"
-                                                                        {{ $field['type'] == 'text' ? 'selected' : '' }}>
-                                                                        Yazı (Text)</option>
-                                                                    <option value="number"
-                                                                        {{ $field['type'] == 'number' ? 'selected' : '' }}>
-                                                                        Sayı (Number)</option>
-                                                                    <option value="date"
-                                                                        {{ $field['type'] == 'date' ? 'selected' : '' }}>
-                                                                        Tarih (Date)</option>
-                                                                </select>
-                                                            </div>
-                                                            <button type="button" class="btn btn-outline-danger"
-                                                                style="padding: 8px 12px;"
-                                                                onclick="this.closest('.field-row').remove()"
-                                                                title="Alanı Sil">✖</button>
-                                                        </div>
-                                                    @endforeach
-                                                </div>
-                                            </div>
-                                        </form>
-                                    </td>
-                                </tr>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label
+                                        style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; display: block;">{{ __('Doküman Tipi Adı') }}
+                                        <span class="text-danger">*</span></label>
+                                    <input type="text" name="name" id="dtName" class="form-control"
+                                        placeholder="{{ __('Örn: Sözleşme') }}" required
+                                        style="padding: 10px; border-radius: 6px;">
+                                </div>
+                            </div>
 
-                                <tr id="view-type-{{ $type->id }}" style="transition: background 0.2s ease;">
-                                    <td style="padding: 15px 20px;">
-                                        <span class="badge badge-secondary"
-                                            style="font-size: 0.8rem; background: #e2e8f0; color: #475569; padding: 5px 10px; border-radius: 4px;">
-                                            {{ $type->category ?? 'Genel' }}
-                                        </span>
-                                    </td>
-                                    <td style="padding: 15px 20px; font-weight: 500; color: #1e293b;">{{ $type->name }}
-                                    </td>
-                                    <td style="padding: 15px 20px; text-align: right;">
-                                        <div style="display: flex; justify-content: flex-end; gap: 8px;">
-                                            <button class="btn btn-sm btn-outline-primary"
-                                                onclick="toggleTypeEdit('{{ $type->id }}')"
-                                                title="Düzenle">✏️</button>
-                                            <form action="{{ route('settings.document-types.destroy', $type->id) }}"
-                                                method="POST"
-                                                onsubmit="return confirm('Bu doküman tipini silmek istediğinize emin misiniz?')"
-                                                style="margin: 0;">
-                                                @csrf @method('DELETE')
-                                                <button type="submit" class="btn btn-sm btn-outline-danger"
-                                                    title="Sil">🗑️</button>
-                                            </form>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                            <div style="padding-top: 15px; border-top: 1px dashed #cbd5e1;">
+                                <div
+                                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                    <label
+                                        style="font-size: 0.9rem; font-weight: 600; color: var(--secondary-color); margin: 0;">{{ __('Dinamik Form Alanları (Opsiyonel)') }}</label>
+                                    <button type="button" id="addCustomFieldBtn"
+                                        class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
+                                        style="font-weight: 500;">
+                                        <i data-lucide="plus" style="width: 14px;"></i> {{ __('Alan Ekle') }}
+                                    </button>
+                                </div>
+
+                                <div id="customFieldsWrapper" class="custom-scrollbar"
+                                    style="display: flex; flex-direction: column; gap: 10px; max-height: 250px; overflow-y: auto; padding-right: 5px;">
+                                </div>
+                            </div>
+
+                            <div style="margin-top: 25px; text-align: right;">
+                                <button type="submit" id="submitDocTypeBtn"
+                                    class="btn btn-primary d-inline-flex align-items-center gap-2"
+                                    style="padding: 10px 25px; font-weight: 500;">
+                                    <i data-lucide="save" style="width: 18px;"></i> {{ __('Kaydet') }}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="card glass-card">
-            <div class="widget-header flex-between"
-                style="padding: 15px 20px; border-bottom: 1px solid var(--border-color);">
-                <div>
-                    <h4 style="margin:0; font-size: 1.1rem; color: var(--text-color);">
-                        <i data-lucide="building-2" style="width: 20px; margin-right: 8px; vertical-align: middle;"></i>
-                        Tesis ve Departman Yönetimi
-                    </h4>
-                </div>
+        <div class="card glass-card admin-card-half"
+            style="border-top: 4px solid var(--primary-color); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+            <div class="card-header flex-between"
+                style="background: #f8fafc; padding: 18px 24px; border-bottom: 1px solid var(--border-color);">
+                <h4
+                    style="margin: 0; font-size: 1.1rem; color: var(--text-color); display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="building-2" style="width: 20px; color: var(--primary-color);"></i>
+                    {{ __('Tesis ve Departmanlar') }}
+                </h4>
             </div>
-
-            <div class="card-body p-0">
-                <div style="padding: 15px 20px; border-bottom: 1px solid var(--border-color); background: #f8fafc;">
+            <div class="card-body p-0 d-flex flex-column" style="height: 100%;">
+                <div style="padding: 20px; background: #fafaf9; border-bottom: 1px solid var(--border-color);">
                     <form action="{{ route('settings.departments.store') }}" method="POST"
-                        style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        style="display: flex; gap: 12px; align-items: stretch;">
                         @csrf
-                        <input type="text" name="unit" class="form-control form-control-sm"
-                            placeholder="Tesis/Birim (Örn: Preform)" required style="flex: 1; min-width: 120px;"
+                        <input type="text" name="unit" class="form-control"
+                            placeholder="{{ __('Tesis (Örn: Preform)') }}" required style="flex: 1; border-radius: 6px;"
                             list="unit-list">
                         <datalist id="unit-list">
-                            <option value="Merkez">
+                            <option value="{{ __('Merkez') }}">
                             <option value="Preform">
                             <option value="Levha">
-                            <option value="Kopet">
-                            <option value="Rezin">
                         </datalist>
-
-                        <input type="text" name="name" class="form-control form-control-sm"
-                            placeholder="Departman (Örn: İnsan Kaynakları)" required style="flex: 2; min-width: 150px;">
-
-                        <button type="submit" class="btn btn-sm btn-primary" style="padding: 0 20px;">Ekle</button>
+                        <input type="text" name="name" class="form-control"
+                            placeholder="{{ __('Departman Adı') }}" required style="flex: 1.5; border-radius: 6px;">
+                        <button type="submit" class="btn btn-primary d-flex align-items-center justify-content-center"
+                            style="padding: 0 20px; font-weight: 500;">{{ __('Ekle') }}</button>
                     </form>
                 </div>
-
-                <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
-                    <table class="table modern-table" style="margin:0;">
+                <div class="table-responsive custom-scrollbar flex-grow-1" style="max-height: 350px;">
+                    <table class="table modern-table" style="margin: 0; font-size: 0.9rem;">
                         <thead
-                            style="background: var(--bg-color); position: sticky; top: 0; z-index: 5; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                            style="background: #fff; position: sticky; top: 0; z-index: 5; box-shadow: 0 1px 0 var(--border-color);">
                             <tr>
-                                <th style="padding: 15px 20px;">Tesis / Birim</th>
-                                <th style="padding: 15px 20px;">Departman Adı</th>
-                                <th class="text-center" style="padding: 15px 20px;">Yönetici Onayı</th>
-                                <th class="text-right" style="padding: 15px 20px;">İşlemler</th>
+                                <th style="padding: 12px 20px;">{{ __('Tesis') }}</th>
+                                <th style="padding: 12px 20px;">{{ __('Departman') }}</th>
+                                <th class="text-right" style="padding: 12px 20px; width: 80px;">{{ __('İşlem') }}</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach ($departments->sortBy('unit') as $dept)
-                                <tr>
-                                    <td colspan="4" style="padding: 0; border: none;">
-                                        <form action="{{ route('settings.departments.update', $dept->id) }}"
-                                            method="POST" id="edit-dept-{{ $dept->id }}"
-                                            style="display: none; padding: 15px 20px; background: #f1f5f9; gap: 15px; align-items: center; margin: 0; border-bottom: 2px solid var(--accent-color);">
-                                            @csrf @method('PUT')
-                                            <input type="text" name="unit" class="form-control"
-                                                value="{{ $dept->unit }}" required style="width: 140px;">
-                                            <input type="text" name="name" class="form-control"
-                                                value="{{ $dept->name }}" required style="flex: 1;">
-                                            <button type="submit" class="btn btn-success">Kaydet</button>
-                                            <button type="button" class="btn btn-secondary"
-                                                onclick="toggleDeptEdit('{{ $dept->id }}')">İptal</button>
+                                <tr class="hover-row">
+                                    <td style="padding: 12px 20px; vertical-align: middle;">
+                                        <span class="badge"
+                                            style="font-size: 0.8rem; background: #e0e7ff; color: #3730a3; padding: 5px 8px;">{{ $dept->unit ?? __('Merkez') }}</span>
+                                    </td>
+                                    <td style="padding: 12px 20px; font-weight: 500; vertical-align: middle;">
+                                        {{ $dept->name }}</td>
+                                    <td style="padding: 12px 20px; text-align: right; vertical-align: middle;">
+                                        <form action="{{ route('settings.departments.destroy', $dept->id) }}"
+                                            method="POST" onsubmit="return confirm('{{ __('Emin misiniz?') }}')"
+                                            style="margin: 0;">
+                                            @csrf @method('DELETE')
+                                            <button type="submit" class="btn btn-sm btn-outline-danger action-btn"
+                                                title="{{ __('Sil') }}">
+                                                <i data-lucide="trash-2"></i>
+                                            </button>
                                         </form>
-                                    </td>
-                                </tr>
-
-                                <tr id="view-dept-{{ $dept->id }}">
-                                    <td style="padding: 15px 20px;">
-                                        <span class="badge badge-secondary"
-                                            style="font-size: 0.8rem; background: #e2e8f0; color: #475569; padding: 5px 10px; border-radius: 4px;">
-                                            {{ $dept->unit ?? 'Merkez' }}
-                                        </span>
-                                    </td>
-                                    <td style="padding: 15px 20px; font-weight: 500; color: #1e293b;">{{ $dept->name }}
-                                    </td>
-                                    <td class="text-center" style="padding: 15px 20px;">
-                                        <label class="toggle-switch" style="display: inline-flex; margin: 0;">
-                                            <input type="checkbox"
-                                                onchange="toggleDeptApproval({{ $dept->id }}, this)"
-                                                {{ $dept->requires_approval_on_upload ? 'checked' : '' }}>
-                                            <span class="toggle-slider"></span>
-                                        </label>
-                                    </td>
-                                    <td class="text-right" style="padding: 15px 20px;">
-                                        <div style="display: flex; justify-content: flex-end; gap: 8px;">
-                                            <button class="btn btn-sm btn-outline-primary"
-                                                onclick="toggleDeptEdit('{{ $dept->id }}')"
-                                                title="Düzenle">✏️</button>
-                                            <form action="{{ route('settings.departments.destroy', $dept->id) }}"
-                                                method="POST"
-                                                onsubmit="return confirm('Bu departmanı silmek istediğinize emin misiniz?')"
-                                                style="margin: 0;">
-                                                @csrf @method('DELETE')
-                                                <button type="submit" class="btn btn-sm btn-outline-danger"
-                                                    title="Sil">🗑️</button>
-                                            </form>
-                                        </div>
                                     </td>
                                 </tr>
                             @endforeach
@@ -304,98 +227,64 @@
                 </div>
             </div>
         </div>
-    </div>
 
-    <div class="layout-split mb-30" style="display: grid; grid-template-columns: 1fr 2fr; gap: 25px;">
-        <div class="card glass-card" style="border-top: 4px solid var(--primary-color);">
-            <div class="card-header">
-                <h3 style="margin: 0; font-size: 1.1rem; display: flex; align-items: center;">
-                    <i data-lucide="shield-plus" style="width: 20px; color: var(--primary-color); margin-right: 8px;"></i>
-                    Yeni Rol Tanımla
-                </h3>
-            </div>
-            <div class="card-body">
-                <p class="text-muted" style="margin-bottom: 20px; font-size: 0.9rem; line-height: 1.5;">
-                    Sisteme yeni bir departman veya hiyerarşik yetki grubu ekleyin.
-                </p>
-                <form action="{{ route('settings.roles.store') }}" method="POST" class="modern-form">
-                    @csrf
-                    <div class="form-group" style="margin-bottom: 20px;">
-                        <label class="form-label" style="font-weight: 600; color: #475569;">Rol Adı</label>
-                        <input type="text" name="name" class="form-control" placeholder="Örn: Finans Departmanı"
-                            required>
-                    </div>
-                    <button type="submit" class="btn btn-primary btn-block" style="padding: 10px;">
-                        <i data-lucide="plus" style="width: 18px; margin-right: 5px; vertical-align: text-bottom;"></i>
-                        Rolü
-                        Ekle
-                    </button>
-                </form>
-            </div>
-        </div>
-
-        <div class="card glass-card">
-            <div class="card-header">
-                <h4 style="margin: 0; font-size: 1.1rem; display: flex; align-items: center;">
-                    <i data-lucide="settings-2" style="width: 20px; color: var(--text-color); margin-right: 8px;"></i>
-                    Mevcut Rolleri Yönet
+        <div class="card glass-card admin-card-half"
+            style="border-top: 4px solid var(--success-color); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+            <div class="card-header flex-between"
+                style="background: #f8fafc; padding: 18px 24px; border-bottom: 1px solid var(--border-color);">
+                <h4
+                    style="margin: 0; font-size: 1.1rem; color: var(--text-color); display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="users" style="width: 20px; color: var(--success-color);"></i>
+                    {{ __('Kullanıcı Rolleri') }}
                 </h4>
             </div>
-            <div class="card-body p-0">
-                <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
-                    <table class="table modern-table" style="margin: 0;">
+            <div class="card-body p-0 d-flex flex-column" style="height: 100%;">
+                <div style="padding: 20px; background: #f0fdf4; border-bottom: 1px solid var(--border-color);">
+                    <form action="{{ route('settings.roles.store') }}" method="POST"
+                        style="display: flex; gap: 12px; align-items: stretch;">
+                        @csrf
+                        <input type="text" name="name" class="form-control"
+                            placeholder="{{ __('Yeni Rol Adı (Örn: Finans)') }}" required
+                            style="flex: 1; border-radius: 6px;">
+                        <button type="submit" class="btn btn-success d-flex align-items-center justify-content-center"
+                            style="padding: 0 20px; font-weight: 500;">{{ __('Rol Ekle') }}</button>
+                    </form>
+                </div>
+                <div class="table-responsive custom-scrollbar flex-grow-1" style="max-height: 350px;">
+                    <table class="table modern-table" style="margin: 0; font-size: 0.9rem;">
                         <thead
-                            style="background: #f8fafc; position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                            style="background: #fff; position: sticky; top: 0; z-index: 5; box-shadow: 0 1px 0 var(--border-color);">
                             <tr>
-                                <th style="padding: 15px 20px;">Rol Adı</th>
-                                <th style="width: 150px; padding: 15px 20px; text-align: right;">İşlemler</th>
+                                <th style="padding: 12px 20px;">{{ __('Rol Adı') }}</th>
+                                <th class="text-right" style="padding: 12px 20px; width: 80px;">{{ __('İşlem') }}</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach ($roles as $role)
-                                <tr style="transition: background 0.2s ease;">
-                                    <td style="padding: 15px 20px;">
-                                        <form action="{{ route('settings.roles.update', $role->id) }}" method="POST"
-                                            id="edit-role-{{ $role->id }}"
-                                            style="display: none; gap: 15px; align-items: center; margin: 0;">
-                                            @csrf @method('PUT')
-                                            <input type="text" name="name" class="form-control"
-                                                value="{{ $role->name }}" required style="width: 60%;">
-                                            <button type="submit" class="btn btn-success">Kaydet</button>
-                                            <button type="button" class="btn btn-secondary"
-                                                onclick="toggleEdit('{{ $role->id }}')">İptal</button>
-                                        </form>
-
-                                        <span id="view-role-{{ $role->id }}" class="font-bold"
-                                            style="color: #1e293b;">
-                                            {{ $role->name }}
-                                            @if (in_array($role->name, ['Super Admin', 'Admin']))
-                                                <span class="badge badge-warning"
-                                                    style="margin-left: 8px; font-size: 0.75rem; font-weight: normal; background: #fffbeb; color: #ea580c; border: 1px solid #fde68a; padding: 4px 8px;">
-                                                    Sistem Kilidi 🔒
-                                                </span>
-                                            @endif
-                                        </span>
+                                <tr class="hover-row">
+                                    <td
+                                        style="padding: 15px 20px; font-weight: 600; color: var(--text-color); vertical-align: middle;">
+                                        {{ $role->name }}
+                                        @if (in_array($role->name, ['Super Admin', 'Admin']))
+                                            <span class="badge badge-warning"
+                                                style="margin-left: 8px; font-size: 0.7rem; padding: 4px 6px; border-radius: 4px; background: #fef08a; color: #854d0e;">{{ __('Sistem') }}
+                                                🔒</span>
+                                        @endif
                                     </td>
-                                    <td style="padding: 15px 20px; text-align: right;">
+                                    <td style="padding: 12px 20px; text-align: right; vertical-align: middle;">
                                         @if (!in_array($role->name, ['Super Admin', 'Admin']))
-                                            <div id="actions-role-{{ $role->id }}"
-                                                style="display: flex; justify-content: flex-end; gap: 8px;">
-                                                <button class="btn btn-sm btn-outline-primary"
-                                                    onclick="toggleEdit('{{ $role->id }}')" title="Düzenle">
-                                                    ✏️
+                                            <form action="{{ route('settings.roles.destroy', $role->id) }}"
+                                                method="POST" onsubmit="return confirm('{{ __('Emin misiniz?') }}')"
+                                                style="margin: 0;">
+                                                @csrf @method('DELETE')
+                                                <button type="submit" class="btn btn-sm btn-outline-danger action-btn"
+                                                    title="{{ __('Sil') }}">
+                                                    <i data-lucide="trash-2"></i>
                                                 </button>
-                                                <form action="{{ route('settings.roles.destroy', $role->id) }}"
-                                                    method="POST"
-                                                    onsubmit="return confirm('Bu rolü silmek istediğinize emin misiniz? Bu role bağlı tüm yetkiler kaybolacaktır.')"
-                                                    style="margin: 0;">
-                                                    @csrf @method('DELETE')
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger"
-                                                        title="Sil">
-                                                        🗑️
-                                                    </button>
-                                                </form>
-                                            </div>
+                                            </form>
+                                        @else
+                                            <span class="text-muted"
+                                                style="font-size: 0.8rem; font-style: italic;">{{ __('Silinemez') }}</span>
                                         @endif
                                     </td>
                                 </tr>
@@ -406,295 +295,606 @@
             </div>
         </div>
     </div>
-
-    <div class="form-section-divider mt-30 mb-30" style="border-top: 2px dashed #cbd5e1;"></div>
-
-    <div class="page-header mb-20">
-        <h2 class="page-title" style="font-size: 1.4rem;">⚙️ 3D Kategori Yetki Matrisi</h2>
-        <p class="text-muted">Hangi rolün, hangi doküman kategorisinde ne gibi işlemler yapabileceğini belirleyin.</p>
+    <div class="form-section-divider mb-20" style="border-top: 2px solid #e2e8f0; padding-top: 20px;">
+        <h3
+            style="color: var(--secondary-color); font-size: 1.2rem; margin: 0; display: flex; align-items: center; gap: 8px;">
+            <i data-lucide="shield-check" style="width: 22px;"></i> 2. {{ __('Güvenlik ve Erişim Matrisleri') }}
+        </h3>
     </div>
 
-    <form action="{{ route('settings.permissions.update') }}" method="POST" id="permissionsForm">
-        @csrf
-
-        <div class="matrix-container glass-card mb-30">
-            <div class="matrix-tabs"
-                style="display: flex; gap: 5px; overflow-x: auto; border-bottom: 2px solid var(--border-color); background: #f8fafc; padding: 15px 15px 0 15px; border-radius: 8px 8px 0 0;">
-                @foreach ($documentTypes as $index => $type)
-                    <button type="button" class="matrix-tab {{ $index === 0 ? 'active' : '' }}"
-                        data-matrixtarget="matrix-{{ $type->slug }}"
-                        style="padding: 12px 25px; border: none; background: {{ $index === 0 ? '#fff' : 'transparent' }}; border-bottom: {{ $index === 0 ? '3px solid var(--primary-color)' : '3px solid transparent' }}; font-weight: 600; cursor: pointer; border-radius: 8px 8px 0 0; font-size: 0.95rem; transition: background 0.2s;">
-                        📂 {{ $type->name }}
-                    </button>
-                @endforeach
+    <div class="card glass-card mb-30"
+        style="border-radius: 12px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05);">
+        <div class="card-header" style="background: #f0fdfa; border-bottom: 2px solid #14b8a6; padding: 20px;">
+            <h2 style="margin: 0; font-size: 1.2rem; color: #0f766e; display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="folder-lock"></i> {{ __('Dinamik Klasör Yetki Matrisi') }}
+            </h2>
+            <p style="margin: 5px 0 0 0; font-size: 0.85rem; color: #0d9488;">
+                {{ __('Hangi rolün hangi klasörü görebileceğini veya seçilen klasörün içine belge yükleyebileceğini seçin.') }}
+            </p>
+        </div>
+        <div class="card-body" style="padding: 25px; background: #fff;">
+            <div class="form-group mb-20">
+                <label
+                    style="font-weight: 600; margin-bottom: 8px; display: block; color: var(--text-color);">{{ __('İşlem Yapılacak Klasörü Seçin') }}</label>
+                <select id="folderMatrixSelect" class="form-control"
+                    style="width: 100%; max-width: 400px; padding: 12px; border-radius: 8px; border: 2px solid var(--border-color); font-weight: 500;">
+                    <option value="">{{ __('-- Lütfen Bir Klasör Seçin --') }}</option>
+                    @foreach (\App\Models\Folder::orderBy('name')->get() as $folder)
+                        <option value="{{ $folder->id }}">
+                            {{ $folder->prefix ? "[$folder->prefix] " : '' }}{{ $folder->name }}</option>
+                    @endforeach
+                </select>
             </div>
-
-            @foreach ($documentTypes as $index => $type)
-                <div class="matrix-content {{ $index === 0 ? 'active' : '' }}" id="matrix-{{ $type->slug }}"
-                    style="display: {{ $index === 0 ? 'block' : 'none' }}; padding: 25px;">
-                    <table class="table modern-table matrix-table">
-                        <thead style="background: #f1f5f9;">
+            <div id="folderMatrixLoader"
+                style="display: none; color: var(--primary-color); font-weight: 500; margin-bottom: 15px;">
+                <i data-lucide="loader" class="spin" style="width: 18px; vertical-align: text-bottom;"></i>
+                {{ __('Yetkiler Çekiliyor...') }}
+            </div>
+            <form id="folderMatrixForm" method="POST" action=""
+                style="display: none; animation: fadeIn 0.3s ease;">
+                @csrf
+                <div class="table-responsive"
+                    style="border-radius: 8px; border: 1px solid var(--border-color); overflow: hidden;">
+                    <table class="table modern-table" style="width: 100%; margin: 0;">
+                        <thead style="background: #f8fafc;">
                             <tr>
-                                <th style="padding: 15px;">Sistem Rolü</th>
-                                <th class="text-center" style="padding: 15px;">👁️ Görüntüleme (View)</th>
-                                <th class="text-center" style="padding: 15px;">📤 Yükleme (Create)</th>
-                                <th class="text-center" style="padding: 15px;">📝 Revize Etme (Edit)</th>
-                                <th class="text-center" style="padding: 15px;">🗑️ İmha (Delete)</th>
+                                <th style="padding: 15px; font-weight: 600;">{{ __('Sistem Rolleri') }}</th>
+                                <th class="text-center" style="padding: 15px;"><i data-lucide="eye"
+                                        style="width: 16px;"></i> {{ __('Görüntüle') }}</th>
+                                <th class="text-center" style="padding: 15px;"><i data-lucide="upload"
+                                        style="width: 16px;"></i> {{ __('Belge Yükle') }}</th>
+                                <th class="text-center" style="padding: 15px;"><i data-lucide="folder-plus"
+                                        style="width: 16px;"></i> {{ __('Alt Klasör Aç') }}</th>
+                                <th class="text-center" style="padding: 15px;"><i data-lucide="settings"
+                                        style="width: 16px;"></i> {{ __('Yönet (Sil/Düz)') }}</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach ($roles as $role)
-                                @if (!in_array($role->name, ['Super Admin', 'Admin']))
-                                    <tr style="transition: background 0.2s; hover: background: #f8fafc;">
-                                        <td class="font-bold" style="padding: 15px;">{{ $role->name }}</td>
-
-                                        @foreach (['view', 'create', 'edit', 'delete'] as $action)
-                                            @php
-                                                $permissionName = $type->slug . '.' . $action;
-                                                $hasPermission = $role->hasPermissionTo($permissionName);
-                                            @endphp
-                                            <td class="text-center" style="padding: 15px;">
-                                                <label class="custom-checkbox d-inline-block">
-                                                    <input type="checkbox" name="permissions[{{ $role->id }}][]"
-                                                        value="{{ $permissionName }}"
-                                                        {{ $hasPermission ? 'checked' : '' }}>
-                                                    <span class="checkmark"></span>
-                                                </label>
-                                            </td>
-                                        @endforeach
-                                    </tr>
-                                @endif
+                            @foreach (\Spatie\Permission\Models\Role::where('name', '!=', 'Super Admin')->get() as $role)
+                                <tr style="border-bottom: 1px solid var(--border-color);">
+                                    <td style="padding: 15px; font-weight: 600; color: var(--text-color);">
+                                        {{ $role->name }}</td>
+                                    <td class="text-center"><input type="checkbox"
+                                            name="permissions[{{ $role->id }}][can_view]"
+                                            id="can_view_{{ $role->id }}" class="folder-matrix-cb"
+                                            style="width: 18px; height: 18px; accent-color: #14b8a6;"></td>
+                                    <td class="text-center"><input type="checkbox"
+                                            name="permissions[{{ $role->id }}][can_upload]"
+                                            id="can_upload_{{ $role->id }}" class="folder-matrix-cb"
+                                            style="width: 18px; height: 18px; accent-color: #14b8a6;"></td>
+                                    <td class="text-center"><input type="checkbox"
+                                            name="permissions[{{ $role->id }}][can_create_subfolder]"
+                                            id="can_subfolder_{{ $role->id }}" class="folder-matrix-cb"
+                                            style="width: 18px; height: 18px; accent-color: #14b8a6;"></td>
+                                    <td class="text-center"><input type="checkbox"
+                                            name="permissions[{{ $role->id }}][can_manage]"
+                                            id="can_manage_{{ $role->id }}" class="folder-matrix-cb"
+                                            style="width: 18px; height: 18px; accent-color: var(--danger-color);"></td>
+                                </tr>
                             @endforeach
                         </tbody>
                     </table>
                 </div>
-            @endforeach
-        </div>
-        <div class="card glass-card mb-30" style="border-top: 4px solid var(--danger-color);">
-            <div class="card-header flex-between" style="padding-bottom: 15px;">
-                <div>
-                    <h3 style="margin: 0; color: var(--danger-color); font-size: 1.2rem;">
-                        🛡️ Özel Güvenlik Kalkanları (Global Yetkiler)
-                    </h3>
+                <div style="margin-top: 20px; text-align: right;">
+                    <button type="submit" class="btn btn-success"
+                        style="padding: 10px 25px; font-size: 1rem; display: inline-flex; align-items: center; gap: 8px;">
+                        <i data-lucide="save" style="width: 18px;"></i> {{ __('Seçili Klasörün Yetkilerini Kaydet') }}
+                    </button>
                 </div>
+            </form>
+        </div>
+    </div>
+
+    <form action="{{ route('settings.permissions.update') }}" method="POST" id="globalPermissionsForm">
+        @csrf
+        <div class="card glass-card mb-30"
+            style="border-radius: 12px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05);">
+            <div class="card-header flex-between"
+                style="background: #eff6ff; border-bottom: 2px solid #3b82f6; padding: 20px;">
+                <div>
+                    <h2
+                        style="margin: 0; font-size: 1.2rem; color: #1d4ed8; display: flex; align-items: center; gap: 8px;">
+                        <i data-lucide="layers"></i> {{ __('Doküman Tipi Matrisi ve Global Yetkiler') }}
+                    </h2>
+                    <p style="margin: 5px 0 0 0; font-size: 0.85rem; color: #1e40af;">
+                        {{ __('Rollerin sistemdeki genel sınırlarını ve doküman tiplerine göre yetkilerini belirleyin.') }}
+                    </p>
+                </div>
+                <button type="submit" class="btn btn-primary"
+                    style="padding: 10px 25px; font-size: 1rem; font-weight: 600; box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);">
+                    <i data-lucide="save" style="width: 18px; margin-right: 5px; vertical-align: text-bottom;"></i>
+                    {{ __('Tüm Matrisi Kaydet') }}
+                </button>
             </div>
 
             <div class="card-body p-0">
-                <div class="alert alert-warning" style="margin: 20px; border-radius: 8px;">
-                    <strong>Dikkat:</strong> Buradaki yetkiler kategori kurallarını ezerek tüm sistemde geçerli olur.
-                    <strong>"Çok Gizli"</strong> yetkisini sadece en üst düzey yöneticilere verin.
+                <div
+                    style="padding: 20px 25px; background: #f0fdf4; border-bottom: 1px solid #ccfbf1; display: flex; gap: 15px; align-items: flex-start;">
+                    <div style="background: #ccfbf1; color: #0f766e; padding: 12px; border-radius: 10px; flex-shrink: 0;">
+                        <i data-lucide="help-circle" style="width: 24px; height: 24px;"></i>
+                    </div>
+                    <div>
+                        <h4 style="margin: 0 0 8px 0; color: #115e59; font-size: 1.05rem;">💡
+                            {{ __('Kılavuz: Hangi Tablo Ne İşe Yarıyor?') }}</h4>
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <p style="margin: 0; font-size: 0.9rem; color: #0f766e; line-height: 1.5;">
+                                <strong style="color: #b91c1c;">{{ __('1. Kırmızı Çizgi :') }}</strong>
+                                {{ __('Bu tablo sistemdeki süper yetkileri belirler. Buradan verilen bir yetki, her türlü kuralı ezer geçer! Sadece çok üst düzey yöneticilere verilmelidir.') }}
+                            </p>
+                            <p style="margin: 0; font-size: 0.9rem; color: #0f766e; line-height: 1.5;">
+                                <strong style="color: #1d4ed8;">{{ __('2. Doküman Tipine Özel Yetkiler:') }}</strong>
+                                {{ __('Bu tablo günlük işleyişi belirler. Sadece belirli bir belgede kimin ne yapabileceğini ayarlarsınız.') }}
+                            </p>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="table-responsive">
-                    <table class="table modern-table" style="margin: 0;">
-                        <thead style="background: #fff5f5;">
-                            <tr>
-                                <th style="width: 200px; padding: 15px 20px;">Kullanıcı Rolü</th>
-                                @foreach ($specialPermissions as $sp)
-                                    <th class="text-center" style="padding: 15px 10px; font-size: 0.85rem;">
-                                        @if ($sp->name == 'document.view_strictly_confidential')
-                                            🕵️ Çok Gizli Belge Gör.
-                                        @elseif($sp->name == 'document.view_all')
-                                            🌍 Tüm Belgeleri Gör.
-                                        @elseif($sp->name == 'document.manage_all')
-                                            👑 Tam Yetki (Bypass)
-                                        @elseif($sp->name == 'document.force_unlock')
-                                            ⚠️ Kilit Zorla Açma
-                                        @else
-                                            {{ $sp->name }}
-                                        @endif
+                <div style="padding: 20px; background: #fff5f5; border-bottom: 1px solid #fecaca;">
+                    <h4 style="margin: 0 0 10px 0; color: #b91c1c; font-size: 1rem;"><i data-lucide="alert-octagon"
+                            style="width: 16px;"></i> {{ __('1. Kırmızı Çizgi: Global Kalkanlar') }}</h4>
+                    <div class="table-responsive" style="border: 1px solid #fca5a5; border-radius: 8px;">
+                        <table class="table modern-table" style="margin: 0;">
+                            <thead style="background: #fef2f2; border-bottom: 2px solid #fecaca;">
+                                <tr>
+                                    <th style="width: 180px; padding: 15px; vertical-align: top;">
+                                        <div style="font-weight: 700; color: #991b1b;">{{ __('Sistem Rolü') }}</div>
                                     </th>
-                                @endforeach
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($roles as $role)
-                                @if ($role->name !== 'Super Admin')
-                                    <tr style="transition: background 0.2s;">
-                                        <td style="font-weight: bold; color: var(--primary-color); padding: 15px 20px;">
-                                            {{ $role->name }}
-                                        </td>
-
-                                        @foreach ($specialPermissions as $sp)
-                                            <td class="text-center">
-                                                <label class="custom-checkbox d-inline-block">
+                                    @foreach ($specialPermissions as $sp)
+                                        <th class="text-center" style="padding: 15px; vertical-align: top; width: 20%;">
+                                            @if ($sp->name == 'document.view_strictly_confidential')
+                                                <div
+                                                    style="font-weight: 700; color: #b91c1c; margin-bottom: 6px; font-size: 0.9rem;">
+                                                    🕵️ {{ __('"Çok Gizli" Erişimi') }}</div>
+                                            @elseif($sp->name == 'document.view_all')
+                                                <div
+                                                    style="font-weight: 700; color: #1d4ed8; margin-bottom: 6px; font-size: 0.9rem;">
+                                                    🌍 {{ __('Tüm Belgeleri Görüntüleme') }}</div>
+                                            @elseif($sp->name == 'document.manage_all')
+                                                <div
+                                                    style="font-weight: 700; color: #047857; margin-bottom: 6px; font-size: 0.9rem;">
+                                                    👑 {{ __('Tüm Belgeleri Yönetme') }}</div>
+                                            @elseif($sp->name == 'document.force_unlock')
+                                                <div
+                                                    style="font-weight: 700; color: #b45309; margin-bottom: 6px; font-size: 0.9rem;">
+                                                    ⚠️ {{ __('Kilit Açma Yetkisi') }}</div>
+                                            @else
+                                                <div style="font-weight: 700; margin-bottom: 6px;">{{ $sp->name }}
+                                                </div>
+                                            @endif
+                                        </th>
+                                    @endforeach
+                                </tr>
+                            </thead>
+                            <tbody style="background: #fff;">
+                                @foreach ($roles as $role)
+                                    @if ($role->name !== 'Super Admin')
+                                        <tr>
+                                            <td style="font-weight: bold; color: var(--primary-color); padding: 12px;">
+                                                {{ $role->name }}</td>
+                                            @foreach ($specialPermissions as $sp)
+                                                <td class="text-center">
                                                     <input type="checkbox"
                                                         name="special_permissions[{{ $role->id }}][]"
                                                         value="{{ $sp->name }}"
-                                                        {{ $role->hasPermissionTo($sp->name) ? 'checked' : '' }}>
-                                                    <span class="checkmark"></span>
-                                                </label>
-                                            </td>
-                                        @endforeach
-                                    </tr>
-                                @endif
-                            @endforeach
-                        </tbody>
-                    </table>
+                                                        {{ $role->hasPermissionTo($sp->name) ? 'checked' : '' }}
+                                                        style="accent-color: var(--danger-color); width: 18px; height: 18px; cursor: pointer;">
+                                                </td>
+                                            @endforeach
+                                        </tr>
+                                    @endif
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
+
+                <div style="padding: 20px; background: #f8fafc; border-bottom: 1px solid var(--border-color);">
+                    <h4 style="margin: 0 0 10px 0; color: #1d4ed8; font-size: 1rem;"><i data-lucide="file-text"
+                            style="width: 16px;"></i> {{ __('2. Doküman Tipine Özel Yetkiler') }}</h4>
+                    <label
+                        style="font-weight: 600; margin-bottom: 8px; display: block; color: var(--text-muted); font-size: 0.85rem;">{{ __('Yetkilerini Düzenlemek İstediğiniz Doküman Tipini Seçin') }}</label>
+                    <select id="docTypeMatrixSelect" class="form-control"
+                        style="width: 100%; max-width: 400px; padding: 10px; border-radius: 8px; border: 2px solid var(--border-color); font-weight: 600; cursor: pointer; color: var(--primary-color);">
+                        <option value="">{{ __('-- Lütfen Bir Doküman Tipi Seçin --') }}</option>
+                        @foreach ($documentTypes as $type)
+                            <option value="matrix-{{ $type->slug }}">📂 {{ $type->name }} {{ __('Kategorisi') }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div id="docTypeMatrixLoader"
+                    style="display: none; padding: 30px; text-align: center; color: #3b82f6; font-weight: 500;">
+                    <i data-lucide="loader" class="spin"
+                        style="width: 24px; vertical-align: text-bottom; margin-right: 8px;"></i>
+                    {{ __('Yetkiler Çekiliyor...') }}
+                </div>
+
+                @php
+                    $allMatrixRules = \Illuminate\Support\Facades\DB::table('role_category_permissions')->get();
+                @endphp
+
+                @foreach ($documentTypes as $type)
+                    <div class="matrix-content" id="matrix-{{ $type->slug }}"
+                        style="display: none; padding: 20px; background: #fff; animation: fadeIn 0.3s ease;">
+                        <div
+                            style="margin-bottom: 15px; padding: 10px 15px; background: #eff6ff; border-radius: 6px; border-left: 4px solid #3b82f6;">
+                            <strong style="color: #1e40af;">{{ __('Seçili Kategori:') }} {{ $type->name }}</strong> -
+                            <i>{{ __('Aşağıdaki yetkiler sadece bu tipteki belgeler için geçerli olacaktır.') }}</i>
+                        </div>
+                        <table class="table modern-table matrix-table">
+                            <thead style="background: #f1f5f9;">
+                                <tr>
+                                    <th style="padding: 12px;">{{ __('Sistem Rolü') }}</th>
+                                    <th class="text-center" style="padding: 12px;">👁️ {{ __('Görüntüleme') }}</th>
+                                    <th class="text-center" style="padding: 12px;">📤 {{ __('Yükleme') }}</th>
+                                    <th class="text-center" style="padding: 12px;">📝 {{ __('Revize Etme') }}</th>
+                                    <th class="text-center" style="padding: 12px;">🗑️ {{ __('İmha (Silme)') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($roles as $role)
+                                    @if (!in_array($role->name, ['Super Admin', 'Admin']))
+                                        <tr>
+                                            <td class="font-bold" style="padding: 12px; color: var(--text-color);">
+                                                {{ $role->name }}</td>
+                                            @php
+                                                $rule = $allMatrixRules
+                                                    ->filter(function ($item) use ($role, $type) {
+                                                        return $item->role_id == $role->id &&
+                                                            $item->category == $type->name;
+                                                    })
+                                                    ->first();
+                                            @endphp
+                                            <td class="text-center" style="padding: 12px;">
+                                                <input type="checkbox"
+                                                    name="permissions[{{ $role->id }}][{{ $type->name }}][can_view]"
+                                                    value="1" {{ $rule && $rule->can_view ? 'checked' : '' }}
+                                                    style="width: 18px; height: 18px; accent-color: var(--primary-color);">
+                                            </td>
+                                            <td class="text-center" style="padding: 12px;">
+                                                <input type="checkbox"
+                                                    name="permissions[{{ $role->id }}][{{ $type->name }}][can_create]"
+                                                    value="1" {{ $rule && $rule->can_create ? 'checked' : '' }}
+                                                    style="width: 18px; height: 18px; accent-color: var(--primary-color);">
+                                            </td>
+                                            <td class="text-center" style="padding: 12px;">
+                                                <input type="checkbox"
+                                                    name="permissions[{{ $role->id }}][{{ $type->name }}][can_edit]"
+                                                    value="1" {{ $rule && $rule->can_edit ? 'checked' : '' }}
+                                                    style="width: 18px; height: 18px; accent-color: var(--primary-color);">
+                                            </td>
+                                            <td class="text-center" style="padding: 12px;">
+                                                <input type="checkbox"
+                                                    name="permissions[{{ $role->id }}][{{ $type->name }}][can_delete]"
+                                                    value="1" {{ $rule && $rule->can_delete ? 'checked' : '' }}
+                                                    style="width: 18px; height: 18px; accent-color: var(--danger-color);">
+                                            </td>
+                                        </tr>
+                                    @endif
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endforeach
             </div>
-        </div>
-        <div class="form-actions text-right"
-            style="position: sticky; bottom: 20px; z-index: 100; background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); padding: 20px; border-radius: 12px; box-shadow: 0 -10px 30px rgba(0,0,0,0.08); border: 1px solid #e2e8f0;">
-            <p class="text-muted d-inline-block" style="margin-right: 20px; font-size: 0.95rem;">
-                Tüm kategorilerdeki değişiklikler tek seferde kaydedilecektir.
-            </p>
-            <button type="submit" class="btn btn-success"
-                style="font-size: 1.1rem; padding: 12px 40px; border-radius: 30px; font-weight: 600; box-shadow: 0 4px 6px rgba(16, 185, 129, 0.2);">
-                💾 Tüm Matrisi Kaydet
-            </button>
         </div>
     </form>
 @endsection
 
 @push('scripts')
     <script>
-        // Doküman Tipi Inline Düzenleme Scripti
-        function toggleTypeEdit(typeId) {
-            const form = document.getElementById('edit-type-' + typeId);
-            const view = document.getElementById('view-type-' + typeId);
-
-            if (form.style.display === 'none' || form.style.display === '') {
-                form.style.display = 'table-row';
-                view.style.display = 'none';
-            } else {
-                form.style.display = 'none';
-                view.style.display = 'table-row';
-            }
-        }
-
-        // MATRİS SEKME DEĞİŞTİRME MANTIĞI
         document.addEventListener('DOMContentLoaded', function() {
-            const matrixTabs = document.querySelectorAll('.matrix-tab');
+            lucide.createIcons();
+
+            // --- 1. DİNAMİK FORM ALANLARI (CUSTOM FIELDS) MOTORU ---
+            const wrapper = document.getElementById('customFieldsWrapper');
+            const addBtn = document.getElementById('addCustomFieldBtn');
+            let fieldIndex = 0;
+
+            function addFieldRow(data = null) {
+                const row = document.createElement('div');
+                row.className = 'custom-field-row';
+                row.style.cssText =
+                    'display: grid; grid-template-columns: 2fr 2fr 1.5fr auto auto; gap: 10px; align-items: center; background: #f1f5f9; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 5px;';
+
+                const labelValue = data ? data.label : '';
+                const nameValue = data ? data.name : '';
+                const typeValue = data ? data.type : 'text';
+                const isRequired = (data && data.required) ? 'checked' : '';
+                const autoSlug = data ? 'false' : 'true';
+
+                // Blade translates strings securely before JS engine runs
+                row.innerHTML = `
+            <div>
+                <input type="text" name="custom_fields[${fieldIndex}][label]" class="form-control form-control-sm" value="${labelValue}" placeholder="{{ __('Label (Ekranda Görünür)') }}" required style="width: 100%; border-radius: 6px;">
+            </div>
+            <div>
+                <input type="text" name="custom_fields[${fieldIndex}][name]" class="form-control form-control-sm key-input" value="${nameValue}" placeholder="{{ __('Veritabanı Anahtarı') }}" required data-auto="${autoSlug}" style="width: 100%; border-radius: 6px; font-family: monospace;">
+            </div>
+            <div>
+                <select name="custom_fields[${fieldIndex}][type]" class="form-control form-control-sm" style="width: 100%; border-radius: 6px;">
+                    <option value="text" ${typeValue === 'text' ? 'selected' : ''}>{{ __('Kısa Metin') }}</option>
+                    <option value="number" ${typeValue === 'number' ? 'selected' : ''}>{{ __('Sayısal') }}</option>
+                    <option value="date" ${typeValue === 'date' ? 'selected' : ''}>{{ __('Tarih') }}</option>
+                    <option value="textarea" ${typeValue === 'textarea' ? 'selected' : ''}>{{ __('Uzun Metin') }}</option>
+                </select>
+            </div>
+            <div style="text-align: center;" title="{{ __('Zorunlu Alan') }}">
+                <input type="checkbox" name="custom_fields[${fieldIndex}][required]" value="1" ${isRequired} style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--primary-color);">
+            </div>
+            <div style="text-align: right;">
+                <button type="button" class="btn btn-sm btn-outline-danger remove-field-btn d-flex align-items-center justify-content-center" style="padding: 6px; border-radius: 6px;">
+                    <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
+                </button>
+            </div>
+        `;
+
+                wrapper.appendChild(row);
+                lucide.createIcons();
+                fieldIndex++;
+
+                const labelInput = row.querySelector('input[name$="[label]"]');
+                const nameInput = row.querySelector('.key-input');
+
+                labelInput.addEventListener('keyup', function() {
+                    if (!nameInput.value || nameInput.getAttribute('data-auto') === 'true') {
+                        nameInput.setAttribute('data-auto', 'true');
+                        nameInput.value = this.value.toLowerCase()
+                            .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
+                            .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
+                            .replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+                    }
+                });
+                nameInput.addEventListener('input', function() {
+                    this.setAttribute('data-auto', 'false');
+                });
+                row.querySelector('.remove-field-btn').addEventListener('click', function() {
+                    row.remove();
+                });
+            }
+
+            if (addBtn && wrapper) {
+                addBtn.addEventListener('click', () => addFieldRow());
+            }
+
+            window.editDocType = function(id, name, customFieldsJson) {
+                document.getElementById('dtName').value = name || '';
+
+                const form = document.getElementById('docTypeForm');
+                form.action = `/settings/document-types/${id}`;
+                document.getElementById('methodSpoofer').innerHTML =
+                    '<input type="hidden" name="_method" value="PUT">';
+
+                document.getElementById('formTitle').innerHTML = `✏️ ${name} {{ __('Düzenleniyor') }}`;
+                const submitBtn = document.getElementById('submitDocTypeBtn');
+                submitBtn.innerHTML =
+                    '<i data-lucide="refresh-cw" style="width: 18px;"></i> {{ __('Güncelle') }}';
+                submitBtn.classList.replace('btn-primary', 'btn-warning');
+                document.getElementById('cancelEditBtn').style.display = 'inline-block';
+                lucide.createIcons();
+
+                wrapper.innerHTML = '';
+                fieldIndex = 0;
+                if (customFieldsJson && Array.isArray(customFieldsJson)) {
+                    customFieldsJson.forEach(field => addFieldRow(field));
+                }
+            };
+
+            const cancelBtn = document.getElementById('cancelEditBtn');
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', function() {
+                    document.getElementById('dtName').value = '';
+                    wrapper.innerHTML = '';
+                    fieldIndex = 0;
+
+                    const form = document.getElementById('docTypeForm');
+                    form.action = "{{ route('settings.document-types.store') }}";
+                    document.getElementById('methodSpoofer').innerHTML = '';
+
+                    document.getElementById('formTitle').innerHTML =
+                        '✨ {{ __('Yeni Doküman Tipi Ekle') }}';
+                    const submitBtn = document.getElementById('submitDocTypeBtn');
+                    submitBtn.innerHTML =
+                        '<i data-lucide="save" style="width: 18px;"></i> {{ __('Kaydet') }}';
+                    submitBtn.classList.replace('btn-warning', 'btn-primary');
+                    this.style.display = 'none';
+                    lucide.createIcons();
+                });
+            }
+
+            // --- 2. DOKÜMAN TİPİ MATRİSİ ---
+            const docTypeSelect = document.getElementById('docTypeMatrixSelect');
             const matrixContents = document.querySelectorAll('.matrix-content');
+            const docLoader = document.getElementById('docTypeMatrixLoader');
 
-            matrixTabs.forEach(tab => {
-                tab.addEventListener('click', function(e) {
-                    e.preventDefault();
-
-                    matrixTabs.forEach(t => {
-                        t.classList.remove('active');
-                        t.style.background = 'transparent';
-                        t.style.borderBottom = '3px solid transparent';
-                    });
-
+            if (docTypeSelect) {
+                docTypeSelect.addEventListener('change', function() {
+                    const targetId = this.value;
                     matrixContents.forEach(c => {
                         c.style.display = 'none';
                         c.classList.remove('active');
                     });
-
-                    this.classList.add('active');
-                    this.style.background = '#fff';
-                    this.style.borderBottom = '3px solid var(--primary-color)';
-
-                    const targetId = this.getAttribute('data-matrixtarget');
-                    const targetContent = document.getElementById(targetId);
-                    if (targetContent) {
-                        targetContent.style.display = 'block';
-                        targetContent.classList.add('active');
+                    if (!targetId) {
+                        docLoader.style.display = 'none';
+                        return;
                     }
+                    docLoader.style.display = 'block';
+                    setTimeout(() => {
+                        docLoader.style.display = 'none';
+                        const targetContent = document.getElementById(targetId);
+                        if (targetContent) {
+                            targetContent.style.display = 'block';
+                            targetContent.classList.add('active');
+                        }
+                    }, 400);
                 });
-            });
+            }
+
+            // --- 3. KLASÖR MATRİSİ ---
+            const folderSelect = document.getElementById('folderMatrixSelect');
+            const matrixForm = document.getElementById('folderMatrixForm');
+            const loader = document.getElementById('folderMatrixLoader');
+
+            if (folderSelect) {
+                folderSelect.addEventListener('change', function() {
+                    const folderId = this.value;
+                    if (!folderId) {
+                        matrixForm.style.display = 'none';
+                        loader.style.display = 'none';
+                        return;
+                    }
+
+                    matrixForm.style.display = 'none';
+                    loader.style.display = 'block';
+                    matrixForm.action = `/settings/folders/${folderId}/permissions`;
+                    document.querySelectorAll('.folder-matrix-cb').forEach(cb => cb.checked = false);
+
+                    fetch(`/settings/folders/${folderId}/permissions`, {
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        })
+                        .then(response => {
+                            if (!response.ok) throw new Error('Hata');
+                            return response.json();
+                        })
+                        .then(data => {
+                            loader.style.display = 'none';
+                            matrixForm.style.display = 'block';
+                            for (let roleId in data) {
+                                const perms = data[roleId];
+                                if (perms.can_view && document.getElementById(`can_view_${roleId}`))
+                                    document.getElementById(`can_view_${roleId}`).checked = true;
+                                if (perms.can_upload && document.getElementById(`can_upload_${roleId}`))
+                                    document.getElementById(`can_upload_${roleId}`).checked = true;
+                                if (perms.can_create_subfolder && document.getElementById(
+                                        `can_subfolder_${roleId}`))
+                                    document.getElementById(`can_subfolder_${roleId}`).checked = true;
+                                if (perms.can_manage && document.getElementById(`can_manage_${roleId}`))
+                                    document.getElementById(`can_manage_${roleId}`).checked = true;
+                            }
+                        })
+                        .catch(error => {
+                            loader.style.display = 'none';
+                            console.error(error);
+                        });
+                });
+            }
         });
-
-        // Departman Inline Düzenleme
-        function toggleDeptEdit(deptId) {
-            const form = document.getElementById('edit-dept-' + deptId);
-            const view = document.getElementById('view-dept-' + deptId);
-
-            if (form.style.display === 'none' || form.style.display === '') {
-                form.style.display = 'flex';
-                view.style.display = 'none';
-            } else {
-                form.style.display = 'none';
-                view.style.display = 'table-row';
-            }
-        }
-
-        // Dinamik Form Alanı Ekleme Motoru
-        function addCustomField(typeId) {
-            const container = document.getElementById('fields-container-' + typeId);
-            const emptyMsg = container.querySelector('.empty-field-msg');
-            if (emptyMsg) emptyMsg.style.display = 'none';
-
-            const index = Date.now();
-
-            const rowHtml = `
-                <div class="field-row" style="display: flex; gap: 15px; align-items: center; background: #ffffff; padding: 12px 15px; border: 1px solid #cbd5e1; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.02); animation: fadeIn 0.3s ease;">
-                    <div style="flex: 2;">
-                        <input type="text" name="custom_fields[${index}][label]" class="form-control" placeholder="Ekranda Görünen Ad (Örn: Para Birimi)" required>
-                    </div>
-                    <div style="flex: 2;">
-                        <input type="text" name="custom_fields[${index}][name]" class="form-control" placeholder="Sistem Adı (Örn: para_birimi)" required>
-                    </div>
-                    <div style="flex: 1;">
-                        <select name="custom_fields[${index}][type]" class="form-control">
-                            <option value="text">Yazı (Text)</option>
-                            <option value="number">Sayı (Number)</option>
-                            <option value="date">Tarih (Date)</option>
-                        </select>
-                    </div>
-                    <button type="button" class="btn btn-outline-danger" style="padding: 8px 12px;" onclick="this.closest('.field-row').remove()">✖</button>
-                </div>
-            `;
-
-            container.insertAdjacentHTML('beforeend', rowHtml);
-        }
-
-        // Rol Inline Düzenleme Scripti
-        function toggleEdit(roleId) {
-            const form = document.getElementById('edit-role-' + roleId);
-            const view = document.getElementById('view-role-' + roleId);
-            const actions = document.getElementById('actions-role-' + roleId);
-
-            if (form.style.display === 'none' || form.style.display === '') {
-                form.style.display = 'flex';
-                view.style.display = 'none';
-                if (actions) actions.style.display = 'none';
-            } else {
-                form.style.display = 'none';
-                view.style.display = 'inline';
-                if (actions) actions.style.display = 'flex';
-            }
-        }
-
-        // Departman Onay Toggle Scripti (AJAX)
-        function toggleDeptApproval(deptId, checkbox) {
-            checkbox.disabled = true;
-
-            fetch(`/settings/departments/${deptId}/toggle-approval`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        is_active: checkbox.checked ? 1 : 0
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    checkbox.disabled = false;
-                })
-                .catch(error => {
-                    checkbox.disabled = false;
-                    checkbox.checked = !checkbox.checked;
-                    alert('İşlem sırasında bir hata oluştu.');
-                });
-        }
     </script>
     <style>
+        /* Eklenen Düzen (Layout) Stilleri */
+        .admin-dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 24px;
+        }
+
+        .admin-card-full {
+            grid-column: span 12;
+        }
+
+        .admin-card-half {
+            grid-column: span 12;
+            /* Mobilde tam genişlik */
+        }
+
+        @media (min-width: 992px) {
+            .admin-card-half {
+                grid-column: span 6;
+                /* PC'de yan yana */
+            }
+        }
+
+        /* 1. Kart İç Yapısı (PC'de yan yana, mobilde alt alta) */
+        .document-types-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            padding: 24px;
+        }
+
+        @media (min-width: 992px) {
+            .document-types-layout {
+                flex-direction: row;
+            }
+
+            .document-types-table-wrapper {
+                flex: 1 1 45%;
+                border-right: 1px solid var(--border-color);
+                padding-right: 24px;
+            }
+
+            .document-types-form-wrapper {
+                flex: 1 1 55%;
+            }
+        }
+
+        /* Ortak Tablo Hover ve Buton Tasarımları */
+        .hover-row:hover {
+            background-color: #f8fafc;
+            transition: background-color 0.2s ease;
+        }
+
+        .action-btn {
+            padding: 6px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+        }
+
+        .action-btn i {
+            width: 16px;
+            height: 16px;
+        }
+
+        /* Scrollbar Tasarımı (Custom Scrollbar) */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
         @keyframes fadeIn {
             from {
                 opacity: 0;
-                transform: translateY(-5px);
+                transform: translateY(-10px);
             }
 
             to {
                 opacity: 1;
                 transform: translateY(0);
             }
+        }
+
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .spin {
+            animation: spin 1s linear infinite;
         }
     </style>
 @endpush

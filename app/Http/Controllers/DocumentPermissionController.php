@@ -17,7 +17,7 @@ class DocumentPermissionController extends Controller
     public function store(Request $request, Document $document)
     {
         // Yetki: Bu belgenin yetkilerini yönetmeye hakkı var mı? (Admin veya Owner)
-        if (!Auth::user()->hasAnyRole(['Super Admin', 'Admin']) && ($document->currentVersion?->created_by !== Auth::id())) {
+        if (!Auth::user()->hasAnyRole(['Super Admin', 'Admin']) && ($document->currentVersion?->created_by !== Auth::id()) && !Auth::user()->can_manage_acl) {
             abort(403, 'Bu belgenin yetkilerini yönetme izniniz yok.');
         }
 
@@ -39,7 +39,7 @@ class DocumentPermissionController extends Controller
      */
     public function destroy(Document $document, User $user)
     {
-        if (!Auth::user()->hasAnyRole(['Super Admin', 'Admin']) && ($document->currentVersion?->created_by !== Auth::id())) {
+        if (!Auth::user()->hasAnyRole(['Super Admin', 'Admin']) && ($document->currentVersion?->created_by !== Auth::id()) && !Auth::user()->can_manage_acl) {
             abort(403, 'Bu belgenin yetkilerini yönetme izniniz yok.');
         }
 

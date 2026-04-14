@@ -5,12 +5,12 @@
 
         <div class="page-header flex-between" style="margin-bottom: 25px;">
             <div>
-                <h1 class="page-title" style="margin-bottom: 5px;">👤 Yeni Personel Ekle</h1>
-                <p class="text-muted">Sisteme yeni bir kullanıcı tanımlayın ve erişim yetkilerini belirleyin.</p>
+                <h1 class="page-title" style="margin-bottom: 5px;">👤 {{ __('Yeni Personel Ekle') }}</h1>
+                <p class="text-muted">{{ __('Sisteme yeni bir kullanıcı tanımlayın ve erişim yetkilerini belirleyin.') }}</p>
             </div>
             <a href="{{ route('users.index') }}" class="btn btn-outline-secondary"
                 style="border-radius: 20px; padding: 8px 20px;">
-                ← Listeye Dön
+                ← {{ __('Listeye Dön') }}
             </a>
         </div>
 
@@ -21,21 +21,21 @@
 
                 <div
                     style="background: #f8fafc; padding: 15px 20px; margin: -20px -20px 20px -20px; border-bottom: 1px solid #e2e8f0; border-radius: 8px 8px 0 0;">
-                    <h3 class="section-title" style="margin: 0; font-size: 1.05rem;">Genel Bilgiler</h3>
+                    <h3 class="section-title" style="margin: 0; font-size: 1.05rem;">{{ __('Genel Bilgiler') }}</h3>
                 </div>
 
                 <div class="form-grid">
                     <div class="form-group">
-                        <label class="form-label">Ad Soyad <span class="text-danger">*</span></label>
+                        <label class="form-label">{{ __('Ad Soyad') }} <span class="text-danger">*</span></label>
                         <input type="text" name="name" class="form-control @error('name') is-invalid @enderror"
-                            value="{{ old('name') }}" placeholder="Örn: Ahmet Yılmaz" required>
+                            value="{{ old('name') }}" placeholder="{{ __('Örn: Ahmet Yılmaz') }}" required>
                         @error('name')
                             <div class="form-error-text">{{ $message }}</div>
                         @enderror
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">E-Posta Adresi <span class="text-danger">*</span></label>
+                        <label class="form-label">{{ __('E-Posta Adresi') }} <span class="text-danger">*</span></label>
                         <input type="email" name="email" class="form-control @error('email') is-invalid @enderror"
                             value="{{ old('email') }}" placeholder="ahmet.yilmaz@sirket.com" required>
                         @error('email')
@@ -44,18 +44,18 @@
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Geçici Şifre <span class="text-danger">*</span></label>
+                        <label class="form-label">{{ __('Geçici Şifre') }} <span class="text-danger">*</span></label>
                         <input type="password" name="password" class="form-control @error('password') is-invalid @enderror"
-                            placeholder="Sisteme ilk giriş şifresi" required>
+                            placeholder="{{ __('Sisteme ilk giriş şifresi') }}" required>
                         @error('password')
                             <div class="form-error-text">{{ $message }}</div>
                         @enderror
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Departman</label>
+                        <label class="form-label">{{ __('Departman') }}</label>
                         <select name="department_id" class="form-control @error('department_id') is-invalid @enderror">
-                            <option value="">-- Bağımsız (Departmansız) --</option>
+                            <option value="">{{ __('-- Bağımsız (Departmansız) --') }}</option>
 
                             @foreach ($departments as $unit => $unitDepartments)
                                 <optgroup label="🏢 {{ $unit }}">
@@ -78,10 +78,9 @@
                 <div class="form-section-divider"></div>
 
                 <div class="flex-between" style="margin-bottom: 20px;">
-                    <h3 class="section-title" style="margin: 0;">Sistem Rolleri</h3>
+                    <h3 class="section-title" style="margin: 0;">{{ __('Sistem Rolleri') }}</h3>
                     <span class="badge badge-info"
-                        style="background: #e1f5fe; color: #0288d1; border: 1px solid #b3e5fc;">Birden fazla rol
-                        seçebilirsiniz</span>
+                        style="background: #e1f5fe; color: #0288d1; border: 1px solid #b3e5fc;">{{ __('Birden fazla rol seçebilirsiniz') }}</span>
                 </div>
 
                 <div class="checkbox-grid">
@@ -106,14 +105,15 @@
                             <input type="checkbox" name="is_active" value="1"
                                 {{ old() ? (old('is_active') ? 'checked' : '') : 'checked' }}>
                             <span class="toggle-slider"></span>
-                            <span class="toggle-text" style="font-weight: 600;">Kullanıcı Hesabı Aktif Olsun</span>
+                            <span class="toggle-text"
+                                style="font-weight: 600;">{{ __('Kullanıcı Hesabı Aktif Olsun') }}</span>
                         </label>
                     </div>
 
                     <div class="form-actions">
                         <button type="submit" class="btn btn-primary"
                             style="padding: 12px 30px; font-size: 1.05rem; font-weight: 600; border-radius: 30px; box-shadow: 0 4px 10px rgba(52, 152, 219, 0.3);">
-                            💾 Kullanıcıyı Kaydet
+                            💾 {{ __('Kullanıcıyı Kaydet') }}
                         </button>
                     </div>
                 </div>

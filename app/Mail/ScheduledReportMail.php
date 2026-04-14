@@ -29,7 +29,7 @@ class ScheduledReportMail extends Mailable
     {
         // Basit bir metin içeriği (Blade oluşturmadan direkt HTML yazabiliriz)
         return new Content(
-            htmlString: "<h3>KÖKSAN DYS Otomatik Raporlama Sistemi</h3><p>Talep etmiş olduğunuz <strong>{$this->reportName}</strong> başlıklı rapor ektedir.</p><p>İyi çalışmalar dileriz.</p>"
+            htmlString: "<h3>KÖKSAN DMS Otomatik Raporlama Sistemi</h3><p>Talep etmiş olduğunuz <strong>{$this->reportName}</strong> başlıklı rapor ektedir.</p><p>İyi çalışmalar dileriz.</p>"
         );
     }
 

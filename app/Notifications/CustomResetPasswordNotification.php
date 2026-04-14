@@ -32,7 +32,7 @@ class CustomResetPasswordNotification extends Notification implements ShouldQueu
         ], false));
 
         return (new MailMessage)
-            ->subject('KÖKSAN DYS - Şifre Sıfırlama Talebi')
+            ->subject('KÖKSAN DMS - Şifre Sıfırlama Talebi')
             ->greeting("Merhaba {$notifiable->name},")
             ->line('Kurumsal Doküman Yönetim Sistemi (DMS) hesabınız için bir şifre sıfırlama talebi aldık.')
             ->line('Aşağıdaki butona tıklayarak güvenli bir şekilde yeni şifrenizi belirleyebilirsiniz.')

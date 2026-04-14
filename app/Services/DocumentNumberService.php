@@ -18,8 +18,9 @@ class DocumentNumberService
         $prefix = $this->resolvePrefix($folder);
 
         // 2. Bu öneke sahip en son eklenen belgeyi bul
-        // (Sıralamayı id'ye göre değil, doğrudan numaranın kendisine göre yapmak daha garantilidir)
-        $latestDocument = Document::where('document_number', 'like', $prefix . '-%')
+        // KRİTİK DOKUNUŞ: withTrashed() ekleyerek çöp kutusundaki silinmiş belgeleri de hesaba katıyoruz!
+        $latestDocument = Document::withTrashed()
+            ->where('document_number', 'like', $prefix . '-%')
             ->orderByRaw("CAST(SUBSTRING_INDEX(document_number, '-', -1) AS UNSIGNED) DESC")
             ->first();
 

@@ -12,6 +12,7 @@ use App\Models\AuditLog;
 use Exception;
 use Illuminate\Support\Facades\Auth;
 use App\Notifications\DocumentRevisionAlert;
+use App\Notifications\WorkflowActionRequired;
 
 class DocumentService
 {
@@ -25,6 +26,10 @@ class DocumentService
     public function storeDocument(array $data, UploadedFile $file): Document
     {
         return DB::transaction(function () use ($data, $file) {
+
+            // YENİ PARÇA: Formdan gelen ID'ye göre Doküman Tipini bul ve Kategorisini al
+            $documentType = \App\Models\DocumentType::find($data['document_type_id']);
+            $categoryName = $documentType ? $documentType->category : 'Genel';
             
             // 1. Ana Dokümanı Oluştur (Değişmeyen üst veri - Metadata)
             /** @var \App\Models\Document $document */
@@ -33,6 +38,7 @@ class DocumentService
                 'title' => $data['title'],
                 'document_number' => $data['document_number'],
                 'document_type_id' => $data['document_type_id'],
+                'category' => $categoryName, // İŞTE EKSİK OLAN SİHİRLİ DOKUNUŞ BURASI!
                 'related_department_id' => $data['related_department_id'] ?? null,
                 'metadata' => $data['metadata'] ?? null,
                 'privacy_level' => $data['privacy_level'],
@@ -167,19 +173,22 @@ class DocumentService
     }
 
     /**
-     * 2. CHECK-IN: Belgeye yeni versiyon ekler ve kilidi kaldırır.
+     * 2. CHECK-IN: Belgeye yeni versiyon ekler, kilidi kaldırır ve ONAY AKIŞINI BAŞTAN BAŞLATIR.
      */
     public function checkinDocument(Document $document, UploadedFile $file, ?string $reason, int $userId): void
     {
-        $user = \App\Models\User::find($userId);
-        $requiresApproval = $user->department && $user->department->requires_approval_on_upload;
+        // Bildirim atılacak onaycıları transaction dışında toplamak için boş bir dizi oluşturuyoruz
+        $firstStepUsersToNotify = [];
 
-        DB::transaction(function () use ($document, $file, $reason, $userId, $requiresApproval) {
+        DB::transaction(function () use ($document, $file, $reason, $userId, &$firstStepUsersToNotify) {
             $currentMaxVersion = $document->versions()->max('version_number') ?? 0;
             $newVersionNumber = $currentMaxVersion + 1;
 
-            // DİKKAT: SADECE ONAY GEREKMİYORSA ESKİLERİN YAYININI KES
-            if (!$requiresApproval) {
+            // Belgenin halihazırda bir onay akışı (workflow) var mı?
+            $hasApprovals = $document->approvals()->exists();
+
+            // SADECE ONAY GEREKMİYORSA ESKİLERİN YAYININI KES (Onay gerekiyorsa onaylanınca kesilecek)
+            if (!$hasApprovals) {
                 $document->versions()->update(['is_current' => false]);
             }
 
@@ -189,37 +198,48 @@ class DocumentService
             $document->versions()->create([
                 'version_number' => $newVersionNumber,
                 'file_path' => $filePath,
-                'mime_type' => $file->getMimeType(),
+                'mime_type' => $file->getClientMimeType(),
                 'file_size' => $file->getSize(),
                 'created_by' => $userId,
-                'is_current' => !$requiresApproval, // Onay gerekiyorsa False olarak başlar!
+                'is_current' => !$hasApprovals, // Onay gerekiyorsa False olarak başlar!
                 'revision_reason' => $reason
             ]);
 
-            // Kilit durumunu güncelle
-            if (!$requiresApproval) {
+            // --- KİLİT VE AKIŞ GÜNCELLEMESİ ---
+            if (!$hasApprovals) {
+                // Onay akışı yoksa direkt yayınla ve kilidi aç
                 $document->updateQuietly(['is_locked' => false, 'locked_by' => null, 'status' => 'published']);
             } else {
-                // Onay gerekiyorsa kilit açılmaz, belge "onay bekliyor" statüsüne çekilir
-                $document->updateQuietly(['status' => 'pending_approval']);
+                // ONAY AKIŞI VARSA: Akışı baştan başlat, kilidi aç, statüyü bekliyor yap!
+                $document->updateQuietly(['is_locked' => false, 'locked_by' => null, 'status' => 'pending_approval']);
+
+                // Eski onayları ve redleri sıfırla ki tekrar onaycıların önüne düşsün
+                $document->approvals()->update(['status' => 'pending']);
+
+                // Akışın ilk adımındaki kullanıcıları bul (Bildirim atmak için)
+                $minStep = $document->approvals()->min('step_order');
+                $firstStepUserIds = $document->approvals()->where('step_order', $minStep)->pluck('user_id');
+                $firstStepUsersToNotify = \App\Models\User::whereIn('id', $firstStepUserIds)->get();
             }
         });
 
-        // 2. BİLDİRİM TETİKLEYİCİ (Sadece Transaction başarıyla biterse çalışır)
-        $document->refresh(); // Veritabanındaki yeni versiyon verilerini modele yansıt
+        // TRANSACTION BİTTİ, BİLDİRİMLERİ FIRLAT:
+        $document->refresh();
 
-        // Önceki (İlk) versiyonu yükleyen kişiyi bulalım (Asıl sahip)
+        // 1. Belgenin Asıl Sahibine Bildirim (Eğer işlemi başkası yaptıysa)
         $originalOwnerId = $document->versions()->orderBy('version_number', 'asc')->first()->created_by ?? null;
-
-        // Yeni versiyon yüklendiğinde, işlemi yapan kişi belgenin asıl sahibi değilse uyar.
         if ($originalOwnerId && $originalOwnerId !== $userId) {
             $owner = \App\Models\User::find($originalOwnerId);
             $actor = \App\Models\User::find($userId);
 
             if ($owner && $actor) {
-                // Kuyruğa fırlat (Ekranda donma yapmaz)
                 $owner->notify(new DocumentRevisionAlert($document, 'checked_in', $actor->name));
             }
+        }
+
+        /** @var \App\Models\User $approverUser */
+        foreach ($firstStepUsersToNotify as $approverUser) {
+            $approverUser->notify(new WorkflowActionRequired($document, 'pending_your_approval'));
         }
     }
 

@@ -24,16 +24,25 @@ class FolderService
     /**
      * Frontend'deki <select> (Açılır Menü) için düzleştirilmiş (Flat) liste getirir.
      * Çıktı Örneği: "Yönetim Kurulu > Bilgi Teknolojileri > Yazılım Geliştirme"
+     * GÜVENLİK ZIRHI: Sadece kullanıcının upload yapabildiği ve departmanına açık klasörleri getirir!
      */
     public function getFlatFolderList(): array
     {
-        $folders = Folder::with('parent')->get();
+        $user = \Illuminate\Support\Facades\Auth::user();
+
+        // 1. YENİ ZIRH: Sadece Departman İzolasyonu scope'unu (visibleTo) geçenleri çek.
+        // Opex klasörü burada elenir!
+        $folders = Folder::visibleTo($user)->with('parent')->get();
         $flatList = [];
 
         // IDE'ye bu döngüdeki elemanların Folder modeli olduğunu açıkça söylüyoruz
         /** @var \App\Models\Folder $folder */
         foreach ($folders as $folder) {
-            $flatList[$folder->id] = $this->generateBreadcrumb($folder);
+
+            // 2. YENİ ZIRH: Eğer Admin/Süper Admin değilse, klasör policy'sinde UPLOAD yetkisi de aranmalı!
+            if ($user->hasAnyRole(['Super Admin', 'Admin']) || $user->can('uploadDocument', $folder) || $user->can('update', $folder)) {
+                $flatList[$folder->id] = $this->generateBreadcrumb($folder);
+            }
         }
 
         // Alfabetik sıralama yapıyoruz ki formlarda düzgün görünsün

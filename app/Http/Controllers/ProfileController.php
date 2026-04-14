@@ -5,6 +5,10 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
+use App\Models\Document;
+use App\Models\DocumentVersion;
+use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
 class ProfileController extends Controller
 {
@@ -135,5 +139,60 @@ class ProfileController extends Controller
 
         // 3. Kullanıcıyı bilgilendir
         return back()->with('success', '🗑️ Kasa şifreniz başarıyla sıfırlandı. Artık çok gizli belgelere standart sistem şifrenizle erişebilirsiniz. Dilerseniz yeni bir kasa şifresi belirleyebilirsiniz.');
+    }
+    /**
+     * Kişisel Verimlilik ve Performans Profilini Gösterir
+     */
+    public function show($id = null)
+    {
+        // Eğer ID gelmişse o kullanıcıyı bul, gelmemişse oturum açan kullanıcıyı al
+        $targetUser = $id ? User::findOrFail($id) : Auth::user();
+
+        // 1. ZIRH: Başkasının profilini görüntülüyorsa yetkisi var mı?
+        if ($id && $id != Auth::id() && !Auth::user()->hasAnyRole(['Super Admin', 'Admin', 'Direktör', 'Müdür'])) {
+            abort(403, 'Bu personelin performans profilini görüntüleme yetkiniz yok.');
+        }
+
+        // 2. İSTATİSTİKLERİ ÇEK
+        // Kullanıcının yüklediği toplam belge sayısı (Taslaklar dahil)
+        $totalDocs = Document::whereHas('versions', fn($q) => $q->where('created_by', $targetUser->id))->count();
+
+        // Onaylanmış / Yayındaki belgeleri
+        $approvedDocs = Document::whereHas('versions', fn($q) => $q->where('created_by', $targetUser->id))
+            ->whereIn('status', ['published', 'approved'])
+            ->count();
+
+        // Reddedilmiş belgeleri
+        $rejectedDocs = Document::whereHas('versions', fn($q) => $q->where('created_by', $targetUser->id))
+            ->where('status', 'rejected')
+            ->count();
+
+        // Toplam yaptığı revizyon (1.0 haricindeki version yüklemeleri)
+        $totalRevisions = DocumentVersion::where('created_by', $targetUser->id)
+            ->where('version_number', '!=', '1.0')
+            ->count();
+
+        // Hangi doküman tipinden/kategoriden ne kadar yüklemiş? (Grafik/Liste için)
+        $docTypesChart = clone Document::whereHas('versions', fn($q) => $q->where('created_by', $targetUser->id))
+            ->select('document_type_id', DB::raw('count(*) as total'))
+            ->groupBy('document_type_id')
+            ->orderByDesc('total')
+            ->with('documentType')
+            ->get();
+
+        // 3. ORAN HESAPLAMALARI (0'a bölünme hatasını önleyerek)
+        $approvalRate = $totalDocs > 0 ? round(($approvedDocs / $totalDocs) * 100) : 0;
+        $rejectionRate = $totalDocs > 0 ? round(($rejectedDocs / $totalDocs) * 100) : 0;
+
+        return view('profile.show', compact(
+            'targetUser',
+            'totalDocs',
+            'approvedDocs',
+            'rejectedDocs',
+            'totalRevisions',
+            'docTypesChart',
+            'approvalRate',
+            'rejectionRate'
+        ));
     }
 }

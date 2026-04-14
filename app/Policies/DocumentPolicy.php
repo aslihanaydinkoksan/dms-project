@@ -85,9 +85,10 @@ class DocumentPolicy
             }
         }
 
-        // 3. LEGAL DMS 3D MATRİS KONTROLÜ (Belgenin bir kategorisi varsa)
-        if ($document->category) {
-            $hasMatrixView = $this->hasMatrixPermission($user, $document->category, 'can_view');
+        // 3. LEGAL DMS 3D MATRİS KONTROLÜ (YENİLENDİ!)
+        // Artık belgenin bağlı olduğu doküman tipinin ismine (Örn: Sözleşme) göre matrise bakıyoruz
+        if ($document->document_type_id && $document->documentType) {
+            $hasMatrixView = $this->hasMatrixPermission($user, $document->documentType->name, 'can_view');
             $isOwner = $document->currentVersion && $document->currentVersion->created_by === $user->id;
 
             return $hasMatrixView || $isOwner;
@@ -157,7 +158,7 @@ class DocumentPolicy
         }
 
         // 1. 3D MATRİS: Bu kategoride "Revize Etme (can_edit)" yetkisi var mı?
-        if ($document->category && $this->hasMatrixPermission($user, $document->category, 'can_edit')) {
+        if ($document->document_type_id && $document->documentType && $this->hasMatrixPermission($user, $document->documentType->name, 'can_edit')) {
             return true;
         }
 
@@ -192,16 +193,28 @@ class DocumentPolicy
      */
     public function delete(User $user, Document $document): bool
     {
-        if ($user->hasRole('Super Admin')) {
+        // 1. YÖNETİCİ ZIRHI: Super Admin ve Admin her zaman silebilir.
+        if ($user->hasAnyRole(['Super Admin', 'Admin'])) {
             return true;
         }
 
-        // 1. 3D MATRİS: Bu kategoride "İmha (can_delete)" yetkisi var mı?
-        if ($document->category && $this->hasMatrixPermission($user, $document->category, 'can_delete')) {
+        // 2. KİLİTLİ DURUMLAR: Onaylı, Reddedilmiş veya Yayınlanmış belgeleri SAHİBİ DAHİL kimse silemez!
+        if (in_array($document->status, ['approved', 'published', 'rejected', 'archived'])) {
+            return false;
+        }
+
+        // 3. SAHİPLİK HAKKI: Eğer belge henüz 'taslak' veya 'onay bekliyor' aşamasındaysa, sahibi silebilir.
+        $isOwner = $document->currentVersion && $document->currentVersion->created_by === $user->id;
+        if ($isOwner && in_array($document->status, ['draft', 'pending_approval', 'pending'])) {
             return true;
         }
 
-        // 2. KLASİK YETKİ ZIRHI
+        // 4. 3D MATRİS: Bu kategoride "İmha (can_delete)" yetkisi var mı?
+        if ($document->document_type_id && $document->documentType && $this->hasMatrixPermission($user, $document->documentType->name, 'can_delete')) {
+            return true;
+        }
+
+        // 5. KLASİK YETKİ ZIRHI
         try {
             return $user->hasPermissionTo('document.delete');
         } catch (PermissionDoesNotExist $e) {

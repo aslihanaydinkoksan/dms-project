@@ -8,12 +8,14 @@
                 🔒
             </div>
 
-            <h2 class="vault-title">Sıfır Güven (Zero Trust) Doğrulaması</h2>
+            <h2 class="vault-title">{{ __('Sıfır Güven (Zero Trust) Doğrulaması') }}</h2>
             <p class="vault-desc">
-                Erişmeye çalıştığınız <strong>"{{ $document->title }}"</strong> belgesi yüksek gizlilik seviyesine (<span
-                    class="badge badge-warning">{{ strtoupper($document->privacy_level) }}</span>) sahiptir.<br>
+                {{ __('Erişmeye çalıştığınız') }} <strong>"{{ $document->title }}"</strong>
+                {{ __('belgesi yüksek gizlilik seviyesine') }} (<span
+                    class="badge badge-warning">{{ mb_strtoupper(__($document->privacy_level_text)) }}</span>)
+                {{ __('sahiptir.') }}<br>
                 <br>
-                Devam etmek ve şifreli kasayı 15 dakikalığına açmak için lütfen oturum açma şifrenizi tekrar giriniz.
+                {{ __('Devam etmek ve şifreli kasayı 15 dakikalığına açmak için lütfen oturum açma şifrenizi tekrar giriniz.') }}
             </p>
 
             @if ($errors->has('password'))
@@ -25,15 +27,15 @@
             <form action="{{ route('documents.vault.unlock', $document->id) }}" method="POST" class="mt-20">
                 @csrf
                 <div class="form-group text-left">
-                    <label style="color: #94a3b8; font-size: 0.9rem;">Mevcut Şifreniz</label>
+                    <label style="color: #94a3b8; font-size: 0.9rem;">{{ __('Mevcut Şifreniz') }}</label>
                     <input type="password" name="password" class="form-control vault-input" required autofocus
                         placeholder="••••••••">
                 </div>
 
                 <div class="form-actions mt-20 flex-between">
-                    <a href="{{ route('dashboard') }}" class="btn btn-outline-secondary">İptal ve Geri Dön</a>
+                    <a href="{{ route('dashboard') }}" class="btn btn-outline-secondary">{{ __('İptal ve Geri Dön') }}</a>
                     <button type="submit" class="btn btn-warning" style="font-weight: bold; padding: 10px 25px;">
-                        🔓 Kasayı Aç
+                        🔓 {{ __('Kasayı Aç') }}
                     </button>
                 </div>
             </form>

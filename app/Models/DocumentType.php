@@ -8,7 +8,7 @@ use Spatie\Permission\Models\Permission;
 
 class DocumentType extends Model
 {
-    protected $fillable = ['name', 'slug', 'category', 'description', 'is_active', 'custom_fields'];
+    protected $fillable = ['name', 'slug',  'description', 'is_active', 'custom_fields'];
     protected $casts = [
         'custom_fields' => 'array', // Veritabanından çıkarken diziye çevirir
     ];

@@ -3,13 +3,13 @@
 @section('content')
     <div class="page-header mb-20 flex-between">
         <div>
-            <h1 class="page-title">📭 Tüm Bildirim Geçmişim</h1>
-            <p class="text-muted">Sistemde size gönderilen tüm geçmiş ve yeni bildirimlerin listesi.</p>
+            <h1 class="page-title">📭 {{ __('Tüm Bildirim Geçmişim') }}</h1>
+            <p class="text-muted">{{ __('Sistemde size gönderilen tüm geçmiş ve yeni bildirimlerin listesi.') }}</p>
         </div>
         <div class="action-buttons">
             <form action="{{ route('notifications.mark-all-read') }}" method="POST" class="d-inline">
                 @csrf
-                <button type="submit" class="btn btn-outline-primary btn-sm">✔️ Tümünü Okundu İşaretle</button>
+                <button type="submit" class="btn btn-outline-primary btn-sm">✔️ {{ __('Tümünü Okundu İşaretle') }}</button>
             </form>
         </div>
     </div>
@@ -29,10 +29,10 @@
                         <div class="content-box">
                             <h4
                                 style="margin: 0 0 5px 0; font-size: 1.05rem; color: {{ empty($notification->read_at) ? 'var(--primary-color)' : 'var(--text-color)' }};">
-                                {{ $notification->data['title'] ?? 'Sistem Bildirimi' }}
+                                {{ $notification->data['title'] ?? __('Sistem Bildirimi') }}
                                 @if (empty($notification->read_at))
                                     <span class="badge badge-danger"
-                                        style="font-size: 0.65rem; padding: 2px 6px; margin-left: 5px;">YENİ</span>
+                                        style="font-size: 0.65rem; padding: 2px 6px; margin-left: 5px;">{{ __('YENİ') }}</span>
                                 @endif
                             </h4>
                             <p style="margin: 0; font-size: 0.9rem; color: var(--text-muted);">
@@ -53,7 +53,7 @@
             @empty
                 <div class="text-center p-30 text-muted">
                     <div style="font-size: 3rem; margin-bottom: 10px;">📭</div>
-                    <p>Sistemde size ait hiçbir bildirim bulunmuyor.</p>
+                    <p>{{ __('Sistemde size ait hiçbir bildirim bulunmuyor.') }}</p>
                 </div>
             @endforelse
         </div>

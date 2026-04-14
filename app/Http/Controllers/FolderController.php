@@ -125,16 +125,20 @@ class FolderController extends Controller
     /**
      * Klasör düzenleme formunu gösterir.
      */
-    public function edit(Folder $folder)
+    public function edit(Folder $folder, \App\Services\FolderService $folderService)
     {
-        // Sadece yetkili kişiler klasör düzenleyebilir (Opsiyonel Güvenlik)
-        // Gate::authorize('update', $folder);
+        // Sadece yetkili kişiler klasör düzenleyebilir
+        \Illuminate\Support\Facades\Gate::authorize('update', $folder);
 
-        // Klasörü başka bir klasörün içine taşımak için mevcut klasörleri çekiyoruz.
-        // DİKKAT: Klasör kendisini ebeveyn olarak seçemesin diye kendi ID'sini hariç tutuyoruz!
-        $allFolders = Folder::where('id', '!=', $folder->id)->orderBy('name')->get();
+        // ZIRHLI LİSTEYİ SERVİSTEN ÇEK
+        $flatFolders = $folderService->getFlatFolderList();
 
-        return view('folders.edit', compact('folder', 'allFolders'));
+        // Kendisini (Inception/Sonsuz Döngü) engellemek için listeden çıkart
+        if (isset($flatFolders[$folder->id])) {
+            unset($flatFolders[$folder->id]);
+        }
+
+        return view('folders.edit', compact('folder', 'flatFolders'));
     }
 
     /**

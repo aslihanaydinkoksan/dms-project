@@ -105,7 +105,17 @@ class UserController extends Controller
                     unset($data['password']);
                 }
 
+                // Checkbox'lar işaretlenmemişse formdan false/null gelir.
+                // Manuel olarak boolean'a çeviriyoruz ki veritabanına 0 veya 1 olarak yazılsın.
                 $data['is_active'] = $request->has('is_active');
+
+                // YENİ ACL KONTROLÜ: Sadece Super Admin veya Adminler birine bu yetkiyi verebilir!
+                if (Auth::user()->hasAnyRole(['Super Admin', 'Admin'])) {
+                    $data['can_manage_acl'] = $request->has('can_manage_acl');
+                } else {
+                    // Admin değilse, kullanıcının mevcut ACL yetkisini koru (değiştirmesine izin verme)
+                    unset($data['can_manage_acl']);
+                }
 
                 $user->update($data);
 

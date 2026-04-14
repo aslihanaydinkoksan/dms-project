@@ -47,7 +47,7 @@ class NewDelegationAssigned extends Notification implements ShouldQueue
         $reason = $this->delegation->reason ?? 'Belirtilmedi';
 
         return (new MailMessage)
-            ->subject("KÖKSAN DYS - Yeni Vekalet Ataması: {$delegatorName}")
+            ->subject("KÖKSAN DMS - Yeni Vekalet Ataması: {$delegatorName}")
             ->greeting("Merhaba {$notifiable->name},")
             ->line("Sistem üzerinden **{$delegatorName}** tarafından size yeni bir vekalet (delegation) tanımlanmıştır.")
             ->line("**Başlangıç:** {$startDate}")

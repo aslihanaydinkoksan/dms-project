@@ -7,9 +7,9 @@
 
             <div style="text-align: center; margin-bottom: 25px;">
                 <div style="font-size: 3rem; margin-bottom: 10px;">🔐</div>
-                <h2 style="color: var(--success-color); margin: 0;">Yeni Şifre Belirle</h2>
+                <h2 style="color: var(--success-color); margin: 0;">{{__('Yeni Şifre Belirle')}}</h2>
                 <p class="text-muted" style="font-size: 0.9rem; margin-top: 10px;">
-                    Lütfen hesabınız için yeni ve güvenli bir şifre oluşturun.
+                    {{__('Lütfen hesabınız için yeni ve güvenli bir şifre oluşturun.')}}
                 </p>
             </div>
 
@@ -18,7 +18,7 @@
                 <input type="hidden" name="token" value="{{ $token }}">
 
                 <div class="form-group">
-                    <label>E-Posta Adresiniz</label>
+                    <label>{{__('E-Posta Adresiniz')}}</label>
                     <input type="email" name="email" class="form-control @error('email') is-invalid @enderror"
                         value="{{ $email ?? old('email') }}" required readonly style="background: #f8fafc; color: #64748b;">
                     @error('email')
@@ -28,9 +28,9 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Yeni Şifre</label>
+                    <label>{{__('Yeni Şifre')}}</label>
                     <input type="password" name="password" class="form-control @error('password') is-invalid @enderror"
-                        required autofocus placeholder="En az 6 karakter">
+                        required autofocus placeholder="{{__('En az 6 karakter')}}">
                     @error('password')
                         <span class="text-danger" style="font-size: 0.85rem; margin-top: 5px; display: block;">⚠️
                             {{ $message }}</span>
@@ -38,14 +38,14 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Yeni Şifre (Tekrar)</label>
+                    <label>{{__('Yeni Şifre (Tekrar)')}}</label>
                     <input type="password" name="password_confirmation" class="form-control" required
-                        placeholder="Şifrenizi doğrulayın">
+                        placeholder="{{__('Şifrenizi doğrulayın')}}">
                 </div>
 
                 <div class="form-actions mt-25">
                     <button type="submit" class="btn btn-success btn-block" style="padding: 12px; font-weight: bold;">
-                        Şifremi Güncelle
+                        {{__('Şifremi Güncelle')}}
                     </button>
                 </div>
             </form>

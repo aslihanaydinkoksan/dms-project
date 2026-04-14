@@ -5,10 +5,10 @@
 
         <div class="report-header">
             <div>
-                <h2>Otomatik Rapor Motoru</h2>
-                <p>Sistem verilerini periyodik olarak Excel/PDF formatında iletin.</p>
+                <h2>{{ __('Otomatik Rapor Motoru') }}</h2>
+                <p>{{ __('Sistem verilerini periyodik olarak Excel/PDF formatında iletin.') }}</p>
             </div>
-            <a href="{{ route('dashboard') }}" class="btn-back">Geri Dön</a>
+            <a href="{{ route('dashboard') }}" class="btn-back">{{ __('Geri Dön') }}</a>
         </div>
 
         <div class="report-body">
@@ -17,48 +17,50 @@
 
                 <div class="form-row two-cols">
                     <div class="form-group">
-                        <label>RAPORUN ADI / BAŞLIĞI</label>
+                        <label>{{ __('RAPORUN ADI / BAŞLIĞI') }}</label>
                         <input type="text" name="report_name" class="form-control"
-                            placeholder="Örn: Aylık Bakım Analiz Raporu">
+                            placeholder="{{ __('Örn: Aylık Bakım Analiz Raporu') }}">
                     </div>
                     <div class="form-group">
-                        <label>HANGİ MODÜL RAPORLANACAK?</label>
+                        <label>{{ __('HANGİ MODÜL RAPORLANACAK?') }}</label>
                         <select name="module" class="form-control">
-                            <option value="">Rapor Seçiniz...</option>
-                            <option value="documents">Tüm Belgeler Envanteri</option>
-                            <option value="workflows">Bekleyen İş Akışları</option>
-                            <option value="physical_archives">Fiziksel Zimmet Raporu</option>
-                            <option value="audit_logs">Kullanıcı İşlem Logları</option>
+                            <option value="">{{ __('Rapor Seçiniz...') }}</option>
+                            <option value="documents">{{ __('Tüm Belgeler Envanteri') }}</option>
+                            <option value="workflows">{{ __('Bekleyen İş Akışları') }}</option>
+                            <option value="physical_archives">{{ __('Fiziksel Zimmet Raporu') }}</option>
+                            <option value="audit_logs">{{ __('Kullanıcı İşlem Logları') }}</option>
                         </select>
                     </div>
                 </div>
 
                 <div class="form-row three-cols">
                     <div class="form-group">
-                        <label>E-POSTA GÖNDERİM SIKLIĞI</label>
+                        <label>{{ __('E-POSTA GÖNDERİM SIKLIĞI') }}</label>
                         <select name="frequency" class="form-control">
-                            <option value="">Gönderim Zamanı...</option>
-                            <option value="daily">Her Gün (Saat 18:00)</option>
-                            <option value="weekly">Her Hafta Başı (Pazartesi 08:00)</option>
-                            <option value="monthly">Her Ayın 1'i (08:00)</option>
+                            <option value="">{{ __('Gönderim Zamanı...') }}</option>
+                            <option value="daily">{{ __('Her Gün (Saat 18:00)') }}</option>
+                            <option value="weekly">{{ __('Her Hafta Başı (Pazartesi 08:00)') }}</option>
+                            <option value="monthly">{{ __('Her Ayın 1\'i (08:00)') }}</option>
                         </select>
-                        <small class="help-text">Raporun ne zaman oluşturulup mail atılacağını belirler.</small>
+                        <small
+                            class="help-text">{{ __('Raporun ne zaman oluşturulup mail atılacağını belirler.') }}</small>
                     </div>
 
                     <div class="form-group">
-                        <label>RAPOR VERİ KAPSAMI</label>
+                        <label>{{ __('RAPOR VERİ KAPSAMI') }}</label>
                         <select name="date_range" class="form-control">
-                            <option value="">Zaman Aralığı Seçiniz...</option>
-                            <option value="last_24_hours">Son 24 Saat</option>
-                            <option value="last_7_days">Son 1 Hafta</option>
-                            <option value="last_30_days">Son 1 Ay</option>
-                            <option value="all_time">Tüm Zamanlar (Kümülatif)</option>
+                            <option value="">{{ __('Zaman Aralığı Seçiniz...') }}</option>
+                            <option value="last_24_hours">{{ __('Son 24 Saat') }}</option>
+                            <option value="last_7_days">{{ __('Son 1 Hafta') }}</option>
+                            <option value="last_30_days">{{ __('Son 1 Ay') }}</option>
+                            <option value="all_time">{{ __('Tüm Zamanlar (Kümülatif)') }}</option>
                         </select>
-                        <small class="help-text">Tablodaki verilerin ne kadar geriye gideceğini belirler.</small>
+                        <small
+                            class="help-text">{{ __('Tablodaki verilerin ne kadar geriye gideceğini belirler.') }}</small>
                     </div>
 
                     <div class="form-group">
-                        <label>DOSYA FORMATI</label>
+                        <label>{{ __('DOSYA FORMATI') }}</label>
                         <div class="radio-group">
                             <label class="radio-label">
                                 <input type="radio" name="format" value="excel" checked> Excel (.xlsx)
@@ -71,12 +73,12 @@
                 </div>
 
                 <div class="form-group full-width mt-10">
-                    <label>E-POSTA ALICILARI</label>
+                    <label>{{ __('E-POSTA ALICILARI') }}</label>
                     <textarea name="recipients" class="form-control" rows="3"
-                        placeholder="Her mailin arasına virgül koyun (örn: mudur@koksan.com, sef@koksan.com)"></textarea>
+                        placeholder="{{ __('Her mailin arasına virgül koyun (örn: mudur@koksan.com, sef@koksan.com)') }}"></textarea>
                 </div>
 
-                <button type="submit" class="btn-submit">Zamanlanmış Raporu Kaydet</button>
+                <button type="submit" class="btn-submit">{{ __('Zamanlanmış Raporu Kaydet') }}</button>
             </form>
         </div>
     </div>

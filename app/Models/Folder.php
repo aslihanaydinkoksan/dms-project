@@ -81,4 +81,15 @@ class Folder extends Model
         }
         return $breadcrumbs; // Örn: [Ana Dizin, İK, 2026 Raporları]
     }
+    public function rolePermissions()
+    {
+        return $this->hasMany(FolderRolePermission::class);
+    }
+    // Klasöre özel tanımlanmış istisna kullanıcılar
+    public function specificUsers()
+    {
+        return $this->belongsToMany(User::class, 'folder_user_permissions')
+            ->withPivot('access_level')
+            ->withTimestamps();
+    }
 }

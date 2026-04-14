@@ -10,15 +10,16 @@
                 </div>
 
                 <div class="tree-actions" style="display: flex; gap: 8px;">
-                    <a href="#" class="btn btn-sm btn-outline-secondary" style="padding: 6px;" title="Düzenle">
+                    <a href="#" class="btn btn-sm btn-outline-secondary" style="padding: 6px;"
+                        title="{{ __('Düzenle') }}">
                         <i data-lucide="edit-2" style="width: 14px; height: 14px;"></i>
                     </a>
                     <form action="#" method="POST" class="inline-form"
-                        onsubmit="return confirm('Klasörü silmek istediğinize emin misiniz?');">
+                        onsubmit="return confirm('{{ __('Klasörü silmek istediğinize emin misiniz?') }}');">
                         @csrf
                         @method('DELETE')
                         <button type="submit" class="btn btn-sm btn-outline-danger" style="padding: 6px;"
-                            title="Sil">
+                            title="{{ __('Sil') }}">
                             <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
                         </button>
                     </form>

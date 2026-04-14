@@ -23,6 +23,7 @@ class UpdateUserRequest extends FormRequest
             'is_active' => 'boolean',
             'roles' => 'nullable|array',
             'roles.*' => 'exists:roles,name',
+            'can_manage_acl' => 'nullable|boolean',
         ];
     }
 }

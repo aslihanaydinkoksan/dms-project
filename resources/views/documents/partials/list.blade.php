@@ -1,62 +1,88 @@
-<div class="table-responsive">
-    <table class="table modern-table" style="width: 100%; font-size: 0.95rem;">
-        <thead>
+<div class="card" style="border-radius: 12px; overflow: hidden; border: 1px solid var(--border-color);">
+    <table class="table modern-table" style="margin: 0; width: 100%; text-align: left;">
+        <thead style="background: #f8fafc; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase;">
             <tr>
-                <th>Doküman Kodu</th>
-                <th>Başlık</th>
-                <th>Kategori / Klasör</th>
-                <th>Gizlilik</th>
-                <th>Statü</th>
-                <th class="text-right">İşlemler</th>
+                <th style="padding: 15px;">{{ __('Doküman Bilgisi') }}</th>
+                <th style="padding: 15px;">{{ __('Doküman Tipi') }}</th>
+                <th style="padding: 15px;">{{ __('Gizlilik ve Konum') }}</th>
+                <th style="padding: 15px;">{{ __('Statü') }}</th>
+                <th style="padding: 15px;">{{ __('Tarih') }}</th>
+                <th class="text-right" style="padding: 15px;">{{ __('İşlemler') }}</th>
             </tr>
         </thead>
         <tbody>
             @forelse($documents as $doc)
-                <tr>
-                    <td class="font-bold">
-                        <a href="{{ route('documents.show', $doc->id) }}"
-                            style="color: var(--primary-color); text-decoration: none;">
-                            {{ $doc->document_number }}
-                        </a>
-                    </td>
-                    <td>
-                        {{ $doc->title }}
-                        <div style="font-size: 0.75rem; color: #94a3b8;">👤
-                            {{ $doc->currentVersion?->createdBy?->name ?? 'Bilinmiyor' }}</div>
-                    </td>
-                    <td>
-                        {{ $doc->category ?? 'Kategorisiz' }}
-                        <div style="font-size: 0.75rem; color: #94a3b8;">📁 {{ $doc->folder?->name ?? 'Ana Dizin' }}
+                <tr style="border-bottom: 1px solid var(--border-color);">
+                    <td style="padding: 15px;">
+                        <div style="font-weight: 700; color: var(--primary-color);">{{ $doc->document_number }}</div>
+                        <div style="font-size: 0.9rem; font-weight: 500; margin-bottom: 4px;">{{ $doc->title }}</div>
+                        <div
+                            style="font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 4px;">
+                            <i data-lucide="user" style="width: 12px; height: 12px;"></i>
+                            <span>{{ __('Yükleyen:') }} </span>
+                            @if ($doc->currentVersion && $doc->currentVersion->createdBy)
+                                <a href="{{ route('profile.show', $doc->currentVersion->createdBy->id) }}"
+                                    target="_blank" rel="noopener noreferrer"
+                                    style="color: var(--accent-color); text-decoration: none; font-weight: 600; transition: opacity 0.2s;"
+                                    onmouseover="this.style.textDecoration='underline'"
+                                    onmouseout="this.style.textDecoration='none'">
+                                    {{ $doc->currentVersion->createdBy->name }}
+                                </a>
+                            @else
+                                <span style="font-style: italic;">{{ __('Bilinmiyor') }}</span>
+                            @endif
                         </div>
                     </td>
-                    <td><span class="badge badge-warning">{{ mb_strtoupper($doc->privacy_level_text) }}</span></td>
-                    <td><span class="badge badge-secondary">{{ strtoupper($doc->status_text) }}</span></td>
-                    <td class="text-right">
-                        <div style="display: flex; gap: 8px; justify-content: flex-end; align-items: center;">
+                    <td style="padding: 15px;">
+                        <span class="badge badge-secondary"
+                            style="font-size: 0.7rem;">{{ $doc->documentType?->name ? __($doc->documentType->name) : __('Belirtilmemiş') }}</span>
+                    </td>
 
-                            <a href="{{ route('documents.show', $doc->id) }}"
-                                class="btn btn-sm btn-outline-primary">İncele</a>
+                    <td style="padding: 15px;">
+                        <span class="badge {{ $doc->privacy_color }}" style="margin-bottom: 4px;">
+                            {{ mb_strtoupper(__($doc->privacy_level_text)) }}
+                        </span>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+                            📁 {{ $doc->folder?->name ?? __('Ana Dizin') }}
+                        </div>
+                    </td>
+
+                    <td style="padding: 15px;">
+                        <span class="badge {{ $doc->status_color }}">
+                            {{ mb_strtoupper(__($doc->status_text)) }}
+                        </span>
+                    </td>
+
+                    <td style="padding: 15px; font-size: 0.85rem; color: var(--text-muted);">
+                        {{ $doc->created_at->format('d.m.Y') }}
+                    </td>
+                    <td class="text-right" style="padding: 15px;">
+                        <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                            <a href="{{ route('documents.show', $doc->id) }}" class="btn btn-sm btn-outline-primary"
+                                title="{{ __('Görüntüle') }}">
+                                <i data-lucide="eye" style="width: 16px;"></i>
+                            </a>
 
                             @can('delete', $doc)
-                                <form action="{{ route('documents.destroy', $doc->id) }}" method="POST" style="margin: 0;"
-                                    onsubmit="return confirm('DİKKAT: Bu belgeyi sistemden kaldırmak (Soft Delete) istediğinize emin misiniz?');">
+                                <form action="{{ route('documents.destroy', $doc->id) }}" method="POST"
+                                    onsubmit="return confirm('{{ __('Bu belgeyi silmek istediğinize emin misiniz? Bu işlem geri alınamaz.') }}')">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Belgeyi Sil"
-                                        style="display: flex; align-items: center; gap: 5px; padding: 4px 10px; background: #fff;">
-                                        <i data-lucide="trash-2" style="width: 16px;"></i> Sil
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                                        title="{{ __('Sil') }}">
+                                        <i data-lucide="trash-2" style="width: 16px;"></i>
                                     </button>
                                 </form>
                             @endcan
-
                         </div>
                     </td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="6" class="text-center p-30 text-muted">
-                        <div style="font-size: 2rem; margin-bottom: 10px;">🔍</div>
-                        Aradığınız kriterlere uygun belge bulunamadı.
+                    <td colspan="6" class="text-center py-50 text-muted" style="padding: 40px; text-align: center;">
+                        <i data-lucide="search-x"
+                            style="width: 48px; height: 48px; color: #cbd5e1; margin-bottom: 10px;"></i>
+                        <p>{{ __('Arama kriterlerine uygun belge bulunamadı.') }}</p>
                     </td>
                 </tr>
             @endforelse
@@ -64,6 +90,6 @@
     </table>
 </div>
 
-<div class="mt-20 pagination-wrapper">
-    {{ $documents->appends(request()->query())->links('pagination::bootstrap-5') }}
+<div class="mt-20">
+    {{ $documents->links() }}
 </div>

@@ -3,23 +3,25 @@
 @section('content')
     <div class="page-header flex-between">
         <div>
-            <h1 class="page-title">Kullanıcı Yönetimi</h1>
-            <p class="text-muted">Sistemdeki tüm personelleri ve erişim yetkilerini yönetin.</p>
+            <h1 class="page-title">{{ __('Kullanıcı Yönetimi') }}</h1>
+            <p class="text-muted">{{ __('Sistemdeki tüm personelleri ve erişim yetkilerini yönetin.') }}</p>
         </div>
-        <a href="{{ route('users.create') }}" class="btn btn-primary">+ Yeni Kullanıcı</a>
+        <a href="{{ route('users.create') }}" class="btn btn-primary">+ {{ __('Yeni Kullanıcı') }}</a>
     </div>
 
-    @include('partials.alerts') <div class="card glass-card">
+    @include('partials.alerts')
+
+    <div class="card glass-card">
         <div class="table-responsive">
             <table class="table">
                 <thead>
                     <tr>
-                        <th>Ad Soyad</th>
-                        <th>E-Posta</th>
-                        <th>Departman</th>
-                        <th>Roller</th>
-                        <th>Durum</th>
-                        <th>İşlemler</th>
+                        <th>{{ __('Ad Soyad') }}</th>
+                        <th>{{ __('E-Posta') }}</th>
+                        <th>{{ __('Departman') }}</th>
+                        <th>{{ __('Roller') }}</th>
+                        <th>{{ __('Durum') }}</th>
+                        <th>{{ __('İşlemler') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -27,7 +29,7 @@
                         <tr>
                             <td class="font-medium">{{ $user->name }}</td>
                             <td class="text-muted">{{ $user->email }}</td>
-                            <td>{{ $user->department->name ?? 'Atanmadı' }}</td>
+                            <td>{{ $user->department->name ?? __('Atanmadı') }}</td>
                             <td>
                                 @forelse ($user->roles as $role)
                                     <span class="badge"
@@ -37,29 +39,36 @@
                                 @empty
                                     <span class="text-muted" style="font-size: 0.85rem; font-style: italic;">
                                         <i data-lucide="alert-circle"
-                                            style="width: 14px; display: inline-block; vertical-align: middle;"></i> Rol
-                                        Atanmamış
+                                            style="width: 14px; display: inline-block; vertical-align: middle;"></i>
+                                        {{ __('Rol Atanmamış') }}
                                     </span>
                                 @endforelse
                             </td>
                             <td>
                                 @if ($user->is_active)
-                                    <span class="badge badge-success">Aktif</span>
+                                    <span class="badge badge-success">{{ __('Aktif') }}</span>
                                 @else
-                                    <span class="badge badge-danger">Pasif</span>
+                                    <span class="badge badge-danger">{{ __('Pasif') }}</span>
                                 @endif
                             </td>
                             <td class="action-cell">
-                                <div class="action-group">
+                                <div class="action-group" style="display: flex; gap: 8px;">
+                                    <a href="{{ route('profile.show', $user->id) }}"
+                                        class="btn btn-sm btn-outline-secondary"
+                                        title="{{ __('Personel Performansını İncele') }}">
+                                        <i data-lucide="bar-chart-2" style="width: 16px;"></i> {{ __('İncele') }}
+                                    </a>
+
                                     <a href="{{ route('users.edit', $user->id) }}" class="btn btn-sm btn-outline-primary"
-                                        title="Düzenle">✏️ Düzenle</a>
+                                        title="{{ __('Düzenle') }}">✏️ {{ __('Düzenle') }}</a>
 
                                     <form action="{{ route('users.destroy', $user->id) }}" method="POST"
-                                        onsubmit="return confirm('Bu kullanıcıyı sistemden silmek istediğinize emin misiniz? (Soft delete uygulanacaktır)');">
+                                        onsubmit="return confirm('{{ __('Bu kullanıcıyı sistemden silmek istediğinize emin misiniz? (Soft delete uygulanacaktır)') }}');">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Sil">🗑️
-                                            Sil</button>
+                                        <button type="submit" class="btn btn-sm btn-outline-danger"
+                                            title="{{ __('Sil') }}">🗑️
+                                            {{ __('Sil') }}</button>
                                     </form>
                                 </div>
                             </td>

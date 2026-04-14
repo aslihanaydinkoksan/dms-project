@@ -1,21 +1,39 @@
 @extends('layouts.app')
 
 @section('content')
-    <div class="dashboard-welcome mb-30 flex-between">
+    <div class="dashboard-welcome mb-20 flex-between"
+        style="background: linear-gradient(135deg, var(--primary-color) 0%, #0f172a 100%); padding: 30px 40px; border-radius: 16px; color: #fff; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2); margin-bottom: 30px;">
         <div>
-            <h1 style="font-size: 1.8rem; font-weight: 700; color: var(--primary-color); margin-bottom: 5px;">
-                Hoş Geldin, {{ auth()->user()->name }}
+            <h1 style="font-size: 2rem; font-weight: 700; color: #f8fafc; margin-bottom: 8px; letter-spacing: -0.5px;">
+                {{ __('Hoş Geldin,') }} {{ auth()->user()->name }} 👋
             </h1>
-            <p class="text-muted" style="font-size: 0.95rem;">
-                Bugün sizi bekleyen <strong style="color: var(--danger-color);">{{ $totalPendingTasks }}</strong> adet acil
-                işlem var.
+            <p style="font-size: 1rem; color: #94a3b8; margin: 0;">
+                {!! __(
+                    'Bugün sizi bekleyen <strong style="color: #f87171; font-size: 1.1rem; padding: 0 4px;">:count</strong> adet acil işlem var.',
+                    ['count' => $totalPendingTasks],
+                ) !!}
             </p>
         </div>
         <div class="date-badge"
-            style="background: #fff; border: 1px solid var(--border-color); padding: 10px 20px; border-radius: 30px; font-weight: 600; color: var(--text-color); display: flex; align-items: center; gap: 8px; box-shadow: var(--card-shadow);">
-            <i data-lucide="calendar" style="color: var(--accent-color); width: 18px; height: 18px;"></i>
-            {{ $currentDate }}
+            style="background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); padding: 12px 24px; border-radius: 30px; font-weight: 600; color: #f8fafc; display: flex; align-items: center; gap: 10px;">
+            <i data-lucide="calendar" style="color: #38bdf8; width: 20px; height: 20px;"></i>
+            {{ \Carbon\Carbon::now()->locale(app()->getLocale())->translatedFormat('d F Y') }}
         </div>
+    </div>
+
+    <div class="quick-actions mb-30" style="display: flex; gap: 15px; flex-wrap: wrap;">
+        <a href="{{ route('documents.create') }}" class="btn btn-primary"
+            style="display: flex; align-items: center; gap: 8px; padding: 12px 24px; border-radius: 8px; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);">
+            <i data-lucide="upload-cloud" style="width: 18px;"></i> {{ __('Yeni Belge Yükle') }}
+        </a>
+        <a href="{{ route('documents.index') }}" class="btn"
+            style="display: flex; align-items: center; gap: 8px; padding: 12px 24px; border-radius: 8px; background: #fff; color: var(--text-color); border: 1px solid var(--border-color); font-weight: 600; box-shadow: var(--card-shadow);">
+            <i data-lucide="search" style="width: 18px; color: var(--accent-color);"></i> {{ __('Gelişmiş Arama') }}
+        </a>
+        <a href="{{ route('folders.index') }}" class="btn"
+            style="display: flex; align-items: center; gap: 8px; padding: 12px 24px; border-radius: 8px; background: #fff; color: var(--text-color); border: 1px solid var(--border-color); font-weight: 600; box-shadow: var(--card-shadow);">
+            <i data-lucide="folder-tree" style="width: 18px; color: var(--warning-color);"></i> {{ __('Klasörlere Git') }}
+        </a>
     </div>
 
     <div class="dashboard-grid">
@@ -23,24 +41,24 @@
         <div class="widget-card urgent-widget">
             <div class="widget-header">
                 <h3 style="color: var(--danger-color);">
-                    <i data-lucide="alert-circle" style="width: 20px; margin-right: 8px;"></i> Acil Aksiyonlar
+                    <i data-lucide="alert-circle" style="width: 20px; margin-right: 8px;"></i> {{ __('Acil Aksiyonlar') }}
                 </h3>
                 @if ($totalPendingTasks > 0)
                     <span class="pulse-badge" style="background: var(--danger-color);">
-                        {{ $totalPendingTasks }} Görev
+                        {{ $totalPendingTasks }} {{ __('Görev') }}
                     </span>
                 @endif
             </div>
-            <div class="widget-body">
+            <div class="widget-body" style="background: #f8fafc; display: flex; flex-direction: column;">
                 @if ($totalPendingTasks == 0)
                     <div class="empty-state">
                         <i data-lucide="check-circle-2"
                             style="color: var(--success-color); width: 48px; height: 48px; margin: 0 auto 10px; opacity: 1;"></i>
-                        <p>Harika! Bekleyen acil bir göreviniz yok.</p>
+                        <p>{{ __('Harika! Bekleyen acil bir göreviniz yok.') }}</p>
                     </div>
                 @else
                     <ul class="action-list">
-                        @foreach ($pendingApprovals as $approval)
+                        @foreach ($displayPendingApprovals as $approval)
                             <a href="{{ route('documents.show', $approval->document_id) }}"
                                 class="action-item workflow-item">
                                 <div class="action-icon" style="background: #fef3c7; color: #d97706;">
@@ -50,29 +68,39 @@
                                     <strong>{{ $approval->document->document_number }}</strong>
                                     @if ($approval->user_id !== auth()->id())
                                         <span style="color: var(--danger-color); font-weight: bold; margin-top: 3px;">
-                                            🤝 Vekaleten ({{ $approval->user->name }} adına)
+                                            🤝 {{ __('Vekaleten (:name adına)', ['name' => $approval->user->name]) }}
                                         </span>
                                     @else
-                                        <span>Onayınızı Bekliyor</span>
+                                        <span>{{ __('Onayınızı Bekliyor') }}</span>
                                     @endif
                                 </div>
                                 <div class="action-arrow"><i data-lucide="chevron-right"></i></div>
                             </a>
                         @endforeach
 
-                        @foreach ($pendingPhysicalReceipts as $doc)
+                        @foreach ($displayPhysicalReceipts as $doc)
                             <a href="{{ route('documents.show', $doc->id) }}" class="action-item physical-item">
                                 <div class="action-icon" style="background: #fee2e2; color: #b91c1c;">
                                     <i data-lucide="inbox" style="width: 18px;"></i>
                                 </div>
                                 <div class="action-content">
                                     <strong>{{ $doc->document_number }}</strong>
-                                    <span>Islak İmzalı Kopyayı Teslim Alın</span>
+                                    <span>{{ __('Islak İmzalı Kopyayı Teslim Alın') }}</span>
                                 </div>
                                 <div class="action-arrow"><i data-lucide="chevron-right"></i></div>
                             </a>
                         @endforeach
                     </ul>
+
+                    @if ($totalPendingTasks > $displayPendingApprovals->count() + $displayPhysicalReceipts->count())
+                        <div
+                            style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border-color); text-align: center;">
+                            <a href="{{ route('documents.index', ['status' => 'pending']) }}"
+                                class="btn btn-sm btn-outline-danger" style="background: #fff; width: 100%; padding: 8px;">
+                                {{ __('Tüm Acil Görevleri Gör (:count)', ['count' => $totalPendingTasks]) }}
+                            </a>
+                        </div>
+                    @endif
                 @endif
             </div>
         </div>
@@ -80,16 +108,16 @@
         <div class="widget-card">
             <div class="widget-header">
                 <h3 style="color: var(--primary-color);">
-                    <i data-lucide="lock" style="width: 20px; margin-right: 8px; color: var(--text-muted);"></i> Üzerimdeki
-                    Belgeler
+                    <i data-lucide="lock" style="width: 20px; margin-right: 8px; color: var(--text-muted);"></i>
+                    {{ __('Üzerimdeki Belgeler') }}
                 </h3>
             </div>
-            <div class="widget-body">
-                @if ($myLockedDocuments->count() == 0)
+            <div class="widget-body" style="background: #f8fafc; display: flex; flex-direction: column;">
+                @if ($totalLockedCount == 0)
                     <div class="empty-state">
                         <i data-lucide="folder-open"
                             style="width: 48px; height: 48px; margin: 0 auto 10px; opacity: 0.3;"></i>
-                        <p>Revize etmek için kilitlediğiniz belge yok.</p>
+                        <p>{{ __('Revize etmek için kilitlediğiniz belge yok.') }}</p>
                     </div>
                 @else
                     <ul class="action-list">
@@ -100,32 +128,46 @@
                                 </div>
                                 <div class="action-content">
                                     <strong>{{ $doc->title }}</strong>
-                                    <span class="text-muted">v{{ $doc->currentVersion?->version_number }} (Kilidi Aç veya
-                                        Yükle)</span>
+                                    <span class="text-muted">v{{ $doc->currentVersion?->version_number }}
+                                        ({{ __('Kilidi Aç veya Yükle') }})
+                                    </span>
                                 </div>
-                                <div class="action-arrow" style="color: #0ea5e9; font-size: 0.85rem;">İşlem <i
-                                        data-lucide="chevron-right" style="width: 14px; vertical-align: middle;"></i></div>
+                                <div class="action-arrow" style="color: #0ea5e9; font-size: 0.85rem;">{{ __('İşlem') }}
+                                    <i data-lucide="chevron-right" style="width: 14px; vertical-align: middle;"></i>
+                                </div>
                             </a>
                         @endforeach
                     </ul>
+
+                    @if ($totalLockedCount > 5)
+                        <div
+                            style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border-color); text-align: center;">
+                            <a href="{{ route('documents.index') }}" class="btn btn-sm btn-outline-primary"
+                                style="background: #fff; width: 100%; padding: 8px;">
+                                {{ __('Tüm Kilitli Belgeleri Gör (:count)', ['count' => $totalLockedCount]) }}
+                            </a>
+                        </div>
+                    @endif
                 @endif
             </div>
         </div>
 
         @hasanyrole('Super Admin|Admin|Hukuk')
             <div class="widget-card">
-                <div class="widget-header">
+                <div class="widget-header flex-between">
                     <h3 style="color: #b45309;">
-                        <i data-lucide="hourglass" style="width: 20px; margin-right: 8px; color: #d97706;"></i> Yaklaşan
-                        Sözleşmeler
+                        <i data-lucide="hourglass" style="width: 20px; margin-right: 8px; color: #d97706;"></i>
+                        {{ __('Yaklaşan Sözleşmeler') }}
                     </h3>
+                    <a href="{{ route('documents.index') }}" class="btn btn-sm btn-outline-secondary"
+                        style="background: #fff;">{{ __('Tümünü Gör') }}</a>
                 </div>
-                <div class="widget-body">
+                <div class="widget-body" style="background: #f8fafc;">
                     @if ($expiringContracts->count() == 0)
                         <div class="empty-state">
                             <i data-lucide="shield-check"
                                 style="width: 48px; height: 48px; margin: 0 auto 10px; color: var(--success-color); opacity: 0.8;"></i>
-                            <p>Önümüzdeki 30 gün içinde süresi dolacak aktif sözleşme yok.</p>
+                            <p>{{ __('Önümüzdeki 30 gün içinde süresi dolacak aktif sözleşme yok.') }}</p>
                         </div>
                     @else
                         <ul class="action-list">
@@ -138,8 +180,8 @@
                                     <div class="action-content">
                                         <strong>{{ $doc->document_number }}</strong>
                                         <span style="color: var(--danger-color); font-weight: bold;">
-                                            Bitiş: {{ \Carbon\Carbon::parse($doc->expire_at)->format('d.m.Y') }}
-                                            ({{ \Carbon\Carbon::parse($doc->expire_at)->diffInDays(now()) }} gün kaldı)
+                                            {{ __('Bitiş:') }} {{ \Carbon\Carbon::parse($doc->expire_at)->format('d.m.Y') }}
+                                            ({{ __(':count gün kaldı', ['count' => \Carbon\Carbon::parse($doc->expire_at)->diffInDays(now())]) }})
                                         </span>
                                     </div>
                                     <div class="action-arrow"><i data-lucide="chevron-right"></i></div>
@@ -155,21 +197,31 @@
             <div class="widget-header">
                 <h3>
                     <i data-lucide="pie-chart" style="width: 20px; margin-right: 8px; color: var(--accent-color);"></i>
-                    Hesap Özeti
+                    {{ __('Hesap Özeti') }}
                 </h3>
             </div>
             <div class="widget-body stats-grid">
-                <div class="stat-box" style="background: #f0fdfa; border-color: #ccfbf1;">
-                    <div class="stat-value" style="color: #0f766e;">{{ $totalAccessible }}</div>
-                    <div class="stat-label" style="color: #0d9488;">Erişilebilir Belge</div>
+                <div class="stat-box"
+                    style="background: #f0fdfa; border-color: #ccfbf1; position: relative; overflow: hidden;">
+                    <i data-lucide="folder-check"
+                        style="position: absolute; right: -15px; bottom: -15px; width: 80px; height: 80px; color: #14b8a6; opacity: 0.1;"></i>
+                    <div class="stat-value" style="color: #0f766e; z-index: 1;">{{ $totalAccessible }}</div>
+                    <div class="stat-label" style="color: #0d9488; z-index: 1;">{{ __('Erişilebilir Belge') }}</div>
                 </div>
-                <div class="stat-box" style="background: #fef2f2; border-color: #fee2e2;">
-                    <div class="stat-value" style="color: #b91c1c;">{{ $totalArchived }}</div>
-                    <div class="stat-label" style="color: #ef4444;">Sistem Arşivi</div>
+                <div class="stat-box"
+                    style="background: #fef2f2; border-color: #fee2e2; position: relative; overflow: hidden;">
+                    <i data-lucide="archive"
+                        style="position: absolute; right: -15px; bottom: -15px; width: 80px; height: 80px; color: #ef4444; opacity: 0.1;"></i>
+                    <div class="stat-value" style="color: #b91c1c; z-index: 1;">{{ $totalArchived }}</div>
+                    <div class="stat-label" style="color: #ef4444; z-index: 1;">{{ __('Sistem Arşivi') }}</div>
                 </div>
-                <div class="stat-box" style="grid-column: span 2; background: #fffbeb; border-color: #fef3c7;">
-                    <div class="stat-value" style="color: #b45309;">{{ $myDrafts }}</div>
-                    <div class="stat-label" style="color: #d97706;">Taslak ve Reddedilmiş Belgelerim</div>
+                <div class="stat-box"
+                    style="grid-column: span 2; background: #fffbeb; border-color: #fef3c7; position: relative; overflow: hidden; flex-direction: row; justify-content: flex-start; align-items: center; gap: 20px;">
+                    <i data-lucide="file-edit"
+                        style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); width: 60px; height: 60px; color: #f59e0b; opacity: 0.1;"></i>
+                    <div class="stat-value" style="color: #b45309; z-index: 1; margin: 0;">{{ $myDrafts }}</div>
+                    <div class="stat-label" style="color: #d97706; z-index: 1; text-align: left;">
+                        {{ __('Taslak ve Reddedilmiş Belgelerim') }}</div>
                 </div>
             </div>
         </div>
@@ -177,16 +229,17 @@
         <div class="widget-card" style="grid-column: 1 / -1;">
             <div class="widget-header flex-between">
                 <h3>
-                    <i data-lucide="activity" style="width: 20px; margin-right: 8px; color: var(--text-muted);"></i> Son
-                    Yüklediğim Belgeler
+                    <i data-lucide="activity" style="width: 20px; margin-right: 8px; color: var(--text-muted);"></i>
+                    {{ __('Son Yüklediğim Belgeler') }}
                 </h3>
-                <a href="{{ route('documents.index') }}" class="btn btn-sm btn-outline-secondary">Tümünü Gör</a>
+                <a href="{{ route('documents.index') }}" class="btn btn-sm btn-outline-secondary"
+                    style="background: #fff;">{{ __('Tümünü Gör') }}</a>
             </div>
-            <div class="widget-body">
+            <div class="widget-body" style="background: #f8fafc;">
                 @if ($myRecentUploads->count() == 0)
                     <div class="empty-state">
                         <i data-lucide="file-x" style="width: 48px; height: 48px; margin: 0 auto 10px; opacity: 0.3;"></i>
-                        <p>Henüz sisteme yüklediğiniz bir belge bulunmuyor.</p>
+                        <p>{{ __('Henüz sisteme yüklediğiniz bir belge bulunmuyor.') }}</p>
                     </div>
                 @else
                     <ul class="action-list"
@@ -218,29 +271,39 @@
 
 @push('styles')
     <style>
-        /* CSS GRID MİMARİSİ (Aynı şık stil korunuyor) */
+        /* CSS GRID MİMARİSİ */
         .dashboard-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
             gap: 25px;
         }
 
+        .widget-card {
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            background: var(--surface-color);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
         .widget-header {
-            padding: 20px;
+            padding: 20px 24px;
             border-bottom: 1px solid var(--border-color);
-            background: var(--bg-color);
+            background: #fff;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-radius: var(--border-radius) var(--border-radius) 0 0;
         }
 
         .widget-header h3 {
             margin: 0;
-            font-size: 1.05rem;
+            font-size: 1.1rem;
             color: var(--text-color);
             display: flex;
             align-items: center;
+            font-weight: 600;
         }
 
         .widget-body {
@@ -260,51 +323,37 @@
         .action-item {
             display: flex;
             align-items: center;
-            padding: 14px 16px;
-            background: var(--surface-color);
+            padding: 16px;
+            background: #fff;
             border: 1px solid var(--border-color);
-            border-radius: 8px;
+            border-radius: 10px;
             text-decoration: none;
             color: inherit;
-            transition: var(--transition);
+            transition: all 0.2s ease;
         }
 
         .action-item:hover {
             transform: translateY(-2px);
-            box-shadow: var(--card-shadow);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+            border-color: #cbd5e1;
         }
 
         .workflow-item {
             border-left: 4px solid var(--warning-color);
         }
 
-        .workflow-item:hover {
-            background: #fffbeb;
-            border-color: #fcd34d;
-        }
-
         .physical-item {
             border-left: 4px solid var(--danger-color);
-        }
-
-        .physical-item:hover {
-            background: #fef2f2;
-            border-color: #fca5a5;
         }
 
         .locked-item {
             border-left: 4px solid var(--accent-color);
         }
 
-        .locked-item:hover {
-            background: #f5f3ff;
-            border-color: #c7d2fe;
-        }
-
         .action-icon {
-            width: 38px;
-            height: 38px;
-            border-radius: 8px;
+            width: 42px;
+            height: 42px;
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -330,13 +379,18 @@
         .action-content span {
             font-size: 0.8rem;
             color: var(--text-muted);
-            margin-top: 3px;
+            margin-top: 4px;
         }
 
         .action-arrow {
             color: #94a3b8;
             display: flex;
             align-items: center;
+            transition: transform 0.2s ease;
+        }
+
+        .action-item:hover .action-arrow {
+            transform: translateX(4px);
         }
 
         .stats-grid {
@@ -347,44 +401,46 @@
 
         .stat-box {
             border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 20px;
+            border-radius: 12px;
+            padding: 24px;
             text-align: center;
             display: flex;
             flex-direction: column;
             justify-content: center;
-            transition: var(--transition);
+            transition: all 0.2s ease;
         }
 
         .stat-box:hover {
             transform: scale(1.02);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
         }
 
         .stat-value {
-            font-size: 2.2rem;
-            font-weight: 700;
+            font-size: 2.5rem;
+            font-weight: 800;
             line-height: 1;
             margin-bottom: 8px;
+            letter-spacing: -1px;
         }
 
         .stat-label {
-            font-size: 0.8rem;
+            font-size: 0.85rem;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            font-weight: 600;
+            font-weight: 700;
         }
 
         .empty-state {
             text-align: center;
             color: var(--text-muted);
-            padding: 30px 10px;
+            padding: 40px 20px;
         }
 
         .pulse-badge {
             color: white;
-            padding: 4px 10px;
+            padding: 4px 12px;
             border-radius: 20px;
-            font-size: 0.75rem;
+            font-size: 0.8rem;
             font-weight: bold;
             animation: pulse-red 2s infinite;
         }
@@ -395,7 +451,7 @@
             }
 
             70% {
-                box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+                box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
             }
 
             100% {

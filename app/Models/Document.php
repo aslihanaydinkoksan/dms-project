@@ -28,9 +28,7 @@ class Document extends Model
         'is_locked',
         'locked_by',
         'status',
-        'document_type',
-        'category',
-        'sub_category',
+        'document_type_id',
         'contract_party',
         'contract_amount',
         'contract_duration',
@@ -102,7 +100,9 @@ class Document extends Model
         }
 
         $roleIds = $user->roles->pluck('id');
-        $allowedCategories = \Illuminate\Support\Facades\DB::table('role_category_permissions')
+
+        // role_category_permissions tablomuzdaki 'category' sütunu artık Doküman Tipi İsimlerini tutuyor
+        $allowedDocumentTypeNames = \Illuminate\Support\Facades\DB::table('role_category_permissions')
             ->whereIn('role_id', $roleIds)
             ->where('can_view', 1)
             ->pluck('category')
@@ -116,33 +116,36 @@ class Document extends Model
         } catch (\Exception $e) {
         }
 
-        return $query->where(function ($q) use ($user, $allowedCategories, $hasStrictlyConfidential, $hasViewAll) {
+        return $query->where(function ($q) use ($user, $allowedDocumentTypeNames, $hasStrictlyConfidential, $hasViewAll) {
 
             // KURAL A: Kendi Yüklediği Belgeler
             $q->whereHas('versions', function ($versionQuery) use ($user) {
                 $versionQuery->where('created_by', $user->id);
             })
 
-                // --- YENİ EKLENEN KURAL B: ONAY ZİNCİRİNDE OLDUĞU BELGELER ---
+                // KURAL B: ONAY ZİNCİRİNDE OLDUĞU BELGELER
                 ->orWhereHas('approvals', function ($approvalQuery) use ($user) {
                     $approvalQuery->where('user_id', $user->id);
                 })
-                // -----------------------------------------------------------
 
                 // KURAL C: Başkalarının Yüklediği Belgeler (3D Matris ve Gizlilik Kuralları)
-                ->orWhere(function ($subQ) use ($allowedCategories, $hasStrictlyConfidential, $hasViewAll) {
+                ->orWhere(function ($subQ) use ($allowedDocumentTypeNames, $hasStrictlyConfidential, $hasViewAll) {
 
                     if (!$hasStrictlyConfidential) {
                         $subQ->where('privacy_level', '!=', 'strictly_confidential');
                     }
 
-                    $subQ->where(function ($accessQ) use ($allowedCategories, $hasViewAll) {
+                    $subQ->where(function ($accessQ) use ($allowedDocumentTypeNames, $hasViewAll) {
                         if ($hasViewAll) {
                             $accessQ->whereNotNull('id');
                         } else {
-                            $accessQ->whereIn('category', $allowedCategories)
+                            // YENİ MİMARİ: Sildiğimiz 'category' kolonu yerine 'documentType' ilişkisinin 'name' alanına bakıyoruz
+                            $accessQ->whereHas('documentType', function ($typeQ) use ($allowedDocumentTypeNames) {
+                                $typeQ->whereIn('name', $allowedDocumentTypeNames);
+                            })
                                 ->orWhere(function ($publicQ) {
-                                    $publicQ->whereNull('category')->where('privacy_level', 'public');
+                                    // Doküman tipi seçilmemiş (eski kalıntı) genel belgeler public ise görünsün
+                                    $publicQ->whereNull('document_type_id')->where('privacy_level', 'public');
                                 });
                         }
                     });
@@ -152,57 +155,91 @@ class Document extends Model
     /**
      * Zeki Arama Motoru (İlişkisel Tablolar ve Türkçe Çeviri Dahil)
      */
+    // public function scopeAdvancedSearch($query, $term)
+    // {
+    //     if (empty($term)) {
+    //         return $query;
+    //     }
+
+    //     $searchTerm = "%{$term}%";
+    //     $termLower = mb_strtolower($term, 'UTF-8');
+
+    //     // --- TÜRKÇE STATÜ / GİZLİLİK ÇEVİRMENİ ---
+    //     $mappedTerms = [];
+
+    //     // Statü Çevirileri
+    //     if (str_contains($termLower, 'onay')) array_push($mappedTerms, 'pending_approval', 'approved', 'pending');
+    //     if (str_contains($termLower, 'red')) array_push($mappedTerms, 'rejected');
+    //     if (str_contains($termLower, 'taslak')) array_push($mappedTerms, 'draft');
+    //     if (str_contains($termLower, 'yay')) array_push($mappedTerms, 'published');
+    //     if (str_contains($termLower, 'arşiv')) array_push($mappedTerms, 'archived');
+
+    //     // Gizlilik Çevirileri
+    //     if (str_contains($termLower, 'genel')) array_push($mappedTerms, 'public');
+    //     if (str_contains($termLower, 'özel') || str_contains($termLower, 'gizli')) array_push($mappedTerms, 'confidential', 'strictly_confidential');
+
+    //     return $query->where(function ($q) use ($searchTerm, $mappedTerms) {
+
+    //         // 1. FİZİKSEL KOLONLARDA ARAMA (Başlık, Numara vb.)
+    //         $q->where('title', 'like', $searchTerm)
+    //             ->orWhere('document_number', 'like', $searchTerm)
+    //             ->orWhere('category', 'like', $searchTerm)
+    //             ->orWhere('contract_party', 'like', $searchTerm);
+
+    //         // 2. ÇEVİRİLMİŞ STATÜ/GİZLİLİK ARAMASI
+    //         if (!empty($mappedTerms)) {
+    //             $q->orWhereIn('status', $mappedTerms)
+    //                 ->orWhereIn('privacy_level', $mappedTerms);
+    //         } else {
+    //             $q->orWhere('status', 'like', $searchTerm)
+    //                 ->orWhere('privacy_level', 'like', $searchTerm);
+    //         }
+
+    //         // 3. İLİŞKİSEL TABLOLARDA (KLASÖR ADI) ARAMA
+    //         $q->orWhereHas('folder', function ($subQ) use ($searchTerm) {
+    //             $subQ->where('name', 'like', $searchTerm);
+    //         })
+
+    //             // 4. İLİŞKİSEL TABLOLARDA (BELGE SAHİBİ/YÜKLEYEN) ARAMA
+    //             ->orWhereHas('versions', function ($vQ) use ($searchTerm) {
+    //                 $vQ->where('is_current', true)
+    //                     ->whereHas('createdBy', function ($uQ) use ($searchTerm) {
+    //                         $uQ->where('name', 'like', $searchTerm);
+    //                     });
+    //             });
+    //     });
+    // }
+    /**
+     * SADECE metinsel verilerde arama yapar.
+     * KULLANIM: $query->advancedSearch($keyword);
+     */
     public function scopeAdvancedSearch($query, $term)
     {
-        if (empty($term)) {
+        // Eğer arama kelimesi boşsa veya sadece boşluklardan oluşuyorsa sorguyu bozma, aynen geri döndür.
+        if (empty(trim($term))) {
             return $query;
         }
 
-        $searchTerm = "%{$term}%";
-        $termLower = mb_strtolower($term, 'UTF-8');
+        $term = '%' . trim($term) . '%';
 
-        // --- TÜRKÇE STATÜ / GİZLİLİK ÇEVİRMENİ ---
-        $mappedTerms = [];
+        // LIKE aramalarını grupluyoruz
+        return $query->where(function ($q) use ($term) {
+            $q->where('title', 'LIKE', $term)
+                ->orWhere('document_number', 'LIKE', $term)
 
-        // Statü Çevirileri
-        if (str_contains($termLower, 'onay')) array_push($mappedTerms, 'pending_approval', 'approved', 'pending');
-        if (str_contains($termLower, 'red')) array_push($mappedTerms, 'rejected');
-        if (str_contains($termLower, 'taslak')) array_push($mappedTerms, 'draft');
-        if (str_contains($termLower, 'yay')) array_push($mappedTerms, 'published');
-        if (str_contains($termLower, 'arşiv')) array_push($mappedTerms, 'archived');
+                // YENİ: Doküman Tipi adında arama (Kategori kaldırıldığı için relation kullanıyoruz)
+                ->orWhereHas('documentType', function ($typeQuery) use ($term) {
+                    $typeQuery->where('name', 'LIKE', $term);
+                })
 
-        // Gizlilik Çevirileri
-        if (str_contains($termLower, 'genel')) array_push($mappedTerms, 'public');
-        if (str_contains($termLower, 'özel') || str_contains($termLower, 'gizli')) array_push($mappedTerms, 'confidential', 'strictly_confidential');
+                // Klasör adında arama
+                ->orWhereHas('folder', function ($folderQuery) use ($term) {
+                    $folderQuery->where('name', 'LIKE', $term);
+                })
 
-        return $query->where(function ($q) use ($searchTerm, $mappedTerms) {
-
-            // 1. FİZİKSEL KOLONLARDA ARAMA (Başlık, Numara vb.)
-            $q->where('title', 'like', $searchTerm)
-                ->orWhere('document_number', 'like', $searchTerm)
-                ->orWhere('category', 'like', $searchTerm)
-                ->orWhere('contract_party', 'like', $searchTerm);
-
-            // 2. ÇEVİRİLMİŞ STATÜ/GİZLİLİK ARAMASI
-            if (!empty($mappedTerms)) {
-                $q->orWhereIn('status', $mappedTerms)
-                    ->orWhereIn('privacy_level', $mappedTerms);
-            } else {
-                $q->orWhere('status', 'like', $searchTerm)
-                    ->orWhere('privacy_level', 'like', $searchTerm);
-            }
-
-            // 3. İLİŞKİSEL TABLOLARDA (KLASÖR ADI) ARAMA
-            $q->orWhereHas('folder', function ($subQ) use ($searchTerm) {
-                $subQ->where('name', 'like', $searchTerm);
-            })
-
-                // 4. İLİŞKİSEL TABLOLARDA (BELGE SAHİBİ/YÜKLEYEN) ARAMA
-                ->orWhereHas('versions', function ($vQ) use ($searchTerm) {
-                    $vQ->where('is_current', true)
-                        ->whereHas('createdBy', function ($uQ) use ($searchTerm) {
-                            $uQ->where('name', 'like', $searchTerm);
-                        });
+                // YENİ ve ÖNEMLİ: Belgeyi yükleyen KİŞİNİN adında arama (Aslıhan Aydın araması burada çalışır)
+                ->orWhereHas('currentVersion.createdBy', function ($userQuery) use ($term) {
+                    $userQuery->where('name', 'LIKE', $term);
                 });
         });
     }
@@ -263,5 +300,35 @@ class Document extends Model
     public function relatedDepartment()
     {
         return $this->belongsTo(Department::class, 'related_department_id');
+    }
+    /**
+     * Dinamik Statü Rengi Accessor'ı
+     */
+    public function getStatusColorAttribute(): string
+    {
+        return match ($this->status) {
+            'published', 'approved' => 'theme-success',
+            'rejected' => 'theme-danger',
+            'pending', 'pending_approval' => 'theme-warning',
+            'draft', 'archived' => 'theme-secondary',
+            default => 'theme-secondary',
+        };
+    }
+
+    /**
+     * Dinamik Gizlilik Rengi Accessor'ı
+     */
+    public function getPrivacyColorAttribute(): string
+    {
+        return match ($this->privacy_level) {
+            'public' => 'theme-info',
+            'department' => 'theme-primary',
+            'confidential', 'strictly_confidential' => 'theme-warning',
+            default => 'theme-secondary',
+        };
+    }
+    public function documentType(): BelongsTo
+    {
+        return $this->belongsTo(DocumentType::class);
     }
 }
