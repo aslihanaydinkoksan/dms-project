@@ -346,7 +346,7 @@ class PermissionSettingsController extends Controller
             ['key' => 'privacy_levels'],
             ['value' => $privacyLevels, 'description' => 'Sistemin Dinamik Gizlilik Seviyeleri']
         );
-        \Spatie\Permission\Models\Permission::firstOrCreate(['name' => 'document.view_' . strtolower($request->key)]);
+        Permission::firstOrCreate(['name' => 'document.view_' . strtolower($request->key)]);
 
         return back()->with('success', '🛡️ Yeni gizlilik seviyesi (' . $request->label . ') başarıyla eklendi.');
     }
