@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\DB;
 class DocumentPolicy
 {
     /**
-     * YARDIMCI METOT: 3D Yetki Matrisinden kullanıcının kategorik iznini sorgular.
+     * YARDIMCI METOT: Sistem Ayarlarınden kullanıcının kategorik iznini sorgular.
      */
     private function hasMatrixPermission(User $user, ?string $category, string $action): bool
     {
@@ -52,13 +52,12 @@ class DocumentPolicy
     {
         return true; // Listeleme ekranında (Index) arama yapabilmeleri için açık bırakıyoruz, filtrelemeyi Scope yapıyor.
     }
-
     /**
-     * Kullanıcı bu belgeyi görebilir mi? (Hem Klasik Zırh Hem 3D Matris)
+     * Kullanıcı bu belgeyi görebilir mi? (Hem Klasik Zırh Hem 3D Matris Hem Dinamik Kalkan)
      */
     public function view(User $user, Document $document): bool
     {
-        // 1. Super Admin her şeyi görebilir
+        // 1. İSTİSNALAR: (Super Admin, Özel İzinliler, Onaycılar)
         if ($user->hasRole('Super Admin')) {
             return true;
         }
@@ -69,24 +68,28 @@ class DocumentPolicy
         if ($isApprover) {
             return true;
         }
-        // 2. ÇOK GİZLİ (Strictly Confidential) KALKANI - En üst düzey zırh
-        if ($document->privacy_level === 'strictly_confidential') {
+
+        // 2. DİNAMİK GİZLİLİK SEVİYESİ KALKANI (YENİLENDİ!)
+        // 'public' (Herkese Açık) dışındaki tüm gizlilik seviyeleri için bu kalkan devreye girer.
+        if (!empty($document->privacy_level) && $document->privacy_level !== 'public') {
             $isOwner = $document->currentVersion && $document->currentVersion->created_by === $user->id;
-            $hasSpecialClearance = false;
+            $hasClearance = false;
 
             try {
-                $hasSpecialClearance = $user->hasPermissionTo('document.view_strictly_confidential');
+                // Belgenin gizlilik koduna göre dinamik yetki sorgula (Örn: document.view_board_only)
+                $hasClearance = $user->hasPermissionTo('document.view_' . $document->privacy_level);
             } catch (PermissionDoesNotExist $e) {
+                // Eğer yetki Spatie tablolarında henüz yoksa clearance false kalır
             }
 
-            // Çok gizli bir belgeyse, matriste "can_view" olsa bile Özel İzin veya Sahibi olması ŞARTTIR!
-            if (!$isOwner && !$hasSpecialClearance) {
+            // KURAL: Eğer belgenin sahibi değilse VE bu özel kalkanı aşacak yetkisi yoksa,
+            // Aşağıdaki 3D Matriste "Görebilir" yetkisi olsa dahi ERİŞİM REDDEDİLİR!
+            if (!$isOwner && !$hasClearance) {
                 return false;
             }
         }
 
-        // 3. LEGAL DMS 3D MATRİS KONTROLÜ (YENİLENDİ!)
-        // Artık belgenin bağlı olduğu doküman tipinin ismine (Örn: Sözleşme) göre matrise bakıyoruz
+        // 3. LEGAL DMS 3D MATRİS KONTROLÜ
         if ($document->document_type_id && $document->documentType) {
             $hasMatrixView = $this->hasMatrixPermission($user, $document->documentType->name, 'can_view');
             $isOwner = $document->currentVersion && $document->currentVersion->created_by === $user->id;

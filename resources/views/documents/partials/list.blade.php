@@ -74,6 +74,16 @@
                                     </button>
                                 </form>
                             @endcan
+                            @php
+                                // Belgenin kullanıcının favorilerinde olup olmadığını kontrol et
+                                $isFav = auth()->user()->favorites->contains($doc->id); // $document veya $doc (döngüdeki değişken adına göre düzelt)
+                            @endphp
+                            <button type="button" class="btn btn-sm toggle-fav-btn" data-id="{{ $doc->id }}"
+                                style="padding: 6px; border-radius: 8px; background: transparent; border: 1px solid var(--warning-color); cursor: pointer; transition: transform 0.2s;"
+                                title="{{ __('Favorilere Ekle/Çıkar') }}">
+                                <i data-lucide="star" class="fav-icon"
+                                    style="width: 16px; color: var(--warning-color); fill: {{ $isFav ? 'var(--warning-color)' : 'none' }};"></i>
+                            </button>
                         </div>
                     </td>
                 </tr>

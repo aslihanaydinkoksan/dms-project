@@ -83,4 +83,10 @@ class User extends Authenticatable
             ->withPivot('access_level')
             ->withTimestamps();
     }
+    public function favorites()
+    {
+        return $this->belongsToMany(Document::class, 'document_user_favorites')
+            ->withPivot('note')
+            ->withTimestamps();
+    }
 }

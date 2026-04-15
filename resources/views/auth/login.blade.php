@@ -141,7 +141,7 @@
                         style="width: 18px; height: 18px; margin-top: 2px; cursor: pointer; accent-color: var(--accent-color);">
                     <label for="kvkkCheckbox" class="kvkk-label">
                         <a href="#"
-                            id="openKvkkModal">{{ __('\'ni okudum, anladım ve sistemin işleyişi kapsamında kişisel verilerimin işlenmesini kabul ediyorum.') }}
+                            id="openKvkkModal">{{ __('KVKK metnini okudum, anladım ve sistemin işleyişi kapsamında kişisel verilerimin işlenmesini kabul ediyorum.') }}
                     </label>
                 </div>
 

@@ -28,7 +28,7 @@ Route::get('/language/{locale}', [\App\Http\Controllers\LanguageController::clas
 // Spatie'nin 'role' middleware'i ile rotaları güvenlik altına alıyoruz
 Route::middleware(['role:Super Admin|Admin'])->group(function () {
 
-    // 3D Yetki Matrisi (Legal DMS) Rotaları
+    // Sistem Ayarları (Legal DMS) Rotaları
     Route::get('/settings/permissions', [PermissionSettingsController::class, 'index'])->name('settings.permissions');
     Route::post('/settings/permissions', [PermissionSettingsController::class, 'update'])->name('settings.permissions.update');
     Route::patch('/settings/departments/{department}/toggle-approval', [PermissionSettingsController::class, 'toggleDepartmentApproval'])->name('settings.departments.toggle-approval');
@@ -54,6 +54,9 @@ Route::middleware(['role:Super Admin|Admin'])->group(function () {
     // SİSTEM AYARLARI VE MAİL YÖNETİMİ
     Route::get('/settings/mail', [MailSettingsController::class, 'index'])->name('settings.mail');
     Route::match(['post', 'put'], '/settings/mail', [MailSettingsController::class, 'update'])->name('settings.mail.update');
+    // GİZLİLİK SEVİYELERİ (DİNAMİK YÖNETİM)
+    Route::post('/settings/privacy-levels', [PermissionSettingsController::class, 'storePrivacyLevel'])->name('settings.privacy-levels.store');
+    Route::delete('/settings/privacy-levels/{key}', [PermissionSettingsController::class, 'destroyPrivacyLevel'])->name('settings.privacy-levels.destroy');
 });
 
 // --------------------------------------------------------------------------
@@ -79,7 +82,11 @@ Route::middleware(['auth'])->group(function () {
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    // Klasör Yönetimi
+    // Favoriler
+    Route::get('/favorites/sidebar', [\App\Http\Controllers\FavoriteController::class, 'sidebar'])->name('favorites.sidebar');
+    Route::post('/documents/{document}/favorite-note', [\App\Http\Controllers\FavoriteController::class, 'updateNote'])->name('documents.favorite.note');
+
+    // Klasörler
     Route::get('/folders', [FolderController::class, 'index'])->name('folders.index');
     Route::post('/folders', [FolderController::class, 'store'])->name('folders.store');
     Route::get('/folders/{folder}', [FolderController::class, 'show'])->name('folders.show');
@@ -128,6 +135,10 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/documents/{document}/start-workflow', [DocumentApprovalController::class, 'start'])->name('documents.workflow.start');
     Route::post('/documents/{document}/approve', [DocumentApprovalController::class, 'approve'])->name('documents.approve');
     Route::post('/documents/{document}/reject', [DocumentApprovalController::class, 'reject'])->name('documents.reject');
+
+    //Favoriler
+    Route::post('/documents/{document}/favorite', [\App\Http\Controllers\FavoriteController::class, 'toggle'])->name('documents.favorite');
+
     // --- DİNAMİK FORM (API) ROTALARI ---
     Route::get('/api/document-types/{id}/fields', [DocumentController::class, 'getCustomFields'])->name('api.document-types.fields');
     // --- BİLDİRİM VE TERCİH ROTALARI ---
@@ -143,5 +154,6 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/profile/delegations/{delegation}', [\App\Http\Controllers\DelegationController::class, 'destroy'])->name('profile.delegations.destroy');
 
     // RAPOR YÖNETİMİ
+    Route::get('/reports', [\App\Http\Controllers\ReportEngineController::class, 'index'])->name('reports.index');
     Route::post('/reports/store', [\App\Http\Controllers\ReportEngineController::class, 'store'])->name('reports.store');
 });

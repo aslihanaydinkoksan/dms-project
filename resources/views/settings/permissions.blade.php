@@ -34,6 +34,7 @@
 
     <div class="admin-dashboard-grid mb-40">
 
+        {{-- 1. KART: DOKÜMAN TİPLERİ VE FORMLAR --}}
         <div class="card glass-card admin-card-full"
             style="border-top: 4px solid var(--accent-color); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
             <div class="card-header flex-between"
@@ -161,6 +162,7 @@
             </div>
         </div>
 
+        {{-- 2. KART: TESİS VE DEPARTMANLAR --}}
         <div class="card glass-card admin-card-half"
             style="border-top: 4px solid var(--primary-color); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
             <div class="card-header flex-between"
@@ -228,6 +230,7 @@
             </div>
         </div>
 
+        {{-- 3. KART: KULLANICI ROLLERİ --}}
         <div class="card glass-card admin-card-half"
             style="border-top: 4px solid var(--success-color); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
             <div class="card-header flex-between"
@@ -294,7 +297,83 @@
                 </div>
             </div>
         </div>
+
+        {{-- 4. KART: GİZLİLİK SEVİYELERİ --}}
+        <div class="card glass-card admin-card-half"
+            style="border-top: 4px solid var(--warning-color); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+            <div class="card-header flex-between"
+                style="background: #f8fafc; padding: 18px 24px; border-bottom: 1px solid var(--border-color);">
+                <h4
+                    style="margin: 0; font-size: 1.1rem; color: var(--text-color); display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="shield" style="width: 20px; color: var(--warning-color);"></i>
+                    {{ __('Gizlilik Seviyeleri (Kalkanlar)') }}
+                </h4>
+            </div>
+            <div class="card-body p-0 d-flex flex-column" style="height: 100%;">
+                <div style="padding: 20px; background: #fffbeb; border-bottom: 1px solid var(--border-color);">
+                    <form action="{{ route('settings.privacy-levels.store') }}" method="POST"
+                        style="display: flex; gap: 12px; align-items: stretch; flex-wrap: wrap;">
+                        @csrf
+                        <input type="text" name="key" class="form-control"
+                            placeholder="{{ __('Sistem Kodu (Örn: board_only)') }}" required
+                            style="flex: 1; min-width: 150px; border-radius: 6px; font-family: monospace; font-size: 0.85rem;">
+                        <input type="text" name="label" class="form-control"
+                            placeholder="{{ __('Görünen Ad (Örn: Sadece Yönetim Kurulu)') }}" required
+                            style="flex: 1.5; min-width: 200px; border-radius: 6px;">
+                        <button type="submit" class="btn btn-warning d-flex align-items-center justify-content-center"
+                            style="padding: 0 20px; font-weight: 600; color: #92400e;">{{ __('Ekle') }}</button>
+                    </form>
+                </div>
+                <div class="table-responsive custom-scrollbar flex-grow-1" style="max-height: 350px;">
+                    <table class="table modern-table" style="margin: 0; font-size: 0.9rem;">
+                        <thead
+                            style="background: #fff; position: sticky; top: 0; z-index: 5; box-shadow: 0 1px 0 var(--border-color);">
+                            <tr>
+                                <th style="padding: 12px 20px;">{{ __('Görünen Ad') }}</th>
+                                <th style="padding: 12px 20px;">{{ __('Sistem Kodu') }}</th>
+                                <th class="text-right" style="padding: 12px 20px; width: 80px;">{{ __('İşlem') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($privacyLevels as $key => $label)
+                                <tr class="hover-row">
+                                    <td
+                                        style="padding: 12px 20px; font-weight: 600; color: var(--text-color); vertical-align: middle;">
+                                        {{ __($label) }}
+                                        @if (in_array($key, ['public', 'confidential', 'strictly_confidential']))
+                                            <span class="badge badge-secondary"
+                                                style="margin-left: 8px; font-size: 0.7rem; padding: 4px 6px; border-radius: 4px;">{{ __('Sistem') }}
+                                                🔒</span>
+                                        @endif
+                                    </td>
+                                    <td
+                                        style="padding: 12px 20px; font-family: monospace; color: var(--text-muted); vertical-align: middle;">
+                                        {{ $key }}
+                                    </td>
+                                    <td style="padding: 12px 20px; text-align: right; vertical-align: middle;">
+                                        @if (!in_array($key, ['public', 'confidential', 'strictly_confidential']))
+                                            <form action="{{ route('settings.privacy-levels.destroy', $key) }}"
+                                                method="POST"
+                                                onsubmit="return confirm('{{ __('Bu gizlilik seviyesini silmek istediğinize emin misiniz?') }}')"
+                                                style="margin: 0;">
+                                                @csrf @method('DELETE')
+                                                <button type="submit" class="btn btn-sm btn-outline-danger action-btn"
+                                                    title="{{ __('Sil') }}">
+                                                    <i data-lucide="trash-2"></i>
+                                                </button>
+                                            </form>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </div>
+
+    {{-- MATRİSLER BÖLÜMÜ --}}
     <div class="form-section-divider mb-20" style="border-top: 2px solid #e2e8f0; padding-top: 20px;">
         <h3
             style="color: var(--secondary-color); font-size: 1.2rem; margin: 0; display: flex; align-items: center; gap: 8px;">
@@ -302,6 +381,7 @@
         </h3>
     </div>
 
+    {{-- KLASÖR YETKİ MATRİSİ --}}
     <div class="card glass-card mb-30"
         style="border-radius: 12px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05);">
         <div class="card-header" style="background: #f0fdfa; border-bottom: 2px solid #14b8a6; padding: 20px;">
@@ -385,6 +465,7 @@
         </div>
     </div>
 
+    {{-- DOKÜMAN TİPİ VE GLOBAL YETKİLER --}}
     <form action="{{ route('settings.permissions.update') }}" method="POST" id="globalPermissionsForm">
         @csrf
         <div class="card glass-card mb-30"
@@ -408,6 +489,7 @@
             </div>
 
             <div class="card-body p-0">
+                {{-- KILAVUZ BÖLÜMÜ --}}
                 <div
                     style="padding: 20px 25px; background: #f0fdf4; border-bottom: 1px solid #ccfbf1; display: flex; gap: 15px; align-items: flex-start;">
                     <div style="background: #ccfbf1; color: #0f766e; padding: 12px; border-radius: 10px; flex-shrink: 0;">
@@ -429,6 +511,7 @@
                     </div>
                 </div>
 
+                {{-- 1. KIRMIZI ÇİZGİ: GLOBAL KALKANLAR --}}
                 <div style="padding: 20px; background: #fff5f5; border-bottom: 1px solid #fecaca;">
                     <h4 style="margin: 0 0 10px 0; color: #b91c1c; font-size: 1rem;"><i data-lucide="alert-octagon"
                             style="width: 16px;"></i> {{ __('1. Kırmızı Çizgi: Global Kalkanlar') }}</h4>
@@ -444,21 +527,46 @@
                                             @if ($sp->name == 'document.view_strictly_confidential')
                                                 <div
                                                     style="font-weight: 700; color: #b91c1c; margin-bottom: 6px; font-size: 0.9rem;">
-                                                    🕵️ {{ __('"Çok Gizli" Erişimi') }}</div>
+                                                    🕵️ {{ __('"Çok Gizli" Erişimi') }}
+                                                </div>
                                             @elseif($sp->name == 'document.view_all')
                                                 <div
                                                     style="font-weight: 700; color: #1d4ed8; margin-bottom: 6px; font-size: 0.9rem;">
-                                                    🌍 {{ __('Tüm Belgeleri Görüntüleme') }}</div>
+                                                    🌍 {{ __('Tüm Belgeleri Görüntüleme') }}
+                                                </div>
                                             @elseif($sp->name == 'document.manage_all')
                                                 <div
                                                     style="font-weight: 700; color: #047857; margin-bottom: 6px; font-size: 0.9rem;">
-                                                    👑 {{ __('Tüm Belgeleri Yönetme') }}</div>
+                                                    👑 {{ __('Tüm Belgeleri Yönetme') }}
+                                                </div>
                                             @elseif($sp->name == 'document.force_unlock')
                                                 <div
                                                     style="font-weight: 700; color: #b45309; margin-bottom: 6px; font-size: 0.9rem;">
-                                                    ⚠️ {{ __('Kilit Açma Yetkisi') }}</div>
+                                                    ⚠️ {{ __('Kilit Açma Yetkisi') }}
+                                                </div>
+
+                                                {{-- YENİ EKLENEN DİNAMİK UI BLOĞU --}}
+                                            @elseif(str_starts_with($sp->name, 'document.view_'))
+                                                @php
+                                                    // Yetki adından (örn: document.view_board_only) -> 'board_only' kısmını ayır
+                                                    $privacyKey = str_replace('document.view_', '', $sp->name);
+
+                                                    // Controller'dan gelen $privacyLevels dizisinden gerçek adını bul, bulamazsa key'i yaz
+                                                    $privacyLabel =
+                                                        isset($privacyLevels) && isset($privacyLevels[$privacyKey])
+                                                            ? $privacyLevels[$privacyKey]
+                                                            : $privacyKey;
+                                                @endphp
+                                                <div
+                                                    style="font-weight: 700; color: #6d28d9; margin-bottom: 6px; font-size: 0.9rem;">
+                                                    🛡️ {{ __($privacyLabel) }} {{ __('Erişimi') }}
+                                                </div>
+
+                                                {{-- EĞER SİSTEME BAŞKA BİR YETKİ EKLENİRSE (FALLBACK) --}}
                                             @else
-                                                <div style="font-weight: 700; margin-bottom: 6px;">{{ $sp->name }}
+                                                <div
+                                                    style="font-weight: 700; color: #475569; margin-bottom: 6px; font-size: 0.85rem; font-family: monospace;">
+                                                    {{ $sp->name }}
                                                 </div>
                                             @endif
                                         </th>
@@ -488,6 +596,7 @@
                     </div>
                 </div>
 
+                {{-- 2. DOKÜMAN TİPİ MATRİSİ --}}
                 <div style="padding: 20px; background: #f8fafc; border-bottom: 1px solid var(--border-color);">
                     <h4 style="margin: 0 0 10px 0; color: #1d4ed8; font-size: 1rem;"><i data-lucide="file-text"
                             style="width: 16px;"></i> {{ __('2. Doküman Tipine Özel Yetkiler') }}</h4>
@@ -497,8 +606,7 @@
                         style="width: 100%; max-width: 400px; padding: 10px; border-radius: 8px; border: 2px solid var(--border-color); font-weight: 600; cursor: pointer; color: var(--primary-color);">
                         <option value="">{{ __('-- Lütfen Bir Doküman Tipi Seçin --') }}</option>
                         @foreach ($documentTypes as $type)
-                            <option value="matrix-{{ $type->slug }}">📂 {{ $type->name }} {{ __('Kategorisi') }}
-                            </option>
+                            <option value="matrix-{{ $type->slug }}">📂 {{ $type->name }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -578,6 +686,63 @@
                     </div>
                 @endforeach
             </div>
+
+            {{-- NAVBAR VE MENÜ MATRİSİ --}}
+            <div class="card glass-card mt-30" style="border-top: 4px solid var(--primary-color);">
+                <div class="card-header"
+                    style="background: #f8fafc; padding: 20px 25px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: 10px;">
+                    <i data-lucide="compass" style="color: var(--primary-color);"></i>
+                    <h2 style="margin: 0; font-size: 1.1rem; font-weight: 600; color: var(--text-color);">Navbar ve Menü
+                        Erişim Matrisi</h2>
+                </div>
+
+                <div class="card-body" style="padding: 0; overflow-x: auto;">
+                    <table class="table modern-table"
+                        style="width: 100%; min-width: 800px; margin: 0; border-collapse: collapse;">
+                        <thead
+                            style="background: var(--bg-color); color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; border-bottom: 2px solid var(--border-color);">
+                            <tr>
+                                <th
+                                    style="padding: 15px 25px; text-align: left; position: sticky; left: 0; background: var(--bg-color); z-index: 10;">
+                                    Roller</th>
+                                @foreach ($menuPermissions as $menuPerm)
+                                    <th style="padding: 15px; text-align: center;">
+                                        {{ ucfirst(str_replace('menu.', '', $menuPerm->name)) }}
+                                    </th>
+                                @endforeach
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($roles as $role)
+                                @if ($role->name === 'Super Admin')
+                                    @continue
+                                @endif
+                                <tr style="border-bottom: 1px solid var(--border-color); transition: background 0.2s;">
+                                    <td
+                                        style="padding: 15px 25px; font-weight: 600; color: var(--text-color); position: sticky; left: 0; background: #fff; z-index: 10; border-right: 1px solid var(--border-color);">
+                                        {{ $role->name }}
+                                    </td>
+                                    @foreach ($menuPermissions as $menuPerm)
+                                        <td style="padding: 15px; text-align: center;">
+                                            <input type="checkbox" name="menu_permissions[{{ $role->id }}][]"
+                                                value="{{ $menuPerm->name }}"
+                                                {{ $role->hasPermissionTo($menuPerm->name) ? 'checked' : '' }}
+                                                style="width: 18px; height: 18px; accent-color: var(--primary-color); cursor: pointer;">
+                                        </td>
+                                    @endforeach
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                    <div
+                        style="padding: 15px 25px; background: #f8fafc; border-top: 1px solid var(--border-color); font-size: 0.85rem; color: var(--text-muted);">
+                        <i data-lucide="info"
+                            style="width: 16px; display: inline-block; vertical-align: text-bottom;"></i>
+                        <strong>Super Admin</strong> rolü Gate kuralları gereği tüm menülere sınırsız erişime sahip olduğu
+                        için bu matriste gizlenmiştir.
+                    </div>
+                </div>
+            </div>
         </div>
     </form>
 @endsection
@@ -587,7 +752,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             lucide.createIcons();
 
-            // --- 1. DİNAMİK FORM ALANLARI (CUSTOM FIELDS) MOTORU ---
+            // --- 1. DİNAMİK FORM ALANLARI (SLUGIFIER DAHİL) ---
             const wrapper = document.getElementById('customFieldsWrapper');
             const addBtn = document.getElementById('addCustomFieldBtn');
             let fieldIndex = 0;
@@ -604,13 +769,12 @@
                 const isRequired = (data && data.required) ? 'checked' : '';
                 const autoSlug = data ? 'false' : 'true';
 
-                // Blade translates strings securely before JS engine runs
                 row.innerHTML = `
             <div>
-                <input type="text" name="custom_fields[${fieldIndex}][label]" class="form-control form-control-sm" value="${labelValue}" placeholder="{{ __('Label (Ekranda Görünür)') }}" required style="width: 100%; border-radius: 6px;">
+                <input type="text" name="custom_fields[${fieldIndex}][label]" class="form-control form-control-sm label-input" value="${labelValue}" placeholder="{{ __('Label') }}" required style="width: 100%; border-radius: 6px;">
             </div>
             <div>
-                <input type="text" name="custom_fields[${fieldIndex}][name]" class="form-control form-control-sm key-input" value="${nameValue}" placeholder="{{ __('Veritabanı Anahtarı') }}" required data-auto="${autoSlug}" style="width: 100%; border-radius: 6px; font-family: monospace;">
+                <input type="text" name="custom_fields[${fieldIndex}][name]" class="form-control form-control-sm key-input" value="${nameValue}" placeholder="{{ __('Key') }}" required data-auto="${autoSlug}" style="width: 100%; border-radius: 6px; font-family: monospace;">
             </div>
             <div>
                 <select name="custom_fields[${fieldIndex}][type]" class="form-control form-control-sm" style="width: 100%; border-radius: 6px;">
@@ -620,38 +784,33 @@
                     <option value="textarea" ${typeValue === 'textarea' ? 'selected' : ''}>{{ __('Uzun Metin') }}</option>
                 </select>
             </div>
-            <div style="text-align: center;" title="{{ __('Zorunlu Alan') }}">
+            <div style="text-align: center;">
                 <input type="checkbox" name="custom_fields[${fieldIndex}][required]" value="1" ${isRequired} style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--primary-color);">
             </div>
             <div style="text-align: right;">
-                <button type="button" class="btn btn-sm btn-outline-danger remove-field-btn d-flex align-items-center justify-content-center" style="padding: 6px; border-radius: 6px;">
-                    <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
-                </button>
+                <button type="button" class="btn btn-sm btn-outline-danger remove-field-btn"><i data-lucide="trash-2" style="width: 16px;"></i></button>
             </div>
         `;
 
                 wrapper.appendChild(row);
                 lucide.createIcons();
-                fieldIndex++;
 
-                const labelInput = row.querySelector('input[name$="[label]"]');
-                const nameInput = row.querySelector('.key-input');
+                const currentLabel = row.querySelector('.label-input');
+                const currentKey = row.querySelector('.key-input');
 
-                labelInput.addEventListener('keyup', function() {
-                    if (!nameInput.value || nameInput.getAttribute('data-auto') === 'true') {
-                        nameInput.setAttribute('data-auto', 'true');
-                        nameInput.value = this.value.toLowerCase()
+                // OTOMATİK KEY VE "_" EKLEME MANTIĞI
+                currentLabel.addEventListener('keyup', function() {
+                    if (currentKey.getAttribute('data-auto') === 'true') {
+                        currentKey.value = this.value.toLowerCase()
                             .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
                             .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
                             .replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
                     }
                 });
-                nameInput.addEventListener('input', function() {
-                    this.setAttribute('data-auto', 'false');
-                });
-                row.querySelector('.remove-field-btn').addEventListener('click', function() {
-                    row.remove();
-                });
+
+                currentKey.addEventListener('input', () => currentKey.setAttribute('data-auto', 'false'));
+                row.querySelector('.remove-field-btn').addEventListener('click', () => row.remove());
+                fieldIndex++;
             }
 
             if (addBtn && wrapper) {
@@ -660,25 +819,21 @@
 
             window.editDocType = function(id, name, customFieldsJson) {
                 document.getElementById('dtName').value = name || '';
-
                 const form = document.getElementById('docTypeForm');
                 form.action = `/settings/document-types/${id}`;
                 document.getElementById('methodSpoofer').innerHTML =
                     '<input type="hidden" name="_method" value="PUT">';
-
                 document.getElementById('formTitle').innerHTML = `✏️ ${name} {{ __('Düzenleniyor') }}`;
                 const submitBtn = document.getElementById('submitDocTypeBtn');
-                submitBtn.innerHTML =
-                    '<i data-lucide="refresh-cw" style="width: 18px;"></i> {{ __('Güncelle') }}';
+                submitBtn.innerHTML = '<i data-lucide="refresh-cw"></i> {{ __('Güncelle') }}';
                 submitBtn.classList.replace('btn-primary', 'btn-warning');
                 document.getElementById('cancelEditBtn').style.display = 'inline-block';
-                lucide.createIcons();
-
                 wrapper.innerHTML = '';
                 fieldIndex = 0;
                 if (customFieldsJson && Array.isArray(customFieldsJson)) {
                     customFieldsJson.forEach(field => addFieldRow(field));
                 }
+                lucide.createIcons();
             };
 
             const cancelBtn = document.getElementById('cancelEditBtn');
@@ -687,105 +842,75 @@
                     document.getElementById('dtName').value = '';
                     wrapper.innerHTML = '';
                     fieldIndex = 0;
-
-                    const form = document.getElementById('docTypeForm');
-                    form.action = "{{ route('settings.document-types.store') }}";
+                    document.getElementById('docTypeForm').action =
+                        "{{ route('settings.document-types.store') }}";
                     document.getElementById('methodSpoofer').innerHTML = '';
-
                     document.getElementById('formTitle').innerHTML =
                         '✨ {{ __('Yeni Doküman Tipi Ekle') }}';
                     const submitBtn = document.getElementById('submitDocTypeBtn');
-                    submitBtn.innerHTML =
-                        '<i data-lucide="save" style="width: 18px;"></i> {{ __('Kaydet') }}';
+                    submitBtn.innerHTML = '<i data-lucide="save"></i> {{ __('Kaydet') }}';
                     submitBtn.classList.replace('btn-warning', 'btn-primary');
                     this.style.display = 'none';
                     lucide.createIcons();
                 });
             }
 
-            // --- 2. DOKÜMAN TİPİ MATRİSİ ---
+            // --- MATRİS SEÇİCİLER ---
             const docTypeSelect = document.getElementById('docTypeMatrixSelect');
-            const matrixContents = document.querySelectorAll('.matrix-content');
-            const docLoader = document.getElementById('docTypeMatrixLoader');
-
             if (docTypeSelect) {
                 docTypeSelect.addEventListener('change', function() {
-                    const targetId = this.value;
-                    matrixContents.forEach(c => {
-                        c.style.display = 'none';
-                        c.classList.remove('active');
-                    });
-                    if (!targetId) {
-                        docLoader.style.display = 'none';
-                        return;
+                    document.querySelectorAll('.matrix-content').forEach(c => c.style.display = 'none');
+                    const target = document.getElementById(this.value);
+                    if (target) {
+                        document.getElementById('docTypeMatrixLoader').style.display = 'block';
+                        setTimeout(() => {
+                            document.getElementById('docTypeMatrixLoader').style.display = 'none';
+                            target.style.display = 'block';
+                        }, 400);
                     }
-                    docLoader.style.display = 'block';
-                    setTimeout(() => {
-                        docLoader.style.display = 'none';
-                        const targetContent = document.getElementById(targetId);
-                        if (targetContent) {
-                            targetContent.style.display = 'block';
-                            targetContent.classList.add('active');
-                        }
-                    }, 400);
                 });
             }
 
-            // --- 3. KLASÖR MATRİSİ ---
             const folderSelect = document.getElementById('folderMatrixSelect');
-            const matrixForm = document.getElementById('folderMatrixForm');
-            const loader = document.getElementById('folderMatrixLoader');
-
             if (folderSelect) {
                 folderSelect.addEventListener('change', function() {
-                    const folderId = this.value;
-                    if (!folderId) {
-                        matrixForm.style.display = 'none';
-                        loader.style.display = 'none';
+                    const id = this.value;
+                    const form = document.getElementById('folderMatrixForm');
+                    const loader = document.getElementById('folderMatrixLoader');
+                    if (!id) {
+                        form.style.display = 'none';
                         return;
                     }
-
-                    matrixForm.style.display = 'none';
                     loader.style.display = 'block';
-                    matrixForm.action = `/settings/folders/${folderId}/permissions`;
-                    document.querySelectorAll('.folder-matrix-cb').forEach(cb => cb.checked = false);
-
-                    fetch(`/settings/folders/${folderId}/permissions`, {
+                    form.style.display = 'none';
+                    form.action = `/settings/folders/${id}/permissions`;
+                    fetch(`/settings/folders/${id}/permissions`, {
                             headers: {
-                                'Accept': 'application/json',
                                 'X-Requested-With': 'XMLHttpRequest'
                             }
                         })
-                        .then(response => {
-                            if (!response.ok) throw new Error('Hata');
-                            return response.json();
-                        })
+                        .then(r => r.json())
                         .then(data => {
                             loader.style.display = 'none';
-                            matrixForm.style.display = 'block';
+                            form.style.display = 'block';
+                            document.querySelectorAll('.folder-matrix-cb').forEach(cb => cb.checked =
+                                false);
                             for (let roleId in data) {
-                                const perms = data[roleId];
-                                if (perms.can_view && document.getElementById(`can_view_${roleId}`))
-                                    document.getElementById(`can_view_${roleId}`).checked = true;
-                                if (perms.can_upload && document.getElementById(`can_upload_${roleId}`))
-                                    document.getElementById(`can_upload_${roleId}`).checked = true;
-                                if (perms.can_create_subfolder && document.getElementById(
-                                        `can_subfolder_${roleId}`))
-                                    document.getElementById(`can_subfolder_${roleId}`).checked = true;
-                                if (perms.can_manage && document.getElementById(`can_manage_${roleId}`))
-                                    document.getElementById(`can_manage_${roleId}`).checked = true;
+                                if (data[roleId].can_view) document.getElementById(`can_view_${roleId}`)
+                                    .checked = true;
+                                if (data[roleId].can_upload) document.getElementById(
+                                    `can_upload_${roleId}`).checked = true;
+                                if (data[roleId].can_create_subfolder) document.getElementById(
+                                    `can_subfolder_${roleId}`).checked = true;
+                                if (data[roleId].can_manage) document.getElementById(
+                                    `can_manage_${roleId}`).checked = true;
                             }
-                        })
-                        .catch(error => {
-                            loader.style.display = 'none';
-                            console.error(error);
                         });
                 });
             }
         });
     </script>
     <style>
-        /* Eklenen Düzen (Layout) Stilleri */
         .admin-dashboard-grid {
             display: grid;
             grid-template-columns: repeat(12, 1fr);
@@ -797,78 +922,27 @@
         }
 
         .admin-card-half {
-            grid-column: span 12;
-            /* Mobilde tam genişlik */
+            grid-column: span 6;
         }
 
-        @media (min-width: 992px) {
+        @media (max-width: 992px) {
             .admin-card-half {
-                grid-column: span 6;
-                /* PC'de yan yana */
+                grid-column: span 12;
             }
         }
 
-        /* 1. Kart İç Yapısı (PC'de yan yana, mobilde alt alta) */
-        .document-types-layout {
-            display: flex;
-            flex-direction: column;
-            gap: 24px;
-            padding: 24px;
-        }
-
-        @media (min-width: 992px) {
-            .document-types-layout {
-                flex-direction: row;
-            }
-
-            .document-types-table-wrapper {
-                flex: 1 1 45%;
-                border-right: 1px solid var(--border-color);
-                padding-right: 24px;
-            }
-
-            .document-types-form-wrapper {
-                flex: 1 1 55%;
-            }
-        }
-
-        /* Ortak Tablo Hover ve Buton Tasarımları */
         .hover-row:hover {
             background-color: #f8fafc;
-            transition: background-color 0.2s ease;
+            transition: 0.2s;
         }
 
-        .action-btn {
-            padding: 6px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 6px;
-        }
-
-        .action-btn i {
-            width: 16px;
-            height: 16px;
-        }
-
-        /* Scrollbar Tasarımı (Custom Scrollbar) */
         .custom-scrollbar::-webkit-scrollbar {
             width: 6px;
-            height: 6px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: #f1f5f9;
-            border-radius: 4px;
         }
 
         .custom-scrollbar::-webkit-scrollbar-thumb {
             background: #cbd5e1;
             border-radius: 4px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
         }
 
         @keyframes fadeIn {
@@ -883,6 +957,10 @@
             }
         }
 
+        .spin {
+            animation: spin 1s linear infinite;
+        }
+
         @keyframes spin {
             from {
                 transform: rotate(0deg);
@@ -891,10 +969,6 @@
             to {
                 transform: rotate(360deg);
             }
-        }
-
-        .spin {
-            animation: spin 1s linear infinite;
         }
     </style>
 @endpush

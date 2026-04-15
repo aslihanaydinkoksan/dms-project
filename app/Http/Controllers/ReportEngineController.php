@@ -7,6 +7,11 @@ use Illuminate\Http\Request;
 
 class ReportEngineController extends Controller
 {
+    public function index()
+    {
+        // Şimdilik boş bir sayfa veya geliştirme aşamasında olduğunu belirten bir view dönebilirsin.
+        return view('reports.index');
+    }
     public function store(Request $request)
     {
         $request->validate([

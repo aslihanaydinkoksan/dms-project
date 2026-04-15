@@ -115,14 +115,20 @@ class DocumentController extends Controller
             $startDate,
             $endDate
         );
+        $privacyLevels = SystemSetting::getByKey('privacy_levels', [
+            'public' => 'Herkese Açık',
+            'confidential' => 'Hizmete Özel',
+            'strictly_confidential' => 'Çok Gizli'
+        ]);
 
         // KESİN KONTROL: Eğer istek AJAX ise SADECE tabloyu (partial) gönder
         if ($request->ajax() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
             return view('documents.partials.list', compact('documents', 'keyword'))->render();
         }
 
+
         // Normal ziyaret ise tüm sayfayı ve istatistikleri gönder
-        return view('documents.index', compact('documents', 'keyword', 'status', 'privacy', 'startDate', 'endDate', 'stats'));
+        return view('documents.index', compact('documents', 'keyword', 'status', 'privacy', 'startDate', 'endDate', 'stats', 'privacyLevels'));
     }
     public function show(Document $document): View
     {
@@ -176,9 +182,9 @@ class DocumentController extends Controller
         $flatFolders = $this->folderService->getFlatFolderList();
 
         $privacyLevels = SystemSetting::getByKey('privacy_levels', [
-            'public' => 'Herkese Açık (Public)',
-            'confidential' => 'Hizmete Özel (Confidential)',
-            'strictly_confidential' => ' Gizli (Strictly Confidential)'
+            'public' => 'Herkese Açık',
+            'confidential' => 'Hizmete Özel',
+            'strictly_confidential' => 'Gizli'
         ]);
 
         $tags = Tag::orderBy('name')->get();
@@ -346,9 +352,9 @@ class DocumentController extends Controller
         // 2. Form için gerekli tüm listeleri (Create metodundaki gibi) çekiyoruz
         $flatFolders = $this->folderService->getFlatFolderList();
         $privacyLevels = SystemSetting::getByKey('privacy_levels', [
-            'public' => 'Herkese Açık (Public)',
-            'confidential' => 'Hizmete Özel (Confidential)',
-            'strictly_confidential' => 'Çok Gizli (Strictly Confidential)'
+            'public' => 'Herkese Açık',
+            'confidential' => 'Hizmete Özel',
+            'strictly_confidential' => 'Çok Gizli'
         ]);
         $tags = Tag::orderBy('name')->get();
         $departments = Department::orderBy('name')->get();

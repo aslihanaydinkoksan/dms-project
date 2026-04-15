@@ -12,30 +12,43 @@ class PermissionSettingsController extends Controller
 {
     public function index()
     {
-        // 1. Rolleri Al (Super Admin hariç, çünkü o zaten Tanrı modunda)
+        // 1. Rolleri Al
         $roles = Role::where('name', '!=', 'Super Admin')->orderBy('hierarchy_level', 'desc')->get();
         $departments = \App\Models\Department::orderBy('name')->get();
         $documentTypes = DocumentType::where('is_active', true)->orderBy('name')->get();
         $folders = \App\Models\Folder::orderBy('name')->get();
 
         // 2. Kategori Matrisi (3D)
-       $categories = DocumentType::where('is_active', true)->pluck('name')->toArray();
+        $categories = DocumentType::where('is_active', true)->pluck('name')->toArray();
         $existingPermissions = DB::table('role_category_permissions')
-            ->get()
-            ->groupBy('role_id')
-            ->map(function ($items) {
+            ->get()->groupBy('role_id')->map(function ($items) {
                 return $items->keyBy('category');
             });
 
+        // YENİ: Gizlilik Seviyelerini Çek ve Yetki İsimlerine Dönüştür
+        $privacyLevels = \App\Models\SystemSetting::getByKey('privacy_levels', [
+            'public' => 'Herkese Açık',
+            'confidential' => 'Hizmete Özel',
+            'strictly_confidential' => 'Çok Gizli'
+        ]);
+
+        $dynamicPrivacyPermissions = [];
+        foreach ($privacyLevels as $key => $label) {
+            if ($key !== 'public') { // Herkese açık için yetkiye gerek yok
+                $dynamicPrivacyPermissions[] = 'document.view_' . $key;
+            }
+        }
+
         // 3. Özel/Global Yetkiler (Spatie)
-        $specialPermissions = Permission::whereIn('name', [
-            'document.view_strictly_confidential',
+        $specialPermissions = Permission::whereIn('name', array_merge([
             'document.view_all',
             'document.manage_all',
             'document.force_unlock'
-        ])->get();
+        ], $dynamicPrivacyPermissions))->get();
 
-        return view('settings.permissions', compact('roles', 'categories', 'existingPermissions', 'specialPermissions', 'departments', 'documentTypes', 'folders'));
+        $menuPermissions = Permission::where('name', 'like', 'menu.%')->get();
+
+        return view('settings.permissions', compact('roles', 'categories', 'existingPermissions', 'specialPermissions', 'menuPermissions', 'departments', 'documentTypes', 'folders', 'privacyLevels'));
     }
 
     public function update(Request $request)
@@ -80,6 +93,27 @@ class PermissionSettingsController extends Controller
 
                 // syncPermissions metodu Spatie'ye aittir ve var olanları ezip sadece gönderdiklerini yazar
                 $role->syncPermissions($validPermissionsToSync);
+            }
+            // --- 3. KISIM (YENİ): NAVBAR VE MENÜ YETKİLERİNİ GÜVENLE GÜNCELLE ---
+            $menuPermissionsInput = $request->input('menu_permissions', []);
+            $allMenuPermissions = Permission::where('name', 'like', 'menu.%')->get();
+
+            foreach ($roles as $role) {
+                /** @var \Spatie\Permission\Models\Role $role */
+                // Bu rol için formdan gelen seçili menü yetkileri
+                $checkedMenus = $menuPermissionsInput[$role->id] ?? [];
+
+                foreach ($allMenuPermissions as $permission) {
+                    if (in_array($permission->name, $checkedMenus)) {
+                        if (!$role->hasPermissionTo($permission->name)) {
+                            $role->givePermissionTo($permission->name);
+                        }
+                    } else {
+                        if ($role->hasPermissionTo($permission->name)) {
+                            $role->revokePermissionTo($permission->name);
+                        }
+                    }
+                }
             }
         });
 
@@ -286,5 +320,59 @@ class PermissionSettingsController extends Controller
 
         $department->delete();
         return back()->with('success', 'Departman sistemden silindi.');
+    }
+    /**
+     * Yeni bir Gizlilik Seviyesi Ekler
+     */
+    public function storePrivacyLevel(Request $request)
+    {
+        $request->validate([
+            'key' => 'required|string|alpha_dash|max:50', // Sadece harf, rakam, tire ve altçizgi (Örn: board_only)
+            'label' => 'required|string|max:255'
+        ]);
+
+        // Mevcut ayarları çek
+        $privacyLevels = \App\Models\SystemSetting::getByKey('privacy_levels', [
+            'public' => 'Herkese Açık',
+            'confidential' => 'Hizmete Özel',
+            'strictly_confidential' => 'Çok Gizli'
+        ]);
+
+        // Yeni ayarı diziye ekle
+        $privacyLevels[strtolower($request->key)] = $request->label;
+
+        // Veritabanına kaydet (JSON olarak)
+        \App\Models\SystemSetting::updateOrCreate(
+            ['key' => 'privacy_levels'],
+            ['value' => $privacyLevels, 'description' => 'Sistemin Dinamik Gizlilik Seviyeleri']
+        );
+        \Spatie\Permission\Models\Permission::firstOrCreate(['name' => 'document.view_' . strtolower($request->key)]);
+
+        return back()->with('success', '🛡️ Yeni gizlilik seviyesi (' . $request->label . ') başarıyla eklendi.');
+    }
+
+    /**
+     * Mevcut bir Gizlilik Seviyesini Siler
+     */
+    public function destroyPrivacyLevel($key)
+    {
+        // Güvenlik: Çekirdek (Sistem) gizlilik seviyeleri silinemez
+        if (in_array($key, ['public', 'confidential', 'strictly_confidential'])) {
+            return back()->with('error', 'Sistemin çekirdek gizlilik seviyeleri silinemez.');
+        }
+
+        $privacyLevels = \App\Models\SystemSetting::getByKey('privacy_levels', []);
+
+        // Eğer key dizide varsa sil ve tekrar kaydet
+        if (isset($privacyLevels[$key])) {
+            unset($privacyLevels[$key]);
+
+            \App\Models\SystemSetting::updateOrCreate(
+                ['key' => 'privacy_levels'],
+                ['value' => $privacyLevels]
+            );
+        }
+
+        return back()->with('success', 'Gizlilik seviyesi başarıyla silindi.');
     }
 }

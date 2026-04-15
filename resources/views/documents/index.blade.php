@@ -1,5 +1,9 @@
 @extends('layouts.app')
 
+<head>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+</head>
+
 @section('content')
     <div class="page-header flex-between mb-20" style="flex-wrap: wrap; gap: 20px;">
         <div>
@@ -124,13 +128,13 @@
                 <select id="privacyFilter" name="privacy" class="form-control"
                     style="width: 100%; padding: 10px 15px 10px 36px; border-radius: 8px; cursor: pointer; border: 1px solid var(--border-color); font-size: 0.95rem; color: var(--text-color);">
                     <option value="">{{ __('Tüm Gizlilikler') }}</option>
-                    <option value="public" {{ request('privacy') == 'public' ? 'selected' : '' }}>🌍
-                        {{ __('Herkese Açık') }}</option>
-                    <option value="confidential" {{ request('privacy') == 'confidential' ? 'selected' : '' }}>🔒
-                        {{ __('Hizmete Özel') }}</option>
-                    <option value="strictly_confidential"
-                        {{ request('privacy') == 'strictly_confidential' ? 'selected' : '' }}>🕵️ {{ __('Çok Gizli') }}
-                    </option>
+                    @if (isset($privacyLevels))
+                        @foreach ($privacyLevels as $key => $label)
+                            <option value="{{ $key }}" {{ request('privacy') == $key ? 'selected' : '' }}>
+                                {{ __($label) }}
+                            </option>
+                        @endforeach
+                    @endif
                 </select>
             </div>
         </form>
@@ -224,13 +228,55 @@
                         lucide.createIcons(); // Yeni gelen tablodaki ikonları çiz (Çok Önemli!)
                     })
                     .catch(error => {
-                        console.error('Arama Hatası:', error);
+                        console.error('{{ __('Arama hatası') }}', error);
                     })
                     .finally(() => {
                         if (spinner) spinner.style.display = 'none';
                         listContainer.style.opacity = '1';
                     });
             }
+            // --- FAVORİ TOGGLE (YILDIZ) İŞLEMİ ---
+            // Blade üzerinden CSRF token'ı doğrudan alıyoruz (Meta etiketi hatasını önler)
+            const csrfToken = '{{ csrf_token() }}';
+
+            listContainer.addEventListener('click', async function(e) {
+                const btn = e.target.closest('.toggle-fav-btn');
+                if (!btn) return; // Tıklanan yer favori butonu değilse çık
+
+                e.preventDefault();
+                e.stopPropagation();
+
+                const docId = btn.getAttribute('data-id');
+                const icon = btn.querySelector('.fav-icon');
+
+                // Optimistic UI (Sunucuyu beklemeden yıldızı anında doldur/boşalt)
+                const isCurrentlyFav = icon.style.fill !== 'none';
+                icon.style.fill = isCurrentlyFav ? 'none' : 'var(--warning-color)';
+                btn.style.transform = "scale(1.2)";
+                setTimeout(() => btn.style.transform = "scale(1)", 200);
+
+                try {
+                    const response = await fetch(`/documents/${docId}/favorite`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                            'Accept': 'application/json'
+                        }
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok) throw new Error(data.message || 'Sunucu hatası oluştu');
+
+                    // Sunucudan gelen kesin sonuca göre yıldızı tekrar güncelle
+                    icon.style.fill = data.is_favorited ? 'var(--warning-color)' : 'none';
+                } catch (error) {
+                    // Hata olursa yıldızı eski haline geri döndür
+                    icon.style.fill = isCurrentlyFav ? 'var(--warning-color)' : 'none';
+                    console.error('{{ __('Favori işlemi başarısız:') }}', error);
+                }
+            });
         });
     </script>
     <style>

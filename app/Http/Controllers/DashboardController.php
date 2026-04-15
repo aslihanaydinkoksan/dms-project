@@ -10,8 +10,10 @@ use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
 {
-    public function index()
+    // Arama kelimesini yakalamak için Request parametresini ekledik
+    public function index(Request $request)
     {
+        /** @var \App\Models\User $user */
         $user = Auth::user();
 
         // --- VEKALET KONTROLÜ ---
@@ -44,7 +46,7 @@ class DashboardController extends Controller
         // Toplam Bekleyen İşlem Sayısı (Rozet ve Karşılama mesajı için gerçek sayı)
         $totalPendingTasks = $pendingApprovals->count() + $pendingPhysicalReceipts->count();
 
-        // YENİ: Arayüzü şişirmemek için sadece en eski/acil 5 tanesini ekrana gönderiyoruz
+        // Arayüzü şişirmemek için sadece en eski/acil 5 tanesini ekrana gönderiyoruz
         $displayPendingApprovals = $pendingApprovals->take(5);
         $displayPhysicalReceipts = $pendingPhysicalReceipts->take(5);
 
@@ -55,7 +57,7 @@ class DashboardController extends Controller
             ->get();
 
         $totalLockedCount = $allLockedDocs->count();
-        $myLockedDocuments = $allLockedDocs->take(5); // YENİ: Arayüze sadece 5 tane gidecek
+        $myLockedDocuments = $allLockedDocs->take(5);
 
         // 4. SON AKTİVİTELERİM: Sadece kendi başlattığım/yüklediğim son belgeler
         $myRecentUploads = Document::with(['currentVersion'])
@@ -63,7 +65,7 @@ class DashboardController extends Controller
                 $q->where('created_by', $user->id);
             })
             ->orderBy('created_at', 'desc')
-            ->take(5) // Zaten 5 limitliydi
+            ->take(5)
             ->get();
 
         // 5. YAKLAŞAN SÖZLEŞMELER (Kritik! Sadece Hukuk ve Yöneticiler)
@@ -73,7 +75,7 @@ class DashboardController extends Controller
                 ->where('expire_at', '<=', Carbon::now()->addDays(30))
                 ->whereNotIn('status', ['archived', 'rejected'])
                 ->orderBy('expire_at', 'asc')
-                ->take(5) // Zaten 5 limitliydi
+                ->take(5)
                 ->get();
         }
 
@@ -84,21 +86,40 @@ class DashboardController extends Controller
             $q->where('created_by', $user->id);
         })->whereIn('status', ['draft', 'rejected'])->count();
 
-        Carbon::setLocale('tr');
+        // 7. YENİ EKLENEN: FAVORİ BELGELERİM VE SMART SEARCH
+        $keyword = $request->input('fav_search');
+
+        $favoritesQuery = $user->favorites()
+            ->with(['documentType', 'currentVersion']) // Eager Loading (N+1 engeller)
+            ->searchInFavorites($keyword) // Modelde yazdığımız Scope
+            ->latest('document_user_favorites.created_at');
+
+        // Policy Filtresi: Favoriye eklendikten sonra yetkisi geri alınmış belgeleri listeden gizle!
+        $favoriteDocuments = $favoritesQuery->get()->filter(function ($document) use ($user) {
+            return $user->can('view', $document);
+        });
+        if ($request->ajax()) {
+            return view('dashboard.partials.favorites-list', compact('favoriteDocuments', 'keyword'))->render();
+        }
+
+        // DİKKAT: Carbon::setLocale('tr') satırını sildik! 
+        // Çünkü Middleware içinde bunu dinamik yaptık (İngilizce seçildiğinde April yazması için)
         $currentDate = Carbon::now()->translatedFormat('d F Y, l');
 
         return view('dashboard', compact(
-            'displayPendingApprovals', // YENİ İSİM
-            'displayPhysicalReceipts', // YENİ İSİM
+            'displayPendingApprovals',
+            'displayPhysicalReceipts',
             'totalPendingTasks',
             'myLockedDocuments',
-            'totalLockedCount', // YENİ DEĞİŞKEN
+            'totalLockedCount',
             'myRecentUploads',
             'expiringContracts',
             'totalAccessible',
             'totalArchived',
             'myDrafts',
-            'currentDate'
+            'currentDate',
+            'favoriteDocuments', // YENİ
+            'keyword'            // YENİ
         ));
     }
 }

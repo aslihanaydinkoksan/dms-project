@@ -117,7 +117,6 @@
             }
         }
 
-        /* YENİ: Misafir Kullanıcılar İçin Tam Ekran (Menüsüz) Düzen */
         body.guest-mode .app-container {
             display: flex;
             justify-content: center;
@@ -147,13 +146,118 @@
             width: 100%;
             max-width: 1200px;
         }
+
+        /* --- FAVORİLER SAĞ PANEL (DRAWER) STİLLERİ --- */
+        .favorites-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(4px);
+            z-index: 1040;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .favorites-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .favorites-drawer {
+            position: fixed;
+            top: 0;
+            right: -400px;
+            width: 400px;
+            max-width: 100%;
+            height: 100vh;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px);
+            box-shadow: -5px 0 25px rgba(0, 0, 0, 0.1);
+            z-index: 1050;
+            display: flex;
+            flex-direction: column;
+            transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-left: 1px solid var(--border-color);
+        }
+
+        .favorites-drawer.open {
+            right: 0;
+        }
+
+        .drawer-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+            background: #f8fafc;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .drawer-body {
+            padding: 0;
+            overflow-y: auto;
+            flex-grow: 1;
+            position: relative;
+        }
+
+        @keyframes spin {
+            from {
+                transform: translateY(-50%) rotate(0deg);
+            }
+
+            to {
+                transform: translateY(-50%) rotate(360deg);
+            }
+        }
+
+        .spin {
+            animation: spin 1s linear infinite;
+        }
+
+        /* --- YENİ: FAVORİLER DÜZENLE MODU (EDİT MODE) STİLLERİ --- */
+        #favDrawerBody.edit-mode-active a[href*="/documents/"] {
+            pointer-events: none;
+            opacity: 0.4;
+        }
+
+        #favDrawerBody.edit-mode-active a.btn-outline-primary {
+            display: none !important;
+        }
+
+        #favDrawerBody.edit-mode-active .toggle-fav-btn {
+            border-color: var(--danger-color) !important;
+            background: #fef2f2 !important;
+            animation: pulse-red 1.5s infinite;
+        }
+
+        #favDrawerBody.edit-mode-active .toggle-fav-btn svg {
+            color: var(--danger-color) !important;
+            fill: rgba(239, 68, 68, 0.2) !important;
+        }
+
+        @keyframes pulse-red {
+            0% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+            }
+
+            70% {
+                box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+            }
+        }
     </style>
 </head>
 
 <body class="{{ auth()->guest() ? 'guest-mode' : '' }}">
 
     <div class="app-container">
-
         @auth
             <aside class="sidebar">
                 <a href="{{ route('dashboard') }}" class="sidebar-brand"
@@ -162,39 +266,61 @@
                     <span style="font-weight: 700; letter-spacing: 0.5px;">KÖKSAN DMS</span>
                 </a>
                 <ul class="sidebar-nav">
-                    <li>
-                        <a href="{{ route('dashboard') }}" class="{{ request()->routeIs('dashboard') ? 'active' : '' }}">
-                            <i data-lucide="layout-dashboard" class="nav-icon"></i> {{ __('Gösterge Paneli') }}
-                        </a>
-                    </li>
+                    @can('menu.dashboard')
+                        <li>
+                            <a href="{{ route('dashboard') }}" class="{{ request()->routeIs('dashboard') ? 'active' : '' }}">
+                                <i data-lucide="layout-dashboard" class="nav-icon"></i> {{ __('Gösterge Paneli') }}
+                            </a>
+                        </li>
+                    @endcan
 
-                    <li class="nav-section">{{ __('DOKÜMANLAR') }}</li>
-                    <li>
-                        <a href="{{ route('documents.index') }}"
-                            class="{{ request()->routeIs('documents.index', 'documents.show') ? 'active' : '' }}">
-                            <i data-lucide="folder-search" class="nav-icon"></i> {{ __('Tüm Belgeler') }}
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ route('documents.create') }}"
-                            class="{{ request()->routeIs('documents.create') ? 'active' : '' }}">
-                            <i data-lucide="upload-cloud" class="nav-icon"></i> {{ __('Yeni Belge Yükle') }}
-                        </a>
-                    </li>
+                    @canany(['menu.documents', 'menu.folders'])
+                        <li class="nav-section">{{ __('DOKÜMANLAR') }}</li>
+                    @endcanany
 
-                    @can('document.create')
-                        <li class="nav-section">{{ __('SİSTEM YÖNETİMİ') }}</li>
+                    @can('menu.documents')
+                        <li>
+                            <a href="{{ route('documents.index') }}"
+                                class="{{ request()->routeIs('documents.index', 'documents.show') ? 'active' : '' }}">
+                                <i data-lucide="folder-search" class="nav-icon"></i> {{ __('Tüm Belgeler') }}
+                            </a>
+                        </li>
+                    @endcan
+
+                    @can('menu.folders')
                         <li>
                             <a href="{{ route('folders.index') }}"
                                 class="{{ request()->routeIs('folders.*') ? 'active' : '' }}">
-                                <i data-lucide="folder-tree" class="nav-icon"></i> {{ __('Klasör Yönetimi') }}
+                                <i data-lucide="folder-tree" class="nav-icon"></i> {{ __('Klasörler') }}
                             </a>
                         </li>
-                        @hasanyrole('Super Admin|Admin')
+                    @endcan
+
+                    @can('menu.documents')
+                        <li>
+                            <a href="{{ route('documents.create') }}"
+                                class="{{ request()->routeIs('documents.create') ? 'active' : '' }}">
+                                <i data-lucide="upload-cloud" class="nav-icon"></i> {{ __('Yeni Belge Yükle') }}
+                            </a>
+                        </li>
+                    @endcan
+
+                    @canany(['menu.settings', 'menu.users', 'menu.reports'])
+                        <li class="nav-section">{{ __('SİSTEM YÖNETİMİ') }}</li>
+
+                        @can('menu.users')
+                            <li>
+                                <a href="{{ route('users.index') }}" class="{{ request()->routeIs('users.*') ? 'active' : '' }}">
+                                    <i data-lucide="users" class="nav-icon"></i> {{ __('Kullanıcı Yönetimi') }}
+                                </a>
+                            </li>
+                        @endcan
+
+                        @can('menu.settings')
                             <li>
                                 <a href="{{ route('settings.permissions') }}"
                                     class="{{ request()->routeIs('settings.permissions') ? 'active' : '' }}">
-                                    <i data-lucide="shield-alert" class="nav-icon"></i> {{ __('3D Yetki Matrisi') }}
+                                    <i data-lucide="shield-alert" class="nav-icon"></i> {{ __('Sistem Ayarları') }}
                                 </a>
                             </li>
                             <li>
@@ -209,16 +335,8 @@
                                     <i data-lucide="mail" class="nav-icon"></i> {{ __('Mail Şablonları ve Ayarlar') }}
                                 </a>
                             </li>
-                        @endhasanyrole
-                    @endcan
-
-                    @can('user.manage')
-                        <li>
-                            <a href="{{ route('users.index') }}" class="{{ request()->routeIs('users.*') ? 'active' : '' }}">
-                                <i data-lucide="users" class="nav-icon"></i> {{ __('Kullanıcı Yönetimi') }}
-                            </a>
-                        </li>
-                    @endcan
+                        @endcan
+                    @endcanany
                 </ul>
             </aside>
         @endauth
@@ -226,10 +344,18 @@
         <main class="main-content">
             @auth
                 <header class="topbar">
-                    <div class="search-bar-mini">
-                    </div>
+                    <div class="search-bar-mini"></div>
 
                     <div class="header-actions flex-between" style="gap: 20px;">
+
+                        {{-- FAVORİLER BUTONU --}}
+                        <button type="button" id="openFavoritesBtn" class="notification-btn"
+                            title="{{ __('Favorilerim') }}"
+                            style="background: none; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; transition: background 0.2s;">
+                            <i data-lucide="star" style="color: var(--warning-color); fill: rgba(245, 158, 11, 0.2);"></i>
+                        </button>
+
+                        {{-- BİLDİRİM MERKEZİ --}}
                         <div class="notification-wrapper" style="position: relative;">
                             <button id="notificationBtn" class="notification-btn"
                                 style="background: none; border: none; cursor: pointer; color: var(--text-color); position: relative; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; transition: background 0.2s;">
@@ -251,24 +377,15 @@
                                         </button>
                                     </form>
                                 </div>
-
                                 <div class="dropdown-body">
                                     @forelse(auth()->user()->unreadNotifications->take(5) as $notification)
                                         <a href="{{ $notification->data['url'] ?? '#' }}" class="notification-item unread">
-                                            <div class="notif-icon">
-                                                <i data-lucide="{{ $notification->data['icon'] ?? 'info' }}"></i>
-                                            </div>
+                                            <div class="notif-icon"><i
+                                                    data-lucide="{{ $notification->data['icon'] ?? 'info' }}"></i></div>
                                             <div class="notif-content">
                                                 <div class="notif-title">
-                                                    {{ __($notification->data['title'] ?? 'Bildirim') }}
-                                                </div>
-                                                <div class="notif-desc">
-                                                    {{-- Yeni mimari varsa çevirerek bas, yoksa (eski veriyse) yedeği bas --}}
-                                                    @if (isset($notification->data['message_key']))
-                                                        {{ __($notification->data['message_key'], $notification->data['message_params'] ?? []) }}
-                                                    @else
-                                                        {{ __($notification->data['message'] ?? '') }}
-                                                    @endif
+                                                    {{ __($notification->data['title'] ?? 'Bildirim') }}</div>
+                                                <div class="notif-desc">{{ __($notification->data['message'] ?? '') }}
                                                 </div>
                                                 <div class="notif-time">{{ $notification->created_at->diffForHumans() }}
                                                 </div>
@@ -276,10 +393,9 @@
                                         </a>
                                     @empty
                                         <div class="text-center p-20 text-muted" style="padding: 20px;">
-                                            <div style="display: flex; justify-content: center; margin-bottom: 10px;">
-                                                <i data-lucide="mail-open"
-                                                    style="width: 32px; height: 32px; opacity: 0.5;"></i>
-                                            </div>
+                                            <div style="display: flex; justify-content: center; margin-bottom: 10px;"><i
+                                                    data-lucide="mail-open"
+                                                    style="width: 32px; height: 32px; opacity: 0.5;"></i></div>
                                             {{ __('Yeni bildiriminiz yok.') }}
                                         </div>
                                     @endforelse
@@ -287,9 +403,7 @@
                                 <div class="dropdown-footer flex-between"
                                     style="padding: 12px 15px; border-top: 1px solid var(--border-color); background: var(--bg-color);">
                                     <a href="{{ route('notifications.history') }}"
-                                        style="font-size: 0.85rem; color: var(--accent-color); font-weight: 600; text-decoration: none;">
-                                        {{ __('Tümünü Gör') }}
-                                    </a>
+                                        style="font-size: 0.85rem; color: var(--accent-color); font-weight: 600; text-decoration: none;">{{ __('Tümünü Gör') }}</a>
                                     <a href="{{ route('profile.notifications') }}"
                                         style="font-size: 0.85rem; color: var(--text-muted); text-decoration: none; display: flex; align-items: center; gap: 4px;">
                                         <i data-lucide="settings" style="width: 14px; height: 14px;"></i>
@@ -298,38 +412,34 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="lang-dropdown-container"
-                            style="position: relative; display: inline-block; margin-right: 15px;">
+
+                        {{-- DİL SEÇİCİ --}}
+                        <div class="lang-dropdown-container" style="position: relative; display: inline-block;">
                             <button type="button" id="langDropdownBtn"
                                 style="background: transparent; border: 1px solid var(--border-color); border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-color); transition: all 0.2s;">
                                 <i data-lucide="globe" style="width: 18px; color: var(--primary-color);"></i>
-                                <span style="font-weight: 500; font-size: 0.85rem; text-transform: uppercase;">
-                                    {{ app()->getLocale() }}
-                                </span>
+                                <span
+                                    style="font-weight: 500; font-size: 0.85rem; text-transform: uppercase;">{{ app()->getLocale() }}</span>
                                 <i data-lucide="chevron-down" style="width: 14px; color: var(--text-muted);"></i>
                             </button>
-
                             <div id="langDropdownMenu"
                                 style="display: none; position: absolute; right: 0; top: 110%; background: #fff; min-width: 150px; border-radius: 10px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); border: 1px solid var(--border-color); z-index: 1000; overflow: hidden; transform: translateY(-10px); opacity: 0; transition: all 0.2s ease;">
-
                                 <a href="{{ route('language.switch', 'tr') }}"
                                     style="display: flex; align-items: center; gap: 10px; padding: 12px 15px; text-decoration: none; color: var(--text-color); font-size: 0.9rem; transition: background 0.2s; {{ app()->getLocale() == 'tr' ? 'background: #f8fafc; font-weight: bold; color: var(--primary-color);' : '' }}">
-                                    <span style="font-size: 1.1rem;">🇹🇷</span> Türkçe
-                                    @if (app()->getLocale() == 'tr')
+                                    <span style="font-size: 1.1rem;">🇹🇷</span> Türkçe @if (app()->getLocale() == 'tr')
                                         <i data-lucide="check" style="width: 14px; margin-left: auto;"></i>
                                     @endif
                                 </a>
-
                                 <a href="{{ route('language.switch', 'en') }}"
                                     style="display: flex; align-items: center; gap: 10px; padding: 12px 15px; text-decoration: none; color: var(--text-color); font-size: 0.9rem; transition: background 0.2s; border-top: 1px solid #f1f5f9; {{ app()->getLocale() == 'en' ? 'background: #f8fafc; font-weight: bold; color: var(--primary-color);' : '' }}">
-                                    <span style="font-size: 1.1rem;">🇬🇧</span> English
-                                    @if (app()->getLocale() == 'en')
+                                    <span style="font-size: 1.1rem;">🇬🇧</span> English @if (app()->getLocale() == 'en')
                                         <i data-lucide="check" style="width: 14px; margin-left: auto;"></i>
                                     @endif
                                 </a>
                             </div>
                         </div>
 
+                        {{-- KULLANICI PROFİL MENÜSÜ --}}
                         <div class="user-dropdown-container relative-container" style="position: relative;">
                             <button id="userDropdownBtn" class="btn btn-outline-primary"
                                 style="border-radius: 30px; padding: 6px 16px; border-color: var(--border-color); background: var(--bg-color);">
@@ -339,7 +449,6 @@
                                 <i data-lucide="chevron-down"
                                     style="width: 16px; height: 16px; color: var(--text-muted);"></i>
                             </button>
-
                             <div id="userDropdownMenu" class="dropdown-menu glass-card"
                                 style="display: none; position: absolute; top: 110%; right: 0; min-width: 220px; z-index: 1000; padding: 8px; border: 1px solid var(--border-color); border-radius: 12px;">
                                 <a href="{{ route('profile.edit') }}"
@@ -378,15 +487,83 @@
         </main>
     </div>
 
+    {{-- YENİ: FAVORİLER OFFCANVAS (SAĞ PANEL) VE ARAMA KUTUSU --}}
+    @auth
+        <div class="favorites-overlay" id="favOverlay"></div>
+        <div class="favorites-drawer" id="favDrawer">
+            <div class="drawer-header">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="margin:0; font-size:1.1rem; display:flex; align-items:center; gap:8px;">
+                        <i data-lucide="star" style="fill: var(--warning-color); color: var(--warning-color);"></i>
+                        {{ __('Favorilerim') }}
+                    </h3>
+                    <button type="button" id="closeFavoritesBtn"
+                        style="background:none; border:none; cursor:pointer; color:var(--text-muted); padding: 5px;">
+                        <i data-lucide="x"></i>
+                    </button>
+                </div>
+
+                {{-- YENİ: EKLE VE DÜZENLE BUTONLARI --}}
+                <div style="display: flex; gap: 10px; margin-top: 15px;">
+                    <a href="{{ route('documents.index') }}" class="btn btn-sm btn-primary"
+                        style="flex: 1; display: flex; justify-content: center; align-items: center; gap: 6px; text-decoration: none; border-radius: 8px;">
+                        <i data-lucide="plus-circle" style="width: 16px;"></i> {{ __('Yeni Ekle') }}
+                    </a>
+                    <button type="button" id="editFavoritesBtn" class="btn btn-sm btn-outline-secondary"
+                        style="flex: 1; display: flex; justify-content: center; align-items: center; gap: 6px; border-radius: 8px; transition: all 0.2s;">
+                        <i data-lucide="settings-2" style="width: 16px;"></i> <span>{{ __('Düzenle') }}</span>
+                    </button>
+                </div>
+
+                {{-- DRAWER CANLI ARAMA --}}
+                <div style="position: relative; margin-top: 15px;">
+                    <i data-lucide="search"
+                        style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; color: var(--text-muted);"></i>
+                    <input type="text" id="drawerFavSearch" placeholder="{{ __('Favorilerde ara...') }}"
+                        style="width: 100%; padding: 10px 35px; border-radius: 8px; border: 1px solid var(--border-color); background: #fff; outline: none; font-size: 0.9rem;">
+                    <i data-lucide="loader" id="drawerFavSpinner" class="spin"
+                        style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); width: 16px; color: var(--warning-color); display: none;"></i>
+                </div>
+            </div>
+            <div class="drawer-body custom-scrollbar" id="favDrawerBody">
+                <div style="display:flex; justify-content:center; padding: 40px; color: var(--warning-color);">
+                    <i data-lucide="loader" class="spin"></i>
+                </div>
+            </div>
+        </div>
+    @endauth
+
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-
-            // LUCIDE İKONLARINI OLUŞTUR (ÇOK ÖNEMLİ)
             lucide.createIcons();
 
-            // SADECE OTURUM AÇIKSA BU SCRİPTLER ÇALIŞSIN
             @auth
-            // --- KULLANICI PROFİL MENÜSÜ ---
+            // --- 1. DİL SEÇİCİ DROPDOWN ---
+            const langBtn = document.getElementById('langDropdownBtn');
+            const langMenu = document.getElementById('langDropdownMenu');
+
+            if (langBtn && langMenu) {
+                langBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const isVisible = langMenu.style.display === 'block';
+
+                    if (!isVisible) {
+                        langMenu.style.display = 'block';
+                        setTimeout(() => {
+                            langMenu.style.transform = 'translateY(0)';
+                            langMenu.style.opacity = '1';
+                        }, 10);
+                    } else {
+                        langMenu.style.transform = 'translateY(-10px)';
+                        langMenu.style.opacity = '0';
+                        setTimeout(() => {
+                            langMenu.style.display = 'none';
+                        }, 200);
+                    }
+                });
+            }
+
+            // --- 2. KULLANICI PROFİL MENÜSÜ ---
             const userBtn = document.getElementById('userDropdownBtn');
             const userMenu = document.getElementById('userDropdownMenu');
 
@@ -396,13 +573,9 @@
                     userMenu.style.display = (userMenu.style.display === 'none' || userMenu.style
                         .display === '') ? 'block' : 'none';
                 });
-
-                document.addEventListener('click', function() {
-                    userMenu.style.display = 'none';
-                });
             }
 
-            // --- BİLDİRİM ZİLİ MENÜSÜ ---
+            // --- 3. BİLDİRİM MENÜSÜ ---
             const notifBtn = document.getElementById('notificationBtn');
             const notifDropdown = document.getElementById('notificationDropdown');
 
@@ -411,84 +584,262 @@
                     e.stopPropagation();
                     notifDropdown.classList.toggle('show');
                 });
-
-                window.addEventListener('click', function(e) {
-                    if (!notifDropdown.contains(e.target)) {
-                        notifDropdown.classList.remove('show');
-                    }
-                });
             }
 
-            // --- AJAX POLLING (BİLDİRİM NABZI) ---
+            // --- GENEL: DIŞARI TIKLAYINCA KAPATMA ---
+            window.addEventListener('click', function(e) {
+                if (langMenu && !langMenu.contains(e.target)) {
+                    langMenu.style.transform = 'translateY(-10px)';
+                    langMenu.style.opacity = '0';
+                    setTimeout(() => {
+                        langMenu.style.display = 'none';
+                    }, 200);
+                }
+                if (userMenu) userMenu.style.display = 'none';
+                if (notifDropdown) notifDropdown.classList.remove('show');
+            });
+
+            // --- 4. AJAX BİLDİRİM KONTROLÜ ---
             const badge = document.getElementById('notification-badge');
             if (badge) {
                 let currentCount = parseInt(badge.innerText) || 0;
-
                 setInterval(() => {
                     fetch('{{ route('notifications.check') }}', {
-                            method: 'GET',
                             headers: {
                                 'X-Requested-With': 'XMLHttpRequest',
                                 'Accept': 'application/json'
                             }
                         })
-                        .then(response => {
-                            if (!response.ok) throw new Error("Sunucu yanıt vermedi");
-                            return response.json();
-                        })
+                        .then(response => response.json())
                         .then(data => {
-                            if (data.count === undefined) return;
-
                             if (data.count > currentCount) {
-                                currentCount = data.count;
-                                badge.innerText = currentCount;
+                                badge.innerText = data.count;
                                 badge.style.display = 'flex';
                                 badge.classList.add('pulse-badge-animation');
-                                setTimeout(() => badge.classList.remove('pulse-badge-animation'), 3000);
-                            } else if (data.count < currentCount) {
-                                currentCount = data.count;
-                                badge.innerText = currentCount;
-                                if (currentCount === 0) badge.style.display = 'none';
                             }
-                        })
-                        .catch(error => console.log('Bildirim kontrolü atlandı.'));
+                        }).catch(e => {});
                 }, 30000);
             }
-            const btn = document.getElementById('langDropdownBtn');
-            const menu = document.getElementById('langDropdownMenu');
 
-            if (btn && menu) {
-                btn.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    const isVisible = menu.style.display === 'block';
+            // --- 5. FAVORİLER SAĞ PANEL (OFFCANVAS) & CANLI ARAMA ---
+            const openFavBtn = document.getElementById('openFavoritesBtn');
+            const closeFavBtn = document.getElementById('closeFavoritesBtn');
+            const favDrawer = document.getElementById('favDrawer');
+            const favOverlay = document.getElementById('favOverlay');
+            const favDrawerBody = document.getElementById('favDrawerBody');
+            const drawerSearchInput = document.getElementById('drawerFavSearch');
+            const drawerSearchSpinner = document.getElementById('drawerFavSpinner');
+            const editFavBtn = document.getElementById('editFavoritesBtn');
 
-                    if (!isVisible) {
-                        menu.style.display = 'block';
-                        // Animasyon için minik bir gecikme
-                        setTimeout(() => {
-                            menu.style.transform = 'translateY(0)';
-                            menu.style.opacity = '1';
-                        }, 10);
-                    } else {
-                        menu.style.transform = 'translateY(-10px)';
-                        menu.style.opacity = '0';
-                        setTimeout(() => {
-                            menu.style.display = 'none';
+            let drawerDebounceTimer;
+            let isFavEditMode = false;
 
-                        }, 200);
+            if (openFavBtn && favDrawer) {
+
+                // Panele Özel Fetch (AJAX) Fonksiyonu
+                async function fetchDrawerFavorites(query = '') {
+                    if (drawerSearchSpinner) drawerSearchSpinner.style.display = 'block';
+                    favDrawerBody.style.opacity = '0.5';
+
+                    try {
+                        const url = new URL('{{ route('favorites.sidebar') }}');
+                        if (query) url.searchParams.set('fav_search', query);
+
+                        const response = await fetch(url, {
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'text/html'
+                            }
+                        });
+
+                        if (!response.ok) throw new Error('Hata');
+
+                        const html = await response.text();
+                        favDrawerBody.innerHTML = html;
+                        lucide.createIcons();
+                        attachFavToggleEvent(); // Event Delegation
+                    } catch (error) {
+                        favDrawerBody.innerHTML =
+                            '<div style="text-align: center; padding: 30px; color: var(--danger-color);">{{ __('Favoriler yüklenirken bir hata oluştu.') }}</div>';
+                    } finally {
+                        if (drawerSearchSpinner) drawerSearchSpinner.style.display = 'none';
+                        favDrawerBody.style.opacity = '1';
                     }
+                }
+
+                // Açılış
+                openFavBtn.addEventListener('click', function() {
+                    favOverlay.classList.add('show');
+                    favDrawer.classList.add('open');
+
+                    if (drawerSearchInput) drawerSearchInput.value = '';
+
+                    // Edit modunu sıfırla
+                    isFavEditMode = false;
+                    favDrawerBody.classList.remove('edit-mode-active');
+                    if (editFavBtn) {
+                        editFavBtn.innerHTML =
+                            '<i data-lucide="settings-2" style="width: 16px;"></i> <span>{{ __('Düzenle') }}</span>';
+                        editFavBtn.style.borderColor = 'var(--border-color)';
+                        editFavBtn.style.background = 'transparent';
+                    }
+
+                    fetchDrawerFavorites();
                 });
 
-                // Dışarı tıklayınca kapatma
-                document.addEventListener('click', function(e) {
-                    if (!menu.contains(e.target) && menu.style.display === 'block') {
-                        menu.style.transform = 'translateY(-10px)';
-                        menu.style.opacity = '0';
-                        setTimeout(() => {
-                            menu.style.display = 'none';
-                        }, 200);
+                // Kapanış
+                const closeDrawer = () => {
+                    favOverlay.classList.remove('show');
+                    favDrawer.classList.remove('open');
+                };
+                closeFavBtn.addEventListener('click', closeDrawer);
+                favOverlay.addEventListener('click', closeDrawer);
+
+                // Drawer İçi Canlı Arama (Yazarken Ara)
+                if (drawerSearchInput) {
+                    drawerSearchInput.addEventListener('input', function() {
+                        clearTimeout(drawerDebounceTimer);
+                        if (drawerSearchSpinner) drawerSearchSpinner.style.display = 'block';
+
+                        drawerDebounceTimer = setTimeout(() => {
+                            fetchDrawerFavorites(this.value);
+                        }, 400); // 400ms bekle
+                    });
+                }
+
+                // YENİ: DÜZENLE MODU (EDİT MODE)
+                if (editFavBtn) {
+                    editFavBtn.addEventListener('click', function() {
+                        isFavEditMode = !isFavEditMode;
+                        if (isFavEditMode) {
+                            favDrawerBody.classList.add('edit-mode-active');
+                            this.innerHTML =
+                                '<i data-lucide="check" style="width: 16px; color: var(--success-color);"></i> <span style="color: var(--success-color); font-weight: 600;">{{ __('Tamamla') }}</span>';
+                            this.style.borderColor = 'var(--success-color)';
+                            this.style.background = '#f0fdf4';
+                        } else {
+                            favDrawerBody.classList.remove('edit-mode-active');
+                            this.innerHTML =
+                                '<i data-lucide="settings-2" style="width: 16px;"></i> <span>{{ __('Düzenle') }}</span>';
+                            this.style.borderColor = 'var(--border-color)';
+                            this.style.background = 'transparent';
+                        }
+                        lucide.createIcons();
+                    });
+                }
+
+                // Favoriden Çıkarma Fonksiyonu
+                function attachFavToggleEvent() {
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
+                        '{{ csrf_token() }}';
+
+                    favDrawerBody.querySelectorAll('.toggle-fav-btn').forEach(btn => {
+                        btn.addEventListener('click', async function(e) {
+                            e.preventDefault();
+                            const docId = this.getAttribute('data-id');
+                            const liElement = this.closest('li');
+
+                            try {
+                                const response = await fetch(`/documents/${docId}/favorite`, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-CSRF-TOKEN': csrfToken,
+                                        'Accept': 'application/json'
+                                    }
+                                });
+                                const data = await response.json();
+                                if (!response.ok) throw new Error(data.message);
+
+                                // Favoriden çıkarıldıysa listeden sil (Animasyonlu)
+                                if (!data.is_favorited && liElement) {
+                                    liElement.style.opacity = '0';
+                                    setTimeout(() => liElement.remove(), 200);
+
+                                    // Eğer arama açıksa ve dashboarddaysa dashboard listesindekini de sil
+                                    const dashRow = document.querySelector(
+                                        `.content-area .toggle-fav-btn[data-id="${docId}"]`);
+                                    if (dashRow && window.location.pathname.includes(
+                                            'dashboard')) {
+                                        dashRow.closest('li').style.display = 'none';
+                                    }
+                                }
+                            } catch (error) {
+                                console.error('{{ __("İşlem başarısız:") }}', error);
+                            }
+                        });
+                    });
+                    // --- YENİ: KİŞİSEL NOT EKLEME / DÜZENLEME (EVENT DELEGATION) ---
+                    favDrawerBody.addEventListener('click', function(e) {
+                        // Not Görüntüleme kutusuna veya Not Ekle butonuna tıklandıysa
+                        const noteDisplay = e.target.closest('.note-display-box');
+                        const noteAddBtn = e.target.closest('.note-add-btn');
+
+                        if (noteDisplay || noteAddBtn) {
+                            const wrapper = e.target.closest('.fav-note-wrapper');
+                            const inputBox = wrapper.querySelector('.note-input-box');
+                            const input = wrapper.querySelector('.fav-note-input');
+
+                            // Ekranları değiştir ve input'a odaklan
+                            if (noteDisplay) noteDisplay.style.display = 'none';
+                            if (noteAddBtn) noteAddBtn.style.display = 'none';
+                            inputBox.style.display = 'block';
+                            input.focus();
+
+                            // Fare inputtan çıkarsa (blur) veya Enter'a basılırsa kaydet
+                            input.onblur = () => saveNote(wrapper, input);
+                            input.onkeydown = (event) => {
+                                if (event.key === 'Enter') {
+                                    event.preventDefault();
+                                    input.blur(); // blur tetiklenince saveNote da çalışacak
+                                }
+                            };
+                        }
+                    });
+
+                    // Notu Veritabanına Kaydeden Fonksiyon
+                    async function saveNote(wrapper, input) {
+                        const docId = wrapper.getAttribute('data-id');
+                        const newNote = input.value.trim();
+                        const noteDisplay = wrapper.querySelector('.note-display-box');
+                        const noteText = wrapper.querySelector('.note-text');
+                        const noteAddBtn = wrapper.querySelector('.note-add-btn');
+                        const inputBox = wrapper.querySelector('.note-input-box');
+                        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute(
+                            'content') || '{{ csrf_token() }}';
+
+                        try {
+                            const response = await fetch(`/documents/${docId}/favorite-note`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': csrfToken,
+                                    'Accept': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    note: newNote
+                                })
+                            });
+
+                            if (!response.ok) throw new Error('{{__("Not kaydedilemedi")}}');
+
+                            // Başarılıysa UI'ı (Görünümü) Güncelle
+                            if (newNote === '') {
+                                noteDisplay.style.display = 'none';
+                                noteAddBtn.style.display = 'inline-flex';
+                            } else {
+                                noteText.textContent = newNote;
+                                noteDisplay.style.display = 'flex';
+                                noteAddBtn.style.display = 'none';
+                            }
+                            inputBox.style.display = 'none';
+
+                        } catch (error) {
+                            console.error('{{ __("İşlem başarısız:") }}', error);
+                            alert('{{ __("Not kaydedilirken bir sorun oluştu.") }}');
+                        }
                     }
-                });
+                }
             }
         @endauth
         });

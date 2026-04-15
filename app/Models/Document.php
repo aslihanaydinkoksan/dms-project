@@ -289,13 +289,15 @@ class Document extends Model
      */
     public function getPrivacyLevelTextAttribute(): string
     {
-        return match ($this->privacy_level) {
+        // Sabit match yerine, controller'da yaptığın gibi veritabanından çekiyoruz
+        $privacyLevels = \App\Models\SystemSetting::getByKey('privacy_levels', [
             'public' => 'Herkese Açık',
-            'department' => 'Departmana Özel',
             'confidential' => 'Hizmete Özel',
-            'strictly_confidential' => 'Çok Gizli',
-            default => 'Bilinmiyor (' . $this->privacy_level . ')',
-        };
+            'strictly_confidential' => 'Çok Gizli'
+        ]);
+
+        // Key eşleşiyorsa veritabanındaki adını al, eşleşmiyorsa Bilinmiyor de
+        return $privacyLevels[$this->privacy_level] ?? 'Bilinmiyor (' . $this->privacy_level . ')';
     }
     public function relatedDepartment()
     {
@@ -330,5 +332,20 @@ class Document extends Model
     public function documentType(): BelongsTo
     {
         return $this->belongsTo(DocumentType::class);
+    }
+    public function favoritedBy()
+    {
+        return $this->belongsToMany(User::class, 'document_user_favorites')
+            ->withPivot('note')
+            ->withTimestamps();
+    }
+    public function scopeSearchInFavorites($query, $keyword)
+    {
+        if (empty($keyword)) return $query;
+
+        return $query->where(function ($q) use ($keyword) {
+            $q->where('title', 'like', "%{$keyword}%")
+                ->orWhere('document_number', 'like', "%{$keyword}%");
+        });
     }
 }
