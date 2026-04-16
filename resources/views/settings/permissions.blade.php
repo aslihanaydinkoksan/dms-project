@@ -884,7 +884,7 @@
                     loader.style.display = 'block';
                     form.style.display = 'none';
                     form.action = `/settings/folders/${id}/permissions`;
-                    fetch(`/settings/folders/${id}/permissions`, {
+                    fetch(`{{ url('/settings/folders') }}/${id}/permissions`, {
                             headers: {
                                 'X-Requested-With': 'XMLHttpRequest'
                             }
