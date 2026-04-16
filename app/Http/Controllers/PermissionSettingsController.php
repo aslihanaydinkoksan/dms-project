@@ -53,74 +53,78 @@ class PermissionSettingsController extends Controller
 
     public function update(Request $request)
     {
-        DB::transaction(function () use ($request) {
+        try {
+            DB::transaction(function () use ($request) {
 
-            // --- 1. KISIM: 3D KATEGORİ MATRİSİNİ GÜNCELLE ---
-            DB::table('role_category_permissions')->delete();
-            $permissions = $request->input('permissions', []);
-            $insertData = [];
+                // =========================================================
+                // 1. KISIM: 3D KATEGORİ MATRİSİNİ GÜNCELLE
+                // =========================================================
+                // Formdan gelen veriler tam senkronizasyon gerektirir. 
+                // İşareti kaldırılanlar gelmeyeceği için önce tabloyu sıfırlıyoruz.
+                DB::table('role_category_permissions')->delete();
 
-            foreach ($permissions as $roleId => $categories) {
-                foreach ($categories as $categoryName => $actions) {
-                    $insertData[] = [
-                        'role_id' => $roleId,
-                        'category' => $categoryName,
-                        'can_view' => isset($actions['can_view']) ? 1 : 0,
-                        'can_create' => isset($actions['can_create']) ? 1 : 0,
-                        'can_edit' => isset($actions['can_edit']) ? 1 : 0,
-                        'can_delete' => isset($actions['can_delete']) ? 1 : 0,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ];
-                }
-            }
+                $permissions = $request->input('permissions', []);
+                $insertData = [];
 
-            if (count($insertData) > 0) {
-                DB::table('role_category_permissions')->insert($insertData);
-            }
+                foreach ($permissions as $roleId => $categories) {
+                    foreach ($categories as $categoryName => $actions) {
 
-            // --- 2. KISIM: SPATIE ÖZEL (GLOBAL) YETKİLERİ GÜNCELLE ---
-            $specialPermInput = $request->input('special_permissions', []);
-            $roles = Role::where('name', '!=', 'Super Admin')->get();
+                        // PHP'nin boşlukları alt çizgiye çevirme huyunu yeniyoruz!
+                        // "Hukuk_Belgeleri" -> "Hukuk Belgeleri" olarak geri çevirip DB'ye öyle yazıyoruz.
+                        $cleanCategoryName = str_replace('_', ' ', $categoryName);
 
-            foreach ($roles as $role) {
-                /** @var \Spatie\Permission\Models\Role $role */
-                // Eğer formdan bu rol için işaretlenmiş yetkiler geldiyse onları senkronize et, gelmediyse boş dizi [] gönderip hepsini sil
-                $assignedPermNames = $specialPermInput[$role->id] ?? [];
-
-                // Sadece formda sunduğumuz "Özel Yetkiler" üzerinden işlem yap (rolün diğer sistem yetkilerini bozmamak için)
-                $validPermissionsToSync = Permission::whereIn('name', $assignedPermNames)->get();
-
-                // syncPermissions metodu Spatie'ye aittir ve var olanları ezip sadece gönderdiklerini yazar
-                $role->syncPermissions($validPermissionsToSync);
-            }
-            // --- 3. KISIM (YENİ): NAVBAR VE MENÜ YETKİLERİNİ GÜVENLE GÜNCELLE ---
-            $menuPermissionsInput = $request->input('menu_permissions', []);
-            $allMenuPermissions = Permission::where('name', 'like', 'menu.%')->get();
-
-            foreach ($roles as $role) {
-                /** @var \Spatie\Permission\Models\Role $role */
-                // Bu rol için formdan gelen seçili menü yetkileri
-                $checkedMenus = $menuPermissionsInput[$role->id] ?? [];
-
-                foreach ($allMenuPermissions as $permission) {
-                    if (in_array($permission->name, $checkedMenus)) {
-                        if (!$role->hasPermissionTo($permission->name)) {
-                            $role->givePermissionTo($permission->name);
-                        }
-                    } else {
-                        if ($role->hasPermissionTo($permission->name)) {
-                            $role->revokePermissionTo($permission->name);
-                        }
+                        $insertData[] = [
+                            'role_id' => $roleId,
+                            'category' => $cleanCategoryName,
+                            'can_view' => isset($actions['can_view']) ? 1 : 0,
+                            'can_create' => isset($actions['can_create']) ? 1 : 0,
+                            'can_edit' => isset($actions['can_edit']) ? 1 : 0,
+                            'can_delete' => isset($actions['can_delete']) ? 1 : 0,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ];
                     }
                 }
-            }
-        });
 
-        // Spatie Ön Belleğini Temizle (Kritik!)
-        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+                // Toplu halde (Bulk Insert) veritabanına yazıyoruz (Maksimum Performans)
+                if (count($insertData) > 0) {
+                    DB::table('role_category_permissions')->insert($insertData);
+                }
 
-        return back()->with('success', 'Tüm Yetki Matrisi ve Özel Güvenlik İzinleri başarıyla güncellendi.');
+                // =========================================================
+                // 2. KISIM: SPATIE ÖZEL VE MENÜ YETKİLERİNİ GÜVENLE BİRLEŞTİR
+                // =========================================================
+                $specialPermInput = $request->input('special_permissions', []);
+                $menuPermissionsInput = $request->input('menu_permissions', []);
+                $roles = Role::where('name', '!=', 'Super Admin')->get();
+
+                foreach ($roles as $role) {
+                    /** @var \Spatie\Permission\Models\Role $role */
+
+                    // Kırmızı Çizgi (Global) İzinleri Al
+                    $roleSpecial = $specialPermInput[$role->id] ?? [];
+                    // Menü İzinlerini Al
+                    $roleMenu = $menuPermissionsInput[$role->id] ?? [];
+
+                    // Her iki diziyi TEK bir havuzda birleştiriyoruz ki birbirlerini ezmesinler!
+                    $allAssignedPerms = array_merge($roleSpecial, $roleMenu);
+
+                    // Sadece sistemde gerçekten var olan yetkileri filtrele
+                    $validPermissionsToSync = Permission::whereIn('name', $allAssignedPerms)->get();
+
+                    // Tek seferde, güvenle Spatie'ye teslim et
+                    $role->syncPermissions($validPermissionsToSync);
+                }
+            });
+
+            // Spatie Ön Belleğini Temizle (Kritik!)
+            app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+
+            return back()->with('success', 'Tüm Yetki Matrisi ve Özel Güvenlik İzinleri başarıyla güncellendi.');
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Matris Kayıt Hatası: ' . $e->getMessage());
+            return back()->withInput()->withErrors(['name' => __('Kayıt sırasında bir hata oluştu: ') . $e->getMessage()]);
+        }
     }
     /**
      * Arayüzden sisteme yeni bir Rol (Role) ekler.
