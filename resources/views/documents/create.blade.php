@@ -165,8 +165,8 @@
                     <div class="form-group">
                         <label class="form-label" style="font-weight: 600;">{{ __('Bölümde Saklama Süresi (Yıl)') }}
                             <span class="text-danger"></span></label>
-                        <input type="number" name="department_retention_years" class="form-control" value="1"
-                            min="0" placeholder="Örn: 1 Yıl"
+                        <input type="number" name="department_retention_years" class="form-control" min="0"
+                            placeholder="Örn: 1 Yıl"
                             style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px;">
                         <small class="text-muted"
                             style="display: block; margin-top: 5px; font-size: 0.8rem;">{{ __('Aktif olarak departmanda kaç yıl kullanılacak?') }}</small>
@@ -175,8 +175,8 @@
                     <div class="form-group">
                         <label class="form-label" style="font-weight: 600;">{{ __('Arşivde Saklama Süresi (Yıl)') }}
                             <span class="text-danger"></span></label>
-                        <input type="number" name="archive_retention_years" class="form-control" value="5"
-                            min="0" placeholder="Örn: 1 Yıl"
+                        <input type="number" name="archive_retention_years" class="form-control" min="0"
+                            placeholder="Örn: 1 Yıl"
                             style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px;">
                         <small class="text-muted"
                             style="display: block; margin-top: 5px; font-size: 0.8rem;">{{ __('Pasife düştükten sonra arşivde (depoda) kaç yıl kalacak?') }}</small>
@@ -295,9 +295,33 @@
         </div>
     </template>
 @endsection
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
 @push('scripts')
+    {{-- 1. jQuery Motorunu Yüklüyoruz --}}
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+    {{-- 2. Select2 Kütüphanesi ve Stilleri --}}
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    {{-- Kendi Select2 Temamızı Ekliyoruz (Çok daha şık durması için) --}}
+    <style>
+        .select2-container .select2-selection--multiple {
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 5px;
+            min-height: 45px;
+        }
+
+        .select2-container--default .select2-selection--multiple .select2-selection__choice {
+            background-color: #eef2ff;
+            border: 1px solid #c7d2fe;
+            color: #4f46e5;
+            border-radius: 4px;
+            padding: 4px 8px;
+            margin-top: 5px;
+        }
+    </style>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             lucide.createIcons(); // İkonları yükle
@@ -467,10 +491,12 @@
                     });
             }
             // Etiket kutumuzu modern ve vizyoner bir arama kutusuna çeviriyoruz
-            $('#visionaryTags').select2({
-                placeholder: "Etiket arayın veya seçin...",
-                allowClear: true,
-                language: "tr"
+            $(document).ready(function() {
+                $('#visionaryTags').select2({
+                    placeholder: "Etiket arayın veya seçin...",
+                    allowClear: true,
+                    language: "tr"
+                });
             });
         });
     </script>
