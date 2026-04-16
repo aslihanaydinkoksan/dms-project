@@ -740,14 +740,15 @@
                             const liElement = this.closest('li');
 
                             try {
-                                const response = await fetch(`/documents/${docId}/favorite`, {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                        'X-CSRF-TOKEN': csrfToken,
-                                        'Accept': 'application/json'
-                                    }
-                                });
+                                const response = await fetch(
+                                    `{{ url('/documents') }}/${docId}/favorite`, {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'X-CSRF-TOKEN': csrfToken,
+                                            'Accept': 'application/json'
+                                        }
+                                    });
                                 const data = await response.json();
                                 if (!response.ok) throw new Error(data.message);
 
@@ -765,7 +766,7 @@
                                     }
                                 }
                             } catch (error) {
-                                console.error('{{ __("İşlem başarısız:") }}', error);
+                                console.error('{{ __('İşlem başarısız:') }}', error);
                             }
                         });
                     });
@@ -809,7 +810,7 @@
                             'content') || '{{ csrf_token() }}';
 
                         try {
-                            const response = await fetch(`/documents/${docId}/favorite-note`, {
+                            const response = await fetch(`{{ url('/documents') }}/${docId}/favorite-note`, {
                                 method: 'POST',
                                 headers: {
                                     'Content-Type': 'application/json',
@@ -821,7 +822,7 @@
                                 })
                             });
 
-                            if (!response.ok) throw new Error('{{__("Not kaydedilemedi")}}');
+                            if (!response.ok) throw new Error('{{ __('Not kaydedilemedi') }}');
 
                             // Başarılıysa UI'ı (Görünümü) Güncelle
                             if (newNote === '') {
@@ -835,8 +836,8 @@
                             inputBox.style.display = 'none';
 
                         } catch (error) {
-                            console.error('{{ __("İşlem başarısız:") }}', error);
-                            alert('{{ __("Not kaydedilirken bir sorun oluştu.") }}');
+                            console.error('{{ __('İşlem başarısız:') }}', error);
+                            alert('{{ __('Not kaydedilirken bir sorun oluştu.') }}');
                         }
                     }
                 }

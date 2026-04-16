@@ -317,7 +317,7 @@
                 setTimeout(() => this.style.transform = "scale(1)", 200);
 
                 try {
-                    const response = await fetch(`/documents/${docId}/favorite`, {
+                    const response = await fetch(`{{ url('/documents') }}/${docId}/favorite`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
