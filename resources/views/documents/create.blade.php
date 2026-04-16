@@ -164,9 +164,9 @@
                     style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
                     <div class="form-group">
                         <label class="form-label" style="font-weight: 600;">{{ __('Bölümde Saklama Süresi (Yıl)') }}
-                            <span class="text-danger">*</span></label>
+                            <span class="text-danger"></span></label>
                         <input type="number" name="department_retention_years" class="form-control" value="1"
-                            min="0" required
+                            min="0" placeholder="Örn: 1 Yıl"
                             style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px;">
                         <small class="text-muted"
                             style="display: block; margin-top: 5px; font-size: 0.8rem;">{{ __('Aktif olarak departmanda kaç yıl kullanılacak?') }}</small>
@@ -174,9 +174,9 @@
 
                     <div class="form-group">
                         <label class="form-label" style="font-weight: 600;">{{ __('Arşivde Saklama Süresi (Yıl)') }}
-                            <span class="text-danger">*</span></label>
+                            <span class="text-danger"></span></label>
                         <input type="number" name="archive_retention_years" class="form-control" value="5"
-                            min="0" required
+                            min="0" placeholder="Örn: 1 Yıl"
                             style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px;">
                         <small class="text-muted"
                             style="display: block; margin-top: 5px; font-size: 0.8rem;">{{ __('Pasife düştükten sonra arşivde (depoda) kaç yıl kalacak?') }}</small>
@@ -194,14 +194,21 @@
 
                     <div class="form-group">
                         <label class="form-label" style="font-weight: 600;">{{ __('Etiketler (Opsiyonel)') }}</label>
-                        <select name="tags[]" class="form-control multiple-select" multiple size="3"
-                            style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px;">
+
+                        {{-- Select2 kütüphanesi için özel ID ekledik ve multiple-select class'ını kaldırdık --}}
+                        <select name="tags[]" id="visionaryTags" class="form-control" multiple="multiple"
+                            style="width: 100%;">
                             @foreach ($tags as $tag)
                                 <option value="{{ $tag->id }}">{{ $tag->name }}</option>
                             @endforeach
                         </select>
+
+                        {{-- Kullanıcıyı aydınlatan, şık ve açıklayıcı yeni metin --}}
                         <small class="text-muted"
-                            style="display: block; margin-top: 5px; font-size: 0.8rem;">{{ __('Birden fazla seçmek için CTRL/CMD tuşuna basılı tutun.') }}</small>
+                            style="display: block; margin-top: 8px; font-size: 0.85rem; background: #f8fafc; padding: 10px; border-radius: 6px; border-left: 3px solid #3498db;">
+                            💡 <strong>İpucu:</strong> Etiketler, belgeleri klasörden bağımsız olarak gruplamanızı sağlar.
+                            <em>(Örn: Acil, Fatura, 2026_Hedefleri)</em>. İlgili etiketi yazmaya başlayın ve listeden seçin.
+                        </small>
                     </div>
                 </div>
 
@@ -288,7 +295,8 @@
         </div>
     </template>
 @endsection
-
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 @push('scripts')
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -458,6 +466,12 @@
                             '<div class="text-danger" style="font-size:0.85rem;">{{ __('⚠️ Özel alanlar yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin.') }}</div>';
                     });
             }
+            // Etiket kutumuzu modern ve vizyoner bir arama kutusuna çeviriyoruz
+            $('#visionaryTags').select2({
+                placeholder: "Etiket arayın veya seçin...",
+                allowClear: true,
+                language: "tr"
+            });
         });
     </script>
 @endpush

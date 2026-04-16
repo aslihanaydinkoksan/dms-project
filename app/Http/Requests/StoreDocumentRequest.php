@@ -33,8 +33,8 @@ class StoreDocumentRequest extends FormRequest
             'document_type_id' => 'required|exists:document_types,id',
             'related_department_id' => 'nullable|integer|exists:departments,id',
             'system_article_no' => ['nullable', 'string', 'max:255'],
-            'department_retention_years' => ['required', 'integer', 'min:0'],
-            'archive_retention_years' => ['required', 'integer', 'min:0'],
+            'department_retention_years' => ['nullable', 'integer', 'min:0'],
+            'archive_retention_years' => ['nullable', 'integer', 'min:0'],
 
             // --- 3. ETİKETLER ---
             'tags' => ['nullable', 'array'],
