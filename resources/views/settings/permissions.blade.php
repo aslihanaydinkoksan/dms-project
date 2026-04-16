@@ -883,10 +883,16 @@
                     }
                     loader.style.display = 'block';
                     form.style.display = 'none';
-                    form.action = `/settings/folders/${id}/permissions`;
-                    let fetchUrl = "{{ route('settings.folders.permissions.get', ':id') }}";
-                    // JavaScript ile o geçici metni, seçilen gerçek ID ile değiştiriyoruz
-                    fetchUrl = fetchUrl.replace(':id', id);
+
+                    // Laravel'in .env dosyasından tam adresi alıp sonuna hedefimizi ekliyoruz
+                    let targetUrl = "{{ rtrim(config('app.url'), '/') }}/settings/folders/" + id +
+                        "/permissions";
+
+                    // Hem formu göndereceğimiz POST adresi, hem de veriyi çekeceğimiz GET adresi aynı olmalı!
+                    form.action = targetUrl;
+                    let fetchUrl = targetUrl;
+
+                    console.log("TAM İSABET ADRES: ", fetchUrl);
 
                     fetch(fetchUrl, {
                             headers: {
