@@ -309,6 +309,20 @@
                                     style="color: var(--text-muted); font-size: 0.85rem; font-weight: 500;">{{ __('Standart Madde No') }}</span>
                                 <span style="font-size: 0.95rem;">{{ $document->system_article_no ?? '-' }}</span>
                             </div>
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; padding: 8px; background: #fff; border: 1px solid #e5e7eb; border-radius: 6px;">
+                                <span
+                                    style="color: var(--text-muted); font-size: 0.85rem; font-weight: 500;">{{ __('Etiketler') }}</span>
+                                <div style="display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end;">
+                                    @forelse ($document->tags as $tag)
+                                        <span class="badge badge-secondary"
+                                            style="background: #eef2ff; color: #4f46e5; border: 1px solid #c7d2fe; font-size: 0.75rem; padding: 3px 8px; border-radius: 4px;">#{{ $tag->name }}</span>
+                                    @empty
+                                        <span
+                                            style="font-size: 0.9rem; color: var(--text-muted); font-style: italic;">{{ __('Etiket atanmamış') }}</span>
+                                    @endforelse
+                                </div>
+                            </div>
                         </div>
                     </div>
 

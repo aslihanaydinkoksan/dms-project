@@ -38,7 +38,6 @@ class StoreDocumentRequest extends FormRequest
 
             // --- 3. ETİKETLER ---
             'tags' => ['nullable', 'array'],
-            'tags.*' => ['exists:tags,id'],
 
             // --- 4. DİNAMİK ONAY AKIŞI (WORKFLOW) ---
             'approvers' => ['nullable', 'array'],

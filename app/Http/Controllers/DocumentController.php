@@ -233,6 +233,28 @@ class DocumentController extends Controller
                 $data['document_number'] = $this->numberService->generateNextNumber($data['folder_id']);
                 $generatedDocNo = $data['document_number'];
 
+                // ====================================================================
+                // 🌟 VİZYONER ETİKET SİSTEMİ MOTORU (YERİ DEĞİŞTİ)
+                // ====================================================================
+                // DocumentService işlemi yapmadan ÖNCE etiketleri sayılara çevirmeliyiz
+                if (isset($data['tags']) && is_array($data['tags'])) {
+                    $tagIds = [];
+                    foreach ($data['tags'] as $tag) {
+                        if (is_numeric($tag)) {
+                            // Zaten var olan etiketin ID'si
+                            $tagIds[] = (int) $tag;
+                        } else {
+                            // Yeni etiket! Veritabanında yarat ve yeni ID'sini al
+                            $newTag = Tag::firstOrCreate(['name' => $tag]);
+                            $tagIds[] = $newTag->id;
+                        }
+                    }
+                    // Eski metinli listeyi, temiz ID listesiyle değiştiriyoruz
+                    // Böylece DocumentService aşağıda çalışırken hiçbir şeyin farkına varmayacak :)
+                    $data['tags'] = $tagIds; 
+                }
+                // ====================================================================
+
                 // 2. Dosyayı Sunucuya Kaydet ve Metadata'yı Oluştur (DocumentService)
                 $document = $this->documentService->storeDocument(
                     $data,

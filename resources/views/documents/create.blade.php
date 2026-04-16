@@ -493,9 +493,11 @@
             // Etiket kutumuzu modern ve vizyoner bir arama kutusuna çeviriyoruz
             $(document).ready(function() {
                 $('#visionaryTags').select2({
-                    placeholder: "Etiket arayın veya seçin...",
+                    placeholder: "Etiket arayın yoksa yazıp Enter'a basın...",
                     allowClear: true,
-                    language: "tr"
+                    language: "tr",
+                    tags:true, 
+                    tokenSeparators: [',']
                 });
             });
         });
