@@ -9,7 +9,7 @@ class StoreDocumentRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->can('document.create');
+        return $this->user()->can('create', \App\Models\Document::class);
     }
 
     public function rules(): array

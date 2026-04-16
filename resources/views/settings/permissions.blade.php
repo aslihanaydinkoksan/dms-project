@@ -884,7 +884,11 @@
                     loader.style.display = 'block';
                     form.style.display = 'none';
                     form.action = `/settings/folders/${id}/permissions`;
-                    fetch(`{{ url('/settings/folders') }}/${id}/permissions`, {
+                    let fetchUrl = "{{ route('settings.folders.permissions.get', ':id') }}";
+                    // JavaScript ile o geçici metni, seçilen gerçek ID ile değiştiriyoruz
+                    fetchUrl = fetchUrl.replace(':id', id);
+
+                    fetch(fetchUrl, {
                             headers: {
                                 'X-Requested-With': 'XMLHttpRequest'
                             }
