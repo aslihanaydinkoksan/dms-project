@@ -80,6 +80,25 @@ class ProfileController extends Controller
         return view('profile.notifications-history', compact('notifications'));
     }
     /**
+     * Kullanıcının tüm bildirim geçmişini tamamen siler (Çöp Kutusu)
+     */
+    public function clearAllNotifications()
+    {
+        Auth::user()->notifications()->delete();
+        return back()->with('success', '🧹 Tüm bildirim geçmişiniz başarıyla temizlendi.');
+    }
+
+    /**
+     * Tek bir bildirimi siler
+     */
+    public function deleteNotification($id)
+    {
+        $notification = Auth::user()->notifications()->findOrFail($id);
+        $notification->delete();
+
+        return back()->with('success', '🗑️ Bildirim silindi.');
+    }
+    /**
      * Arka plan JS (Polling) için okunmamış bildirim sayısını döner.
      */
     public function checkUnreadNotifications()

@@ -89,4 +89,11 @@ class User extends Authenticatable
             ->withPivot('note')
             ->withTimestamps();
     }
+    /**
+     * Laravel'in varsayılan bildirim modelini kendi Soft Delete özellikli modelimizle eziyoruz.
+     */
+    public function notifications()
+    {
+        return $this->morphMany(\App\Models\Notification::class, 'notifiable')->latest();
+    }
 }

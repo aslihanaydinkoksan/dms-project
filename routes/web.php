@@ -145,6 +145,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/profile/notifications', [ProfileController::class, 'notificationSettings'])->name('profile.notifications');
     Route::post('/profile/notifications', [ProfileController::class, 'updateNotificationSettings'])->name('profile.notifications.update');
     Route::post('/notifications/mark-all-read', [ProfileController::class, 'markAllNotificationsRead'])->name('notifications.mark-all-read');
+    //  SİLME ROTALARI:
+    Route::post('/notifications/clear-all', [ProfileController::class, 'clearAllNotifications'])->name('notifications.clear-all');
+    Route::delete('/notifications/{id}/delete', [ProfileController::class, 'deleteNotification'])->name('notifications.destroy');
     Route::get('/notifications/history', [ProfileController::class, 'notificationsHistory'])->name('notifications.history');
     Route::get('/notifications/check', [ProfileController::class, 'checkUnreadNotifications'])->name('notifications.check');
 

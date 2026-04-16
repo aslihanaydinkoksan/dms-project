@@ -4,5 +4,9 @@
     "menu.folders": "Klasörler",
     "menu.reports": "Raporlar",
     "menu.settings": "Ayarlar",
-    "menu.users": "Kullanıcılar"
+    "menu.users": "Kullanıcılar",
+    "Showing": "Gösterilen:",
+    "to": "-",
+    "of": "/",
+    "results": "kayıt"
 }
