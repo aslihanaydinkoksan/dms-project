@@ -120,9 +120,9 @@ class DocumentPolicy
      */
     public function create(User $user): bool
     {
-        if ($user->hasRole('Super Admin')) {
-            return true;
-        }
+        if ($user->hasAnyRole(['Super Admin', 'Admin'])) {
+        return true;
+    }
 
         // Matriste HERHANGİ BİR kategoride belge yükleme (can_create) yetkisi var mı?
         $roleIds = $user->roles->pluck('id');
