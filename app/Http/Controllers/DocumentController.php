@@ -251,7 +251,7 @@ class DocumentController extends Controller
                     }
                     // Eski metinli listeyi, temiz ID listesiyle değiştiriyoruz
                     // Böylece DocumentService aşağıda çalışırken hiçbir şeyin farkına varmayacak :)
-                    $data['tags'] = $tagIds; 
+                    $data['tags'] = $tagIds;
                 }
                 // ====================================================================
 
@@ -400,8 +400,8 @@ class DocumentController extends Controller
             'document_type_id' => 'required|exists:document_types,id',
             'privacy_level' => 'required|string',
             'related_department_id' => 'nullable|exists:departments,id',
-            'department_retention_years' => 'required|integer|min:0',
-            'archive_retention_years' => 'required|integer|min:0',
+            'department_retention_years' => 'nullable|integer|min:0',
+            'archive_retention_years' => 'nullable|integer|min:0',
             'expire_at' => 'nullable|date',
             'tags' => 'nullable|array',
         ]);
@@ -424,6 +424,19 @@ class DocumentController extends Controller
                     // Evet! O zaman yeni klasörün sıradaki numarasını üret (Örn: IK-005 -> HUKUK-012)
                     $newDocumentNumber = $this->numberService->generateNextNumber($validated['folder_id']);
                 }
+                $tagIds = [];
+                if (isset($validated['tags']) && is_array($validated['tags'])) {
+                    foreach ($validated['tags'] as $tag) {
+                        if (is_numeric($tag)) {
+                            // Eğer sayıysa, mevcut etikettir
+                            $tagIds[] = (int) $tag;
+                        } else {
+                            // Eğer metinse, yeni bir etikettir. Yarat ve ID'sini al.
+                            $newTag = Tag::firstOrCreate(['name' => $tag]);
+                            $tagIds[] = $newTag->id;
+                        }
+                    }
+                }
 
                 // 5. Belgeyi Güncelle
                 $document->update([
@@ -440,11 +453,7 @@ class DocumentController extends Controller
                 ]);
 
                 // 6. Etiketleri Güncelle (Sync: Eskileri siler, yenileri ekler)
-                if (isset($validated['tags'])) {
-                    $document->tags()->sync($validated['tags']);
-                } else {
-                    $document->tags()->detach(); // Hiç etiket seçilmediyse hepsini temizle
-                }
+                $document->tags()->sync($tagIds);
 
                 // 7. İzlenebilirlik (Audit Log): Klasör (ve Numara) değiştiyse KRİTİK LOG at!
                 if ($oldFolderId != $validated['folder_id']) {

@@ -47,9 +47,8 @@
 
                 <div class="form-grid" style="display: grid; grid-template-columns: 1fr; gap: 20px; margin-bottom: 20px;">
                     <div class="form-group">
-                        <label class="form-label" style="font-weight: 600; display: flex; align-items: center; gap: 6px;">
-                            {{ __('Belge Başlığı') }} <span class="text-danger">*</span>
-                        </label>
+                        <label class="form-label" style="font-weight: 600;">{{ __('Belge Başlığı') }} <span
+                                class="text-danger">*</span></label>
                         <input type="text" name="title" class="form-control" required
                             value="{{ old('title', $document->title) }}"
                             style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px;">
@@ -59,11 +58,8 @@
                 <div class="form-grid"
                     style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
                     <div class="form-group">
-                        <label class="form-label" style="font-weight: 600; display: flex; align-items: center; gap: 6px;">
-                            {{ __('Bulunduğu Klasör') }} <span class="text-danger">*</span>
-                            <i data-lucide="help-circle" style="width: 15px; color: #94a3b8; cursor: help;"
-                                title="{{ __('Klasörü değiştirirseniz, sistem belgenin numarasını otomatik olarak yeni klasöre göre güncelleyecektir.') }}"></i>
-                        </label>
+                        <label class="form-label" style="font-weight: 600;">{{ __('Bulunduğu Klasör') }} <span
+                                class="text-danger">*</span></label>
                         <select name="folder_id" class="form-control" required
                             style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px;">
                             @foreach ($flatFolders as $id => $path)
@@ -79,22 +75,17 @@
                                 </option>
                             @endforeach
                         </select>
-                        <small class="text-warning" style="display: block; margin-top: 5px; font-size: 0.8rem;"><i
-                                data-lucide="alert-triangle" style="width: 12px;"></i>
-                            {{ __('Klasör değişirse Belge Kodu değişir!') }}</small>
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label" style="font-weight: 600; display: flex; align-items: center; gap: 6px;">
-                            {{ __('Gizlilik Seviyesi') }} <span class="text-danger">*</span>
-                        </label>
+                        <label class="form-label" style="font-weight: 600;">{{ __('Gizlilik Seviyesi') }} <span
+                                class="text-danger">*</span></label>
                         <select name="privacy_level" class="form-control" required
                             style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px;">
                             @foreach ($privacyLevels as $key => $label)
                                 <option value="{{ $key }}"
                                     {{ old('privacy_level', $document->privacy_level) == $key ? 'selected' : '' }}>
-                                    {{ __($label) }}
-                                </option>
+                                    {{ __($label) }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -103,40 +94,36 @@
                 <div class="form-grid"
                     style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px;">
                     <div class="form-group">
-                        <label class="form-label" style="font-weight: 600; display: flex; align-items: center; gap: 6px;">
-                            {{ __('Doküman Tipi') }} <span class="text-danger">*</span>
-                        </label>
+                        <label class="form-label" style="font-weight: 600;">{{ __('Doküman Tipi') }} <span
+                                class="text-danger">*</span></label>
                         <select name="document_type_id" id="documentTypeSelect" class="form-control" required
                             style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px;">
                             <option value="">{{ __('-- Lütfen Seçiniz --') }}</option>
                             @foreach ($documentTypes as $type)
                                 <option value="{{ $type->id }}"
-                                    {{ old('document_type_id', $document->document_type_id ?? '') == $type->id ? 'selected' : '' }}>
-                                    📄 {{ __($type->name) }}
-                                </option>
+                                    {{ old('document_type_id', $document->document_type_id) == $type->id ? 'selected' : '' }}>
+                                    📄 {{ __($type->name) }}</option>
                             @endforeach
                         </select>
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label" style="font-weight: 600; display: flex; align-items: center; gap: 6px;">
-                            {{ __('İlgili Departman (Opsiyonel)') }}
-                        </label>
+                        <label class="form-label"
+                            style="font-weight: 600;">{{ __('İlgili Departman (Opsiyonel)') }}</label>
                         <select name="related_department_id" class="form-control"
                             style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px;">
                             <option value="">{{ __('-- Genel (Tüm Şirket) --') }}</option>
                             @foreach ($departments as $dept)
                                 <option value="{{ $dept->id }}"
                                     {{ old('related_department_id', $document->related_department_id) == $dept->id ? 'selected' : '' }}>
-                                    {{ $dept->name }}
-                                </option>
+                                    {{ $dept->name }}</option>
                             @endforeach
                         </select>
                     </div>
                 </div>
 
                 <div id="dynamic-custom-fields-container"
-                    style="display: none; padding: 20px; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; margin-bottom: 25px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);">
+                    style="display: none; padding: 20px; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; margin-bottom: 25px;">
                 </div>
             </div>
         </div>
@@ -144,7 +131,7 @@
         <div class="card glass-card"
             style="border-radius: var(--border-radius); border: 1px solid var(--border-color); background: var(--surface-color); box-shadow: var(--card-shadow); overflow: hidden; margin-bottom: 30px;">
             <div class="card-header"
-                style="padding: 20px 25px; border-bottom: 1px solid var(--border-color); background: #f8fafc; font-weight: 600; font-size: 1.1rem; color: var(--primary-color); display: flex; align-items: center; gap: 8px;">
+                style="padding: 20px 25px; border-bottom: 1px solid var(--border-color); background: #f8fafc; font-weight: 600; font-size: 1.1rem; color: var(--primary-color);">
                 <i data-lucide="archive" style="color: var(--text-muted);"></i> {{ __('Saklama ve İmha Süreleri') }}
             </div>
 
@@ -152,20 +139,20 @@
                 <div class="form-grid"
                     style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
                     <div class="form-group">
-                        <label class="form-label" style="font-weight: 600;">{{ __('Bölümde Saklama Süresi (Yıl)') }} <span
-                                class="text-danger">*</span></label>
+                        <label class="form-label"
+                            style="font-weight: 600;">{{ __('Bölümde Saklama Süresi (Yıl)') }}</label>
                         <input type="number" name="department_retention_years" class="form-control"
                             value="{{ old('department_retention_years', $document->department_retention_years) }}"
-                            min="0" required
+                            min="0"
                             style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px;">
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label" style="font-weight: 600;">{{ __('Arşivde Saklama Süresi (Yıl)') }}
-                            <span class="text-danger">*</span></label>
+                        <label class="form-label"
+                            style="font-weight: 600;">{{ __('Arşivde Saklama Süresi (Yıl)') }}</label>
                         <input type="number" name="archive_retention_years" class="form-control"
                             value="{{ old('archive_retention_years', $document->archive_retention_years) }}"
-                            min="0" required
+                            min="0"
                             style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px;">
                     </div>
                 </div>
@@ -180,24 +167,25 @@
 
                     <div class="form-group">
                         <label class="form-label" style="font-weight: 600;">{{ __('Etiketler (Opsiyonel)') }}</label>
-                        @php
-                            $selectedTags = $document->tags->pluck('id')->toArray();
-                        @endphp
-                        <select name="tags[]" class="form-control multiple-select" multiple size="3"
-                            style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px;">
+                        @php $selectedTags = $document->tags->pluck('id')->toArray(); @endphp
+                        <select name="tags[]" id="visionaryTagsEdit" class="form-control" multiple="multiple"
+                            style="width: 100%;">
                             @foreach ($tags as $tag)
                                 <option value="{{ $tag->id }}"
                                     {{ in_array($tag->id, old('tags', $selectedTags)) ? 'selected' : '' }}>
-                                    {{ $tag->name }}
-                                </option>
+                                    {{ $tag->name }}</option>
                             @endforeach
                         </select>
+                        <small class="text-muted"
+                            style="display: block; margin-top: 8px; font-size: 0.85rem; background: #f8fafc; padding: 10px; border-radius: 6px; border-left: 3px solid #3498db;">
+                            💡 {{ __('Etiket eklemek için yazıp Enter\'a basın.') }}
+                        </small>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="form-actions" style="display: flex; gap: 15px; justify-content: flex-end;">
+        <div class="form-actions" style="display: flex; gap: 15px; justify-content: flex-end; margin-bottom: 50px;">
             <a href="{{ route('documents.show', $document->id) }}" class="btn btn-outline-secondary"
                 style="padding: 12px 25px;">{{ __('İptal Et') }}</a>
             <button type="submit" class="btn btn-primary" style="padding: 12px 35px; font-weight: bold;">
@@ -212,93 +200,84 @@
 @endsection
 
 @push('scripts')
+    {{-- Select2 ve jQuery motorlarını buraya da ekliyoruz --}}
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <style>
+        .select2-container .select2-selection--multiple {
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 5px;
+            min-height: 45px;
+        }
+
+        .select2-container--default .select2-selection--multiple .select2-selection__choice {
+            background-color: #eef2ff;
+            border: 1px solid #c7d2fe;
+            color: #4f46e5;
+            border-radius: 4px;
+            padding: 4px 8px;
+        }
+    </style>
+
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             lucide.createIcons();
 
+            // Etiketleri Vizyoner Yapıyoruz
+            $(document).ready(function() {
+                $('#visionaryTagsEdit').select2({
+                    placeholder: "{{ __('Etiketleri düzenleyin...') }}",
+                    allowClear: true,
+                    tags: true,
+                    tokenSeparators: [',']
+                });
+            });
+
+            // Dinamik Alanlar Fetch Mekanizması (Create sayfasıyla aynı mantık)
             const typeSelect = document.getElementById('documentTypeSelect');
             const fieldsContainer = document.getElementById('dynamic-custom-fields-container');
             const existingMetadata = window.existingMetadata || {};
 
             if (typeSelect && fieldsContainer) {
-                if (typeSelect.value) {
-                    fetchFields(typeSelect.value);
-                }
-
+                if (typeSelect.value) fetchFields(typeSelect.value);
                 typeSelect.addEventListener('change', function() {
                     fetchFields(this.value);
                 });
             }
 
             function fetchFields(typeId) {
-                fieldsContainer.innerHTML = '';
-                fieldsContainer.style.display = 'none';
-
-                if (!typeId) return;
-
-                fieldsContainer.style.display = 'block';
                 fieldsContainer.innerHTML =
-                    '<div style="color:var(--text-muted); font-size:0.9rem; text-align:center;"><i data-lucide="loader" class="spin" style="width:18px; margin-right:5px; vertical-align:middle;"></i> {{ __('Özel alanlar yükleniyor...') }}</div>';
-                if (typeof lucide !== 'undefined') {
-                    lucide.createIcons();
-                }
+                    '<div class="text-center"><i data-lucide="loader" class="spin"></i> {{ __('Yükleniyor...') }}</div>';
+                fieldsContainer.style.display = 'block';
+                lucide.createIcons();
 
-                fetch(`/api/document-types/${typeId}/fields`, {
+                fetch(`{{ url('/api/document-types') }}/${typeId}/fields`, {
                         headers: {
                             'X-Requested-With': 'XMLHttpRequest',
                             'Accept': 'application/json'
                         }
                     })
-                    .then(response => {
-                        if (!response.ok) throw new Error('Veri çekilemedi.');
-                        return response.json();
-                    })
+                    .then(response => response.json())
                     .then(fields => {
                         fieldsContainer.innerHTML = '';
-
                         if (fields && fields.length > 0) {
                             let html =
-                                '<h4 style="font-size: 0.95rem; margin-bottom: 15px; color: var(--primary-color); display: flex; align-items: center; gap: 8px;"><i data-lucide="layers" style="width:16px;"></i> {{ __('Bu Tipe Özel Ek Bilgiler') }}</h4>';
-                            html +=
-                                '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">';
-
+                                '<h4 style="margin-bottom:15px; font-size:0.95rem;">{{ __('Özel Alanlar') }}</h4><div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">';
                             fields.forEach(field => {
-                                const requiredAttr = field.required ? 'required' : '';
-                                const requiredStar = field.required ?
-                                    '<span class="text-danger">*</span>' : '';
-                                const inputType = field.type || 'text';
-
-                                const existingValue = existingMetadata[field.name] || '';
-
-                                html += `
-                                <div class="form-group" style="margin-bottom: 0;">
-                                    <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 5px; color: var(--secondary-color);">
-                                        ${field.label} ${requiredStar}
-                                    </label>
-                                    <input type="${inputType}" 
-                                           name="metadata[${field.name}]" 
-                                           value="${existingValue}"
-                                           class="form-control" 
-                                           placeholder="${field.placeholder || ''}" 
-                                           style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.95rem;" 
-                                           ${requiredAttr}>
-                                </div>
-                            `;
+                                const val = existingMetadata[field.name] || '';
+                                html += `<div class="form-group">
+                                <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:5px;">${field.label}</label>
+                                <input type="${field.type || 'text'}" name="metadata[${field.name}]" value="${val}" class="form-control" style="width:100%; padding:10px; border:1px solid var(--border-color); border-radius:6px;" ${field.required ? 'required' : ''}>
+                            </div>`;
                             });
-
                             html += '</div>';
                             fieldsContainer.innerHTML = html;
-                            if (typeof lucide !== 'undefined') {
-                                lucide.createIcons();
-                            }
                         } else {
                             fieldsContainer.style.display = 'none';
                         }
-                    })
-                    .catch(error => {
-                        console.error('Dinamik alan hatası:', error);
-                        fieldsContainer.innerHTML =
-                            '<div class="text-danger" style="font-size:0.85rem;">{{ __('⚠️ Özel alanlar yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin.') }}</div>';
                     });
             }
         });
