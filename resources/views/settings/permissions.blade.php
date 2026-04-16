@@ -820,7 +820,7 @@
             window.editDocType = function(id, name, customFieldsJson) {
                 document.getElementById('dtName').value = name || '';
                 const form = document.getElementById('docTypeForm');
-                form.action = `/settings/document-types/${id}`;
+                form.action = `{{ url('/settings/document-types') }}/${id}`;
                 document.getElementById('methodSpoofer').innerHTML =
                     '<input type="hidden" name="_method" value="PUT">';
                 document.getElementById('formTitle').innerHTML = `✏️ ${name} {{ __('Düzenleniyor') }}`;

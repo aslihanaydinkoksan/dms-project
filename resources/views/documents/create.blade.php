@@ -403,7 +403,7 @@
                     lucide.createIcons();
                 }
 
-                fetch(`/api/document-types/${typeId}/fields`, {
+                fetch(`{{ url('/api/document-types') }}/${typeId}/fields`, {
                         headers: {
                             'X-Requested-With': 'XMLHttpRequest',
                             'Accept': 'application/json'

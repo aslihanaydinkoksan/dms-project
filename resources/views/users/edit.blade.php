@@ -21,6 +21,18 @@
                 @csrf
                 @method('PUT')
 
+                {{-- EKRANA GİZLİ HATALARI BASTIRACAK KOD --}}
+                @if ($errors->any())
+                    <div class="alert alert-danger"
+                        style="background-color: #fee2e2; color: #991b1b; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                        <ul style="margin: 0; padding-left: 20px;">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+
                 <div
                     style="background: #f8fafc; padding: 15px 20px; margin: -20px -20px 20px -20px; border-bottom: 1px solid #e2e8f0; border-radius: 8px 8px 0 0;">
                     <h3 class="section-title" style="margin: 0; font-size: 1.05rem;">{{ __('Genel Bilgiler') }}</h3>
