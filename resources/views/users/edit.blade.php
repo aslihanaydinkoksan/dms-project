@@ -33,6 +33,13 @@
                     </div>
                 @endif
 
+                {{-- SİSTEM VE VERİTABANI HATALARINI EKRANA BASTIRAN KOD --}}
+                @if (session('error'))
+                    <div class="alert alert-danger" style="background-color: #7f1d1d; color: #fef2f2; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                        🚨 <strong>SİSTEM HATASI:</strong> {{ session('error') }}
+                    </div>
+                @endif
+
                 <div
                     style="background: #f8fafc; padding: 15px 20px; margin: -20px -20px 20px -20px; border-bottom: 1px solid #e2e8f0; border-radius: 8px 8px 0 0;">
                     <h3 class="section-title" style="margin: 0; font-size: 1.05rem;">{{ __('Genel Bilgiler') }}</h3>
