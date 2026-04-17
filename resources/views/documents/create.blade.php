@@ -261,20 +261,22 @@
 
     <template id="approver-row-template">
         <div class="workflow-row"
-            style="display: flex; gap: 10px; align-items: flex-start; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
+            style="display: flex; gap: 10px; align-items: flex-end; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
+
             <div class="workflow-input-group" style="flex: 2;">
-                <label
-                    style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 5px;">{{ __('Onaycı Seçimi') }}</label>
-                <select name="approvers[__INDEX__][user_id]" class="form-control" required
-                    style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px;">
+                <label style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 5px;">
+                    {{ __('Onaycı Seçimi') }}
+                </label>
+                <select name="approvers[__INDEX__][user_id]" class="form-control approver-select" required
+                    style="width: 100%; height: 42px; padding: 0 12px; border: 1px solid var(--border-color); border-radius: 6px;">
                     <option value="">{{ __('-- Kişi Seç --') }}</option>
                     @foreach ($users as $user)
                         <option value="{{ $user->id }}">{{ $user->name }}
-                            ({{ $user->department->name ?? __('Dept Yok') }})
-                        </option>
+                            ({{ $user->department->name ?? __('Dept Yok') }})</option>
                     @endforeach
                 </select>
             </div>
+
             <div class="workflow-input-group step-group" style="flex: 1;">
                 <label
                     style="display: flex; align-items: center; gap: 4px; font-size: 0.8rem; font-weight: 600; margin-bottom: 5px;">
@@ -284,14 +286,16 @@
                 </label>
                 <input type="number" name="approvers[__INDEX__][step_order]" class="form-control text-center"
                     min="1" value="1" required
-                    style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; text-align: center;">
+                    style="width: 100%; height: 42px; padding: 0 12px; border: 1px solid var(--border-color); border-radius: 6px; text-align: center;">
             </div>
-            <div class="workflow-action" style="margin-top: 23px;">
+
+            <div class="workflow-action">
                 <button type="button" class="btn btn-outline-danger remove-approver" title="{{ __('Onaycıyı Sil') }}"
-                    style="padding: 10px 12px; height: 42px;">
+                    style="display: flex; justify-content: center; align-items: center; padding: 0 15px; height: 42px; border-radius: 6px;">
                     <i data-lucide="trash-2" style="width: 16px; pointer-events: none;"></i>
                 </button>
             </div>
+
         </div>
     </template>
 @endsection
@@ -391,7 +395,18 @@
                 addBtn.addEventListener('click', function() {
                     if (emptyMsg) emptyMsg.style.display = 'none';
                     const rowHtml = template.replace(/__INDEX__/g, approverIndex);
-                    container.insertAdjacentHTML('beforeend', rowHtml);
+
+                    // jQuery ile satırı ekle (Select2 jQuery bağımlısı olduğu için)
+                    const $newRow = $(rowHtml);
+                    $(container).append($newRow);
+
+                    // YENİ: Eklenen satırdaki select kutusunu Select2'ye çevir!
+                    $newRow.find('.approver-select').select2({
+                        placeholder: "-- Kullanıcı Seçin --",
+                        allowClear: true,
+                        width: '100%' // Container genişliğine tam oturması için
+                    });
+
                     approverIndex++;
                     lucide.createIcons();
                 });
@@ -400,6 +415,10 @@
                     const removeBtn = e.target.closest('.remove-approver');
                     if (removeBtn) {
                         const row = removeBtn.closest('.workflow-row');
+
+                        // Select2 nesnesini bellekten temizle (Memory leak olmaması için)
+                        $(row).find('.approver-select').select2('destroy');
+
                         row.remove();
                         if (container.querySelectorAll('.workflow-row').length === 0 && emptyMsg) {
                             emptyMsg.style.display = 'block';
@@ -496,7 +515,7 @@
                     placeholder: "Etiket arayın yoksa yazıp Enter'a basın...",
                     allowClear: true,
                     language: "tr",
-                    tags:true, 
+                    tags: true,
                     tokenSeparators: [',']
                 });
             });

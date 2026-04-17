@@ -40,36 +40,45 @@ class Folder extends Model
     {
         return $this->children()->with('childrenRecursive');
     }
-    // --- GÜVENLİK ZIRHI (İZOLASYON) ---
-    public function scopeVisibleTo(Builder $query, $user)
+    // --- GÜVENLİK ZIRHI (İZOLASYON VE VEKALET ENTEGRELİ) ---
+    public function scopeVisibleTo(Builder $query, User $user)
     {
-        // 1. Sistem Yöneticileri (ID:1 veya Roller) HER ŞEYİ görür
-        if ($user->id === 1 || $user->hasAnyRole(['Super Admin', 'Admin'])) {
+        // 1. KİMLİK GENİŞLETMESİ (Vekalet Edenleri Bul)
+        $delegatorIds = $user->getActiveDelegatorIds();
+        $allUserIds = array_merge([$user->id], $delegatorIds);
+        $delegators = \App\Models\User::with('roles')->whereIn('id', $delegatorIds)->get();
+
+        // Vekillerin departmanlarını da listeye ekle
+        $allDeptIds = array_filter(array_merge([$user->department_id], $delegators->pluck('department_id')->toArray()));
+
+        // 2. MUTLAK GÜÇ (Kullanıcı veya Vekalet Edenlerden Biri Admin mi?)
+        $isAdmin = $user->id === 1 || $user->hasAnyRole(['Super Admin', 'Admin']) ||
+            $delegators->contains(function (\App\Models\User $d) {
+                return $d->id === 1 || $d->hasAnyRole(['Super Admin', 'Admin']);
+            });
+
+        if ($isAdmin) {
             return $query;
         }
 
-        // 2. "Tüm Belgeleri Gör" yetkisine sahip olanlar
-        $hasViewAll = false;
-        try {
-            $hasViewAll = $user->hasPermissionTo('document.view_all');
-        } catch (\Exception $e) {
-        }
+        // 3. "Tüm Belgeleri Gör" yetkisi (Kullanıcı veya Vekillerinde var mı?)
+        $hasViewAll = $user->hasPermissionTo('document.view_all') ||
+            $delegators->contains(function (\App\Models\User $d) {
+                return $d->hasPermissionTo('document.view_all');
+            });
 
         if ($hasViewAll) {
             return $query;
         }
 
-        // 3. ÇOKLU İZOLASYON KURALI (Magic Happens Here)
-        return $query->where(function (Builder $q) use ($user) {
-            // A) Hiçbir departmana bağlı olmayan (Global) klasörler
-            $q->doesntHave('departments')
-                // B) VEYA kullanıcının kendi departmanının eklendiği klasörler
-                ->orWhereHas('departments', function (Builder $sq) use ($user) {
-                    $sq->where('departments.id', $user->department_id);
+        // 4. ÇOKLU İZOLASYON KURALI (Miras, Granular ve Vekalet Entegreli)
+        return $query->where(function (Builder $q) use ($allUserIds, $allDeptIds) {
+            $q->doesntHave('departments') // A) Global klasörler
+                ->orWhereHas('departments', function (Builder $sq) use ($allDeptIds) {
+                    $sq->whereIn('departments.id', $allDeptIds); // B) Kendisinin VEYA Vekalet Edenlerin Departmanları
                 })
-                // C) VEYA KULLANICIYA ÖZEL "GRANULAR" YETKİ VERİLMİŞ KLASÖRLER (ASLIHAN'I KURTARAN SATIR)
-                ->orWhereHas('specificUsers', function (Builder $sq) use ($user) {
-                    $sq->where('users.id', $user->id);
+                ->orWhereHas('specificUsers', function (Builder $sq) use ($allUserIds) {
+                    $sq->whereIn('users.id', $allUserIds); // C) Kendisine VEYA Vekalet Edenlere özel tanımlanmış
                 });
         });
     }

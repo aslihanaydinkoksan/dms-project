@@ -92,61 +92,61 @@ class Document extends Model
         ];
     }
 
-    // --- LİSTELEME GÜVENLİK ZIRHI (SQL SCOPE) - 3D MATRİS ENTEGRELİ ---
-    public function scopeAuthorizedForUser($query, $user)
+    // --- LİSTELEME GÜVENLİK ZIRHI (3D MATRİS VE VEKALET ENTEGRELİ) ---
+    public function scopeAuthorizedForUser($query, User $user)
     {
-        if ($user->id === 1 || $user->hasAnyRole(['Super Admin', 'Admin'])) {
+        $delegatorIds = $user->getActiveDelegatorIds();
+        $allUserIds = array_merge([$user->id], $delegatorIds);
+        $delegators = User::with('roles')->whereIn('id', $delegatorIds)->get();
+
+        $isAdmin = $user->id === 1 || $user->hasAnyRole(['Super Admin', 'Admin']) ||
+            $delegators->contains(function (User $d) {
+                return $d->id === 1 || $d->hasAnyRole(['Super Admin', 'Admin']);
+            });
+
+        if ($isAdmin) {
             return $query;
         }
 
-        $roleIds = $user->roles->pluck('id');
+        // Matris Rollere Vekilleri de Ekle
+        $allRoleIds = array_merge($user->roles->pluck('id')->toArray(), $delegators->flatMap->roles->pluck('id')->toArray());
 
-        // role_category_permissions tablomuzdaki 'category' sütunu artık Doküman Tipi İsimlerini tutuyor
         $allowedDocumentTypeNames = \Illuminate\Support\Facades\DB::table('role_category_permissions')
-            ->whereIn('role_id', $roleIds)
+            ->whereIn('role_id', $allRoleIds)
             ->where('can_view', 1)
             ->pluck('category')
             ->toArray();
 
-        $hasStrictlyConfidential = false;
-        $hasViewAll = false;
-        try {
-            $hasStrictlyConfidential = $user->hasPermissionTo('document.view_strictly_confidential');
-            $hasViewAll = $user->hasPermissionTo('document.view_all');
-        } catch (\Exception $e) {
-        }
+        $hasStrictlyConfidential = $user->hasPermissionTo('document.view_strictly_confidential') ||
+                                   $delegators->contains(function(User $d) { return $d->hasPermissionTo('document.view_strictly_confidential'); });
 
-        return $query->where(function ($q) use ($user, $allowedDocumentTypeNames, $hasStrictlyConfidential, $hasViewAll) {
+        $hasViewAll = $user->hasPermissionTo('document.view_all') ||
+                      $delegators->contains(function(User $d) { return $d->hasPermissionTo('document.view_all'); });
 
-            // KURAL A: Kendi Yüklediği Belgeler
-            $q->whereHas('versions', function ($versionQuery) use ($user) {
-                $versionQuery->where('created_by', $user->id);
+        return $query->where(function ($q) use ($allUserIds, $allowedDocumentTypeNames, $hasStrictlyConfidential, $hasViewAll) {
+            // KURAL A: Kendisinin VEYA Vekilinin Yüklediği Belgeler
+            $q->whereHas('versions', function ($versionQuery) use ($allUserIds) {
+                $versionQuery->whereIn('created_by', $allUserIds);
             })
-
-                // KURAL B: ONAY ZİNCİRİNDE OLDUĞU BELGELER
-                ->orWhereHas('approvals', function ($approvalQuery) use ($user) {
-                    $approvalQuery->where('user_id', $user->id);
+                // KURAL B: Kendisinin VEYA Vekilinin ONAY ZİNCİRİNDE Olduğu Belgeler
+                ->orWhereHas('approvals', function ($approvalQuery) use ($allUserIds) {
+                    $approvalQuery->whereIn('user_id', $allUserIds);
                 })
-
-                // KURAL C: Başkalarının Yüklediği Belgeler (3D Matris ve Gizlilik Kuralları)
+                ->orWhereHas('specificUsers', function ($s) use ($allUserIds) { $s->whereIn('users.id', $allUserIds); })
+                // KURAL C: Matris ve Gizlilik Kuralları
                 ->orWhere(function ($subQ) use ($allowedDocumentTypeNames, $hasStrictlyConfidential, $hasViewAll) {
-
                     if (!$hasStrictlyConfidential) {
                         $subQ->where('privacy_level', '!=', 'strictly_confidential');
                     }
-
                     $subQ->where(function ($accessQ) use ($allowedDocumentTypeNames, $hasViewAll) {
                         if ($hasViewAll) {
                             $accessQ->whereNotNull('id');
                         } else {
-                            // YENİ MİMARİ: Sildiğimiz 'category' kolonu yerine 'documentType' ilişkisinin 'name' alanına bakıyoruz
                             $accessQ->whereHas('documentType', function ($typeQ) use ($allowedDocumentTypeNames) {
                                 $typeQ->whereIn('name', $allowedDocumentTypeNames);
-                            })
-                                ->orWhere(function ($publicQ) {
-                                    // Doküman tipi seçilmemiş (eski kalıntı) genel belgeler public ise görünsün
-                                    $publicQ->whereNull('document_type_id')->where('privacy_level', 'public');
-                                });
+                            })->orWhere(function ($publicQ) {
+                                $publicQ->whereNull('document_type_id')->where('privacy_level', 'public');
+                            });
                         }
                     });
                 });

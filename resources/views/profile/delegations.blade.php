@@ -1,5 +1,8 @@
 @extends('layouts.app')
 
+<head>
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+</head>
 @section('content')
     <div class="page-header">
         <h1 class="page-title">🤝 {{ __('Vekalet Yönetimi') }}</h1>
@@ -199,11 +202,34 @@
                     setTimeout(() => target.style.opacity = 1, 50);
                 });
             });
+            new TomSelect(
+            'select[name="proxy_id"]', { // name kısmı senin select'ine göre değişebilir (Örn: proxy_id, user_id)
+                create: false,
+                sortField: {
+                    field: "text",
+                    direction: "asc"
+                },
+                placeholder: "Kime vekalet vereceğinizi arayın...",
+            });
         });
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
     <style>
         .tab-pane {
             transition: opacity 0.3s ease;
+        }
+
+        /* Tom Select'in senin modern temana uyması için ufak dokunuşlar */
+        .ts-control {
+            border-radius: 6px;
+            padding: 10px 12px;
+            border-color: var(--border-color);
+            font-size: 0.95rem;
+        }
+
+        .ts-control.focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.25);
         }
     </style>
 @endpush

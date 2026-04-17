@@ -55,6 +55,49 @@
                         @enderror
                     </div>
 
+                    {{-- YENİ EKLENEN: DEPARTMAN SEÇİMİ --}}
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label class="form-label"
+                            style="font-weight: 600; color: var(--secondary-color); margin-bottom: 8px; display: block;">
+                            <i data-lucide="building-2" style="width: 18px; vertical-align: text-bottom;"></i>
+                            {{ __('Erişime Açık Departmanlar') }}
+                        </label>
+                        <div
+                            style="background: #f8fafc; border: 1px solid var(--border-color); padding: 15px; border-radius: 8px; max-height: 200px; overflow-y: auto;">
+
+                            @if (empty($folder->parent_id))
+                                {{-- EĞER KÖK KLASÖR İSE DEĞİŞTİREBİLİR --}}
+                                <div class="row">
+                                    @foreach ($departments as $dept)
+                                        <div class="col-md-6 mb-2">
+                                            <label
+                                                style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; cursor: pointer; color: var(--text-color);">
+                                                <input type="checkbox" name="department_ids[]" value="{{ $dept->id }}"
+                                                    {{ in_array($dept->id, old('department_ids', $folderDepartmentIds)) ? 'checked' : '' }}
+                                                    style="width: 16px; height: 16px; accent-color: var(--primary-color);">
+                                                {{ $dept->name }}
+                                                @if ($dept->unit)
+                                                    <span class="text-muted"
+                                                        style="font-size: 0.75rem;">({{ $dept->unit }})</span>
+                                                @endif
+                                            </label>
+                                        </div>
+                                    @endforeach
+                                </div>
+                                <small class="text-muted mt-2 d-block">
+                                    {{ __('Hiçbirini seçmezseniz klasör "Herkese Açık (Global)" olur.') }}
+                                </small>
+                            @else
+                                {{-- EĞER ALT KLASÖR İSE ÜST KLASÖRDEN MİRAS ALIR, DEĞİŞTİREMEZ --}}
+                                <div class="alert alert-warning mb-0" style="padding: 10px; font-size: 0.85rem;">
+                                    <i data-lucide="lock" style="width: 16px;"></i>
+                                    {{ __('Bu bir alt klasör olduğu için departman izolasyonu üst klasörden (Parent) miras alınır. Değiştirmek için üst klasörü düzenleyin.') }}
+                                </div>
+                            @endif
+
+                        </div>
+                    </div>
+
                     <div class="form-group" style="margin-bottom: 30px;">
                         <label class="form-label"
                             style="font-weight: 600; color: var(--secondary-color); margin-bottom: 8px; display: block;">

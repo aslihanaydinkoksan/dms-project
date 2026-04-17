@@ -66,6 +66,9 @@ class User extends Authenticatable
             ->where('is_active', true)
             ->where('start_date', '<=', now())
             ->where('end_date', '>=', now())
+            ->whereHas('delegator', function ($query) {
+                $query->where('is_active', true)->whereNull('deleted_at');
+            })
             ->pluck('delegator_id')
             ->toArray();
     }

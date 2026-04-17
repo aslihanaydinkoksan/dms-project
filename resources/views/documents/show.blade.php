@@ -971,6 +971,17 @@
                 <button type="button" class="close-modal"
                     style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);">&times;</button>
             </div>
+
+            {{-- YENİ: Vekalet Durumu Bilgilendirmesi --}}
+            @if ($pendingApproval && $pendingApproval->user_id !== auth()->id())
+                <div class="alert alert-info"
+                    style="margin-bottom: 15px; padding: 10px; font-size: 0.85rem; background: #e0f2fe; border-left: 4px solid #0284c7; border-radius: 4px;">
+                    <i data-lucide="info" style="width: 14px; vertical-align: middle; color: #0284c7;"></i>
+                    <strong>Vekaleten İşlem:</strong> Bu işlemi şu anda size vekil veren
+                    <strong>{{ $pendingApproval->user->name }}</strong> adına yapıyorsunuz.
+                </div>
+            @endif
+
             <form id="approvalForm" method="POST" action="{{ route('documents.approve', $document->id) }}">
                 @csrf
                 <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">
@@ -1202,6 +1213,21 @@
         document.addEventListener('DOMContentLoaded', function() {
             // --- LUCIDE İKONLARI ---
             lucide.createIcons();
+            // --- TOM SELECT (AKILLI ARAMA) ENTEGRASYONU ---
+            // Sayfadaki ilgili tüm select kutularını bul ve akıllı hale getir
+            const selectSelectors =
+                'select[name="user_id"], select[name="delivered_to_user_id"], select[name^="approvers"]';
+
+            document.querySelectorAll(selectSelectors).forEach((el) => {
+                new TomSelect(el, {
+                    create: false,
+                    sortField: {
+                        field: "text",
+                        direction: "asc"
+                    },
+                    placeholder: "-- Kullanıcı ara ve seç --",
+                });
+            });
 
             // --- TAB KONTROLÜ (SMART TABS) ---
             const tabs = document.querySelectorAll('.tab-item');
@@ -1421,6 +1447,14 @@
                     `;
                     approversContainer.appendChild(newRow);
                     lucide.createIcons(); // Yeni eklenen ikonları çiz
+                    new TomSelect(newRow.querySelector('select'), {
+                        create: false,
+                        sortField: {
+                            field: "text",
+                            direction: "asc"
+                        },
+                        placeholder: "-- Kullanıcı ara ve seç --",
+                    });
                     approverIndex++;
 
                     // Silme butonuna event ekle

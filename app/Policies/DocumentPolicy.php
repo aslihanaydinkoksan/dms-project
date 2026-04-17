@@ -57,15 +57,34 @@ class DocumentPolicy
      */
     public function view(User $user, Document $document): bool
     {
-        // 1. İSTİSNALAR: (Super Admin, Özel İzinliler, Onaycılar)
-        if ($user->hasRole('Super Admin')) {
+        /** @var \App\Models\User $user */
+        $delegatorIds = $user->getActiveDelegatorIds();
+        $allUserIds = array_merge([$user->id], $delegatorIds);
+
+        // 1. İSTİSNALAR (Vekalet Dahil)
+        // Kullanıcının kendisi Admin mi?
+        if ($user->hasAnyRole(['Super Admin', 'Admin'])) {
             return true;
         }
-        if ($document->specificUsers()->where('user_id', $user->id)->exists()) {
+
+        // Vekalet verenler arasında Admin var mı? (Veritabanı seviyesinde sorgu, RAM dostu)
+        if (!empty($delegatorIds)) {
+            $hasAdminDelegator = User::whereIn('id', $delegatorIds)
+                ->role(['Super Admin', 'Admin']) // Spatie'nin hazır scope'u
+                ->exists();
+
+            if ($hasAdminDelegator) {
+                return true;
+            }
+        }
+
+        // Granular Access Kontrolü (Vekalet Entegreli)
+        if ($document->specificUsers()->whereIn('user_id', $allUserIds)->exists()) {
             return true;
         }
-        $isApprover = $document->approvals()->where('user_id', $user->id)->exists();
-        if ($isApprover) {
+
+        // Onaycı Kontrolü (Vekalet Entegreli)
+        if ($document->approvals()->whereIn('user_id', $allUserIds)->exists()) {
             return true;
         }
 
@@ -121,8 +140,8 @@ class DocumentPolicy
     public function create(User $user): bool
     {
         if ($user->hasAnyRole(['Super Admin', 'Admin'])) {
-        return true;
-    }
+            return true;
+        }
 
         // Matriste HERHANGİ BİR kategoride belge yükleme (can_create) yetkisi var mı?
         $roleIds = $user->roles->pluck('id');

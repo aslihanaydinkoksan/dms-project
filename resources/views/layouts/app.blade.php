@@ -7,12 +7,26 @@
     <title>KÖKSAN DMS</title>
     <link rel="stylesheet" href="{{ asset('css/style.css') }}">
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
 
     <script src="https://unpkg.com/lucide@latest"></script>
 
     @stack('styles')
 
     <style>
+        /* Tom Select'in senin modern temana uyması için ufak dokunuşlar */
+        .ts-control {
+            border-radius: 6px;
+            padding: 10px 12px;
+            border-color: var(--border-color);
+            font-size: 0.95rem;
+        }
+
+        .ts-control.focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.25);
+        }
+
         /* BİLDİRİM STİLLERİ */
         .notification-badge {
             position: absolute;
@@ -253,6 +267,7 @@
             }
         }
     </style>
+
 </head>
 
 <body class="{{ auth()->guest() ? 'guest-mode' : '' }}">
@@ -533,6 +548,8 @@
         </div>
     @endauth
 
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             lucide.createIcons();
@@ -635,8 +652,6 @@
             let isFavEditMode = false;
 
             if (openFavBtn && favDrawer) {
-
-                // Panele Özel Fetch (AJAX) Fonksiyonu
                 async function fetchDrawerFavorites(query = '') {
                     if (drawerSearchSpinner) drawerSearchSpinner.style.display = 'block';
                     favDrawerBody.style.opacity = '0.5';
@@ -657,7 +672,7 @@
                         const html = await response.text();
                         favDrawerBody.innerHTML = html;
                         lucide.createIcons();
-                        attachFavToggleEvent(); // Event Delegation
+                        attachFavToggleEvent();
                     } catch (error) {
                         favDrawerBody.innerHTML =
                             '<div style="text-align: center; padding: 30px; color: var(--danger-color);">{{ __('Favoriler yüklenirken bir hata oluştu.') }}</div>';
@@ -667,14 +682,12 @@
                     }
                 }
 
-                // Açılış
                 openFavBtn.addEventListener('click', function() {
                     favOverlay.classList.add('show');
                     favDrawer.classList.add('open');
 
                     if (drawerSearchInput) drawerSearchInput.value = '';
 
-                    // Edit modunu sıfırla
                     isFavEditMode = false;
                     favDrawerBody.classList.remove('edit-mode-active');
                     if (editFavBtn) {
@@ -687,7 +700,6 @@
                     fetchDrawerFavorites();
                 });
 
-                // Kapanış
                 const closeDrawer = () => {
                     favOverlay.classList.remove('show');
                     favDrawer.classList.remove('open');
@@ -695,7 +707,6 @@
                 closeFavBtn.addEventListener('click', closeDrawer);
                 favOverlay.addEventListener('click', closeDrawer);
 
-                // Drawer İçi Canlı Arama (Yazarken Ara)
                 if (drawerSearchInput) {
                     drawerSearchInput.addEventListener('input', function() {
                         clearTimeout(drawerDebounceTimer);
@@ -703,11 +714,10 @@
 
                         drawerDebounceTimer = setTimeout(() => {
                             fetchDrawerFavorites(this.value);
-                        }, 400); // 400ms bekle
+                        }, 400);
                     });
                 }
 
-                // YENİ: DÜZENLE MODU (EDİT MODE)
                 if (editFavBtn) {
                     editFavBtn.addEventListener('click', function() {
                         isFavEditMode = !isFavEditMode;
@@ -728,7 +738,6 @@
                     });
                 }
 
-                // Favoriden Çıkarma Fonksiyonu
                 function attachFavToggleEvent() {
                     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
                         '{{ csrf_token() }}';
@@ -752,12 +761,10 @@
                                 const data = await response.json();
                                 if (!response.ok) throw new Error(data.message);
 
-                                // Favoriden çıkarıldıysa listeden sil (Animasyonlu)
                                 if (!data.is_favorited && liElement) {
                                     liElement.style.opacity = '0';
                                     setTimeout(() => liElement.remove(), 200);
 
-                                    // Eğer arama açıksa ve dashboarddaysa dashboard listesindekini de sil
                                     const dashRow = document.querySelector(
                                         `.content-area .toggle-fav-btn[data-id="${docId}"]`);
                                     if (dashRow && window.location.pathname.includes(
@@ -770,9 +777,8 @@
                             }
                         });
                     });
-                    // --- YENİ: KİŞİSEL NOT EKLEME / DÜZENLEME (EVENT DELEGATION) ---
+
                     favDrawerBody.addEventListener('click', function(e) {
-                        // Not Görüntüleme kutusuna veya Not Ekle butonuna tıklandıysa
                         const noteDisplay = e.target.closest('.note-display-box');
                         const noteAddBtn = e.target.closest('.note-add-btn');
 
@@ -781,24 +787,21 @@
                             const inputBox = wrapper.querySelector('.note-input-box');
                             const input = wrapper.querySelector('.fav-note-input');
 
-                            // Ekranları değiştir ve input'a odaklan
                             if (noteDisplay) noteDisplay.style.display = 'none';
                             if (noteAddBtn) noteAddBtn.style.display = 'none';
                             inputBox.style.display = 'block';
                             input.focus();
 
-                            // Fare inputtan çıkarsa (blur) veya Enter'a basılırsa kaydet
                             input.onblur = () => saveNote(wrapper, input);
                             input.onkeydown = (event) => {
                                 if (event.key === 'Enter') {
                                     event.preventDefault();
-                                    input.blur(); // blur tetiklenince saveNote da çalışacak
+                                    input.blur();
                                 }
                             };
                         }
                     });
 
-                    // Notu Veritabanına Kaydeden Fonksiyon
                     async function saveNote(wrapper, input) {
                         const docId = wrapper.getAttribute('data-id');
                         const newNote = input.value.trim();
@@ -824,7 +827,6 @@
 
                             if (!response.ok) throw new Error('{{ __('Not kaydedilemedi') }}');
 
-                            // Başarılıysa UI'ı (Görünümü) Güncelle
                             if (newNote === '') {
                                 noteDisplay.style.display = 'none';
                                 noteAddBtn.style.display = 'inline-flex';
@@ -845,6 +847,7 @@
         @endauth
         });
     </script>
+
     @stack('scripts')
 </body>
 

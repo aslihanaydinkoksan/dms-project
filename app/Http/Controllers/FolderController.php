@@ -29,39 +29,42 @@ class FolderController extends Controller
      */
     public function show(Folder $folder)
     {
+        /** @var \App\Models\User $user */
         $user = Auth::user();
-
-        // Çoka-Çok pivot verilerini önden yüklüyoruz (Performans ve Hata önleme)
         $folder->load('departments');
 
-        // 1. MUTLAK GÜÇ KONTROLÜ (PHP Tarafında Zırhlı Kontrol)
-        // Eğer Kullanıcı ID'si 1 ise (Sistemi kuran kişi) koşulsuz şartsız geçer!
-        $isAdmin = $user->id === 1 || $user->hasAnyRole(['Super Admin', 'Admin']);
+        // --- VEKALET KİMLİK KARTLARINI ÇIKART ---
+        $delegatorIds = $user->getActiveDelegatorIds();
+        $allUserIds = array_merge([$user->id], $delegatorIds);
+        $delegators = \App\Models\User::with('roles')->whereIn('id', $delegatorIds)->get();
 
-        $hasViewAll = false;
-        try {
-            $hasViewAll = $user->hasPermissionTo('document.view_all');
-        } catch (\Exception $e) {
-        }
+        $allDeptIds = array_filter(array_merge([$user->department_id], $delegators->pluck('department_id')->toArray()));
+        $allRoleIds = array_merge($user->roles->pluck('id')->toArray(), $delegators->flatMap->roles->pluck('id')->toArray());
 
-        // --- ÇOKLU DEPARTMAN (PIVOT) MİMARİSİNE GÖRE GÜNCELLENDİ ---
-        // Klasörün bağlı olduğu hiçbir departman yoksa Globaldir
+        // 1. GÜÇ KONTROLLERİ (Closure içine \App\Models\User ekledik)
+        $isAdmin = $user->id === 1 || $user->hasAnyRole(['Super Admin', 'Admin']) ||
+            $delegators->contains(function (\App\Models\User $d) {
+                return $d->id === 1 || $d->hasAnyRole(['Super Admin', 'Admin']);
+            });
+
+        $hasViewAll = $user->hasPermissionTo('document.view_all') ||
+            $delegators->contains(function (\App\Models\User $d) {
+                return $d->hasPermissionTo('document.view_all');
+            });
+
         $isGlobalFolder = $folder->departments->isEmpty();
-        // Kullanıcının departmanı, klasörün departmanları arasında var mı?
-        $isMyDepartment = $folder->departments->contains('id', $user->department_id);
+        $isMyDepartment = $folder->departments->whereIn('id', $allDeptIds)->isNotEmpty();
 
-        // Zırh Delici 1: Kullanıcıya bu klasör için ÖZEL (Granular) yetki verilmiş mi?
-        $hasGranularAccess = $folder->specificUsers()->where('users.id', $user->id)->exists();
+        // 2. ZIRH DELİCİLER (Granular & Matris)
+        $hasGranularAccess = $folder->specificUsers()->whereIn('users.id', $allUserIds)->exists();
 
-        // Zırh Delici 2: Klasör Yetki Matrisinde bu kullanıcının rolüne (Örn: Standart Kullanıcı) 'Görüntüle' izni verilmiş mi?
         $hasMatrixAccess = $folder->rolePermissions()
-            ->whereIn('role_id', $user->roles->pluck('id'))
+            ->whereIn('role_id', $allRoleIds)
             ->where('can_view', true)
             ->exists();
 
-        // EĞER KULLANICI BU 6 ŞARTIN HİÇBİRİNİ SAĞLAMIYORSA REDDET!
         if (!$isAdmin && !$hasViewAll && !$isGlobalFolder && !$isMyDepartment && !$hasGranularAccess && !$hasMatrixAccess) {
-            abort(403, 'Bu klasöre erişim yetkiniz bulunmuyor (Departman İzolasyonu).');
+            abort(403, 'Bu klasöre erişim yetkiniz bulunmuyor (Departman İzolasyonu veya Vekalet Yetersizliği).');
         }
 
         // 2. Alt Klasörler
@@ -147,7 +150,10 @@ class FolderController extends Controller
             unset($flatFolders[$folder->id]);
         }
 
-        return view('folders.edit', compact('folder', 'flatFolders'));
+        $departments = \App\Models\Department::orderBy('name')->get();
+        $folderDepartmentIds = $folder->departments->pluck('id')->toArray();
+
+        return view('folders.edit', compact('folder', 'flatFolders', 'departments', 'folderDepartmentIds'));
     }
 
     /**
@@ -158,7 +164,9 @@ class FolderController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'parent_id' => 'nullable|exists:folders,id',
-            'prefix' => 'nullable|string|max:20', // Az önce yaptığımız Ağaç Mirası için
+            'prefix' => 'nullable|string|max:20',
+            'department_ids' => 'nullable|array',
+            'department_ids.*' => 'exists:departments,id'
         ]);
 
         // Mantık Kalkanı: Klasör kendisinin veya kendi alt klasörünün içine taşınamaz
@@ -171,6 +179,25 @@ class FolderController extends Controller
             'parent_id' => $request->parent_id,
             'prefix' => $request->prefix,
         ]);
+
+
+        // DEPARTMAN SENKRONİZASYONU
+        if (empty($request->parent_id)) {
+            // Sadece kök klasörse departmanları güncelle
+            if ($request->has('department_ids')) {
+                $folder->departments()->sync($request->department_ids);
+            } else {
+                $folder->departments()->detach(); // Hiçbir şey seçilmediyse global yap
+            }
+        } else {
+            // Alt klasörse üst klasörün departmanlarını ZORLA miras al
+            $parent = Folder::with('departments')->find($request->parent_id);
+            if ($parent && $parent->departments->count() > 0) {
+                $folder->departments()->sync($parent->departments->pluck('id')->toArray());
+            } else {
+                $folder->departments()->detach();
+            }
+        }
 
         return redirect()->route('folders.show', $folder->id)
             ->with('success', '📁 Klasör başarıyla güncellendi.');
