@@ -166,7 +166,7 @@
 
             @can('delete', $document)
                 <form action="{{ route('documents.destroy', $document->id) }}" method="POST" class="inline-form"
-                    onsubmit="return confirm('{{ __('DİKKAT: Bu belgeyi sistemden kaldırmak (Soft Delete) istediğinize emin misiniz? Bu işlem geri alınamaz.') }}');">
+                    onsubmit="return confirm('{{ __('DİKKAT: Bu belgeyi sistemden kaldırmak istediğinize emin misiniz? Bu işlem geri alınamaz.') }}');">
                     @csrf
                     @method('DELETE')
                     <button type="submit" class="btn btn-danger"
@@ -525,9 +525,23 @@
                                 @if (!$loop->last)
                                     <i data-lucide="chevrons-right" style="color: #cbd5e1; width: 20px;"></i>
                                 @else
-                                    <i data-lucide="check-circle" style="color: var(--success-color); width: 20px;"></i>
-                                    <span
-                                        style="font-size: 0.7rem; font-weight: 800; color: var(--success-color);">{{ __('YAYIN') }}</span>
+                                    @if ($document->status === 'rejected')
+                                        {{-- 1. DURUM: REDDEDİLDİYSE --}}
+                                        <i data-lucide="x-circle" style="color: var(--danger-color); width: 20px;"></i>
+                                        <span
+                                            style="font-size: 0.7rem; font-weight: 800; color: var(--danger-color);">{{ __('İPTAL / REDDEDİLDİ') }}</span>
+                                    @elseif(in_array($document->status, ['approved', 'published']))
+                                        {{-- 2. DURUM: BAŞARIYLA TAMAMLANDIYSA --}}
+                                        <i data-lucide="check-circle"
+                                            style="color: var(--success-color); width: 20px;"></i>
+                                        <span
+                                            style="font-size: 0.7rem; font-weight: 800; color: var(--success-color);">{{ __('YAYINLANDI') }}</span>
+                                    @else
+                                        {{-- 3. DURUM: HALA ONAY SÜRECİNDEYSE VEYA BEKLİYORSA --}}
+                                        <i data-lucide="target" style="color: var(--primary-color); width: 20px;"></i>
+                                        <span
+                                            style="font-size: 0.7rem; font-weight: 800; color: var(--primary-color);">{{ __('HEDEF: YAYIN') }}</span>
+                                    @endif
                                 @endif
                             </div>
                         @endforeach
