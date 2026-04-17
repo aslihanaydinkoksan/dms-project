@@ -231,19 +231,24 @@
         </div>
 
         <div class="card glass-card mt-30" style="border-top: 4px solid var(--warning-color);">
-            <div class="card-header flex-between" style="padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.2);">
+            <div class="card-header flex-between"
+                style="padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.2); flex-wrap: wrap; gap: 15px;">
+
                 <h3 style="margin: 0; display: flex; align-items: center; gap: 8px; color: var(--text-color);">
                     <i data-lucide="star" style="fill: var(--warning-color); color: var(--warning-color);"></i>
                     {{ __('Favori Belgelerim') }}
                 </h3>
 
-                <form id="favSearchForm" onsubmit="return false;" style="display: flex; gap: 10px;">
-                    <div class="search-box" style="position: relative;">
+                <form id="favSearchForm" onsubmit="return false;"
+                    style="display: flex; flex: 1; max-width: 250px; min-width: 150px;">
+                    <div class="search-box" style="position: relative; width: 100%;">
                         <i data-lucide="search"
                             style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 16px; color: var(--text-muted);"></i>
+
                         <input type="text" id="liveFavSearchInput" name="fav_search" value="{{ $keyword ?? '' }}"
                             placeholder="{{ __('Favorilerde ara...') }}"
-                            style="width: 200px; padding: 8px 30px 8px 32px; border-radius: 20px; border: 1px solid var(--border-color); background: rgba(255,255,255,0.5); outline: none;">
+                            style="width: 100%; padding: 8px 30px 8px 32px; border-radius: 20px; border: 1px solid var(--border-color); background: rgba(255,255,255,0.5); outline: none; transition: border-color 0.2s;">
+
                         <i data-lucide="loader" id="favSearchSpinner" class="spin"
                             style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); width: 16px; color: var(--warning-color); display: none;"></i>
                     </div>
@@ -317,14 +322,15 @@
                 setTimeout(() => this.style.transform = "scale(1)", 200);
 
                 try {
-                    const response = await fetch(`{{ url('/documents') }}/${docId}/favorite`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': csrfToken,
-                            'Accept': 'application/json'
-                        }
-                    });
+                    const response = await fetch(
+                        `{{ url('/documents') }}/${docId}/favorite`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json'
+                            }
+                        });
 
                     const data = await response.json();
 
