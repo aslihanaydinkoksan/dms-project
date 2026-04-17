@@ -71,14 +71,34 @@ class Folder extends Model
             return $query;
         }
 
-        // 4. ÇOKLU İZOLASYON KURALI (Miras, Granular ve Vekalet Entegreli)
-        return $query->where(function (Builder $q) use ($allUserIds, $allDeptIds) {
-            $q->doesntHave('departments') // A) Global klasörler
-                ->orWhereHas('departments', function (Builder $sq) use ($allDeptIds) {
-                    $sq->whereIn('departments.id', $allDeptIds); // B) Kendisinin VEYA Vekalet Edenlerin Departmanları
+        // Matris kontrolleri için Vekilleri de kapsayan Rol ID'lerini topla
+        $allRoleIds = array_merge($user->roles->pluck('id')->toArray(), $delegators->flatMap->roles->pluck('id')->toArray());
+
+        // 4. KUSURSUZ İZOLASYON KURALI (Granular > Matris > Departman)
+        return $query->where(function (Builder $q) use ($allUserIds, $allDeptIds, $allRoleIds) {
+
+            // KURAL A: Kullanıcıya VEYA Vekiline ÖZEL (Granular) İzin Verilmişse her zaman göster
+            $q->whereHas('specificUsers', function (Builder $sq) use ($allUserIds) {
+                $sq->whereIn('users.id', $allUserIds);
+            })
+
+                // KURAL B: Klasörde Matris (Özel Kilit) VARSA -> Sadece Matristeki "Görüntüle" İzni Olanları Al!
+                ->orWhere(function (Builder $subQ) use ($allRoleIds) {
+                    $subQ->has('rolePermissions') // Matris boş DEĞİL
+                        ->whereHas('rolePermissions', function (Builder $roleQ) use ($allRoleIds) {
+                            $roleQ->whereIn('role_id', $allRoleIds)->where('can_view', true);
+                        });
                 })
-                ->orWhereHas('specificUsers', function (Builder $sq) use ($allUserIds) {
-                    $sq->whereIn('users.id', $allUserIds); // C) Kendisine VEYA Vekalet Edenlere özel tanımlanmış
+
+                // KURAL C: Klasörde Matris YOKSA (Açık Kapı) -> Global Sınıfındaysa VEYA Kendi Departmanıysa Al
+                ->orWhere(function (Builder $subQ) use ($allDeptIds) {
+                    $subQ->doesntHave('rolePermissions') // Matris BOŞ
+                        ->where(function ($deptQ) use ($allDeptIds) {
+                            $deptQ->doesntHave('departments') // Global klasör
+                                ->orWhereHas('departments', function (Builder $dq) use ($allDeptIds) {
+                                    $dq->whereIn('departments.id', $allDeptIds); // Kendi departmanı
+                                });
+                        });
                 });
         });
     }

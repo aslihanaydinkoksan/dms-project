@@ -55,16 +55,37 @@ class FolderController extends Controller
         $isGlobalFolder = $folder->departments->isEmpty();
         $isMyDepartment = $folder->departments->whereIn('id', $allDeptIds)->isNotEmpty();
 
-        // 2. ZIRH DELİCİLER (Granular & Matris)
+        // Zırh Delici 1: Granular Yetki
         $hasGranularAccess = $folder->specificUsers()->whereIn('users.id', $allUserIds)->exists();
 
-        $hasMatrixAccess = $folder->rolePermissions()
-            ->whereIn('role_id', $allRoleIds)
-            ->where('can_view', true)
-            ->exists();
+        // Zırh Delici 2: Matris Kontrolü (Varsa)
+        $hasRoleRestrictions = $folder->rolePermissions()->exists();
+        $hasMatrixAccess = false;
 
-        if (!$isAdmin && !$hasViewAll && !$isGlobalFolder && !$isMyDepartment && !$hasGranularAccess && !$hasMatrixAccess) {
-            abort(403, 'Bu klasöre erişim yetkiniz bulunmuyor (Departman İzolasyonu veya Vekalet Yetersizliği).');
+        if ($hasRoleRestrictions) {
+            $hasMatrixAccess = $folder->rolePermissions()
+                ->whereIn('role_id', $allRoleIds)
+                ->where('can_view', true)
+                ->exists();
+        }
+
+        // --- ERİŞİM KARARI (KARAR AĞACI) ---
+        $canAccess = false;
+
+        if ($isAdmin || $hasViewAll) {
+            $canAccess = true; // Yöneticiler her yere girer
+        } elseif ($hasGranularAccess) {
+            $canAccess = true; // VIP biletliler her yere girer
+        } elseif ($hasRoleRestrictions) {
+            // EĞER MATRİSTE BİR ŞEY İŞARETLİ İSE, DEPARTMANA BAKMA, SADECE MATRİSE BAK! (Katı Mod B)
+            $canAccess = $hasMatrixAccess;
+        } else {
+            // EĞER MATRİS BOŞSA, DEPARTMANI İLE UYUŞUYOR MU DİYE BAK (Rahat Mod A)
+            $canAccess = $isGlobalFolder || $isMyDepartment;
+        }
+
+        if (!$canAccess) {
+            abort(403, 'Bu klasöre erişim yetkiniz bulunmuyor (Departman İzolasyonu veya Yetki Matrisi Kısıtlaması).');
         }
 
         // 2. Alt Klasörler
