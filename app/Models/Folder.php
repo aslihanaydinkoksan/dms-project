@@ -66,6 +66,10 @@ class Folder extends Model
                 // B) VEYA kullanıcının kendi departmanının eklendiği klasörler
                 ->orWhereHas('departments', function (Builder $sq) use ($user) {
                     $sq->where('departments.id', $user->department_id);
+                })
+                // C) VEYA KULLANICIYA ÖZEL "GRANULAR" YETKİ VERİLMİŞ KLASÖRLER (ASLIHAN'I KURTARAN SATIR)
+                ->orWhereHas('specificUsers', function (Builder $sq) use ($user) {
+                    $sq->where('users.id', $user->id);
                 });
         });
     }
