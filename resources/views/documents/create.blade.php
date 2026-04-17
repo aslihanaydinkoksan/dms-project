@@ -3,43 +3,33 @@
 @section('content')
     <div class="page-header"
         style="background: var(--surface-color); padding: 25px; border-radius: var(--border-radius); border: 1px solid var(--border-color); box-shadow: var(--card-shadow); margin-bottom: 25px; display: flex; align-items: center; gap: 15px;">
-        <div style="background: #eef2ff; color: var(--accent-color); padding: 15px; border-radius: 12px;">
-            <i data-lucide="file-up" style="width: 32px; height: 32px;"></i>
-        </div>
+        <div style="background: #eef2ff; color: var(--accent-color); padding: 15px; border-radius: 12px;"> <i
+                data-lucide="file-up" style="width: 32px; height: 32px;"></i> </div>
         <div>
             <h1 class="page-title" style="margin-bottom: 5px; font-size: 1.5rem; color: var(--primary-color);">
                 {{ __('Yeni Belge Yükle') }}</h1>
             <p class="text-muted" style="margin: 0;">{{ __('Lütfen belge detaylarını ve onay akışını eksiksiz doldurun.') }}
             </p>
         </div>
-    </div>
-
-    @include('partials.alerts')
-
-    <form action="{{ route('documents.store') }}" method="POST" enctype="multipart/form-data" class="modern-form"
-        id="documentUploadForm">
-        @csrf
-
-        <div class="layout-split" style="display: grid; grid-template-columns: 2fr 1fr; gap: 25px; align-items: start;">
-
+    </div> @include('partials.alerts') <form action="{{ route('documents.store') }}" method="POST"
+        enctype="multipart/form-data" class="modern-form" id="documentUploadForm"> @csrf
+        <div class="layout-split" style="display: flex; flex-wrap: wrap; gap: 25px; align-items: flex-start;">
+            {{-- SOL TARAF: FORM KARTI --}}
             <div class="card glass-card"
-                style="border-radius: var(--border-radius); border: 1px solid var(--border-color); background: var(--surface-color); box-shadow: var(--card-shadow); overflow: hidden;">
+                style="flex: 1 1 65%; min-width: 300px; border-radius: var(--border-radius); border: 1px solid var(--border-color); background: var(--surface-color); box-shadow: var(--card-shadow); overflow: hidden;">
                 <div class="card-header"
                     style="padding: 20px 25px; border-bottom: 1px solid var(--border-color); background: #f8fafc; font-weight: 600; font-size: 1.1rem; color: var(--primary-color); display: flex; align-items: center; gap: 8px;">
                     <i data-lucide="info" style="color: var(--accent-color);"></i> {{ __('Belge Üst Verileri (Metadata)') }}
                 </div>
-
                 <div class="card-body" style="padding: 30px;">
-
-                    <div class="form-group" style="margin-bottom: 30px;">
-                        <label class="form-label"
+                    <div class="form-group" style="margin-bottom: 30px;"> <label class="form-label"
                             style="font-weight: 600; color: var(--secondary-color); margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
-                            {{ __('Yüklenecek Dosya') }} <span class="text-danger">*</span>
-                            <i data-lucide="help-circle" style="width: 15px; color: #94a3b8; cursor: help;"
+                            {{ __('Yüklenecek Dosya') }} <span class="text-danger">*</span> <i data-lucide="help-circle"
+                                style="width: 15px; color: #94a3b8; cursor: help;"
                                 title="{{ __('Sisteme yüklenecek asıl fiziksel dosyadır. Birden fazla dosya yüklemek için önce bir klasör oluşturun.') }}"></i>
                         </label>
-                        <div class="file-upload-wrapper" style="position: relative; width: 100%;">
-                            <input type="file" name="file" id="file" class="file-upload-input" required
+                        <div class="file-upload-wrapper" style="position: relative; width: 100%;"> <input type="file"
+                                name="file" id="file" class="file-upload-input" required
                                 style="position: absolute; margin: 0; padding: 0; width: 100%; height: 100%; outline: none; opacity: 0; cursor: pointer; z-index: 2;">
                             <label for="file" class="file-upload-label"
                                 style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; background-color: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 12px; color: var(--text-muted); transition: all 0.3s ease; z-index: 1;">
@@ -52,30 +42,24 @@
                             </label>
                         </div>
                     </div>
-
                     <div class="form-grid"
-                        style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
-                        <div class="form-group">
-                            <label class="form-label"
+                        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 20px;">
+                        <div class="form-group"> <label class="form-label"
                                 style="font-weight: 600; display: flex; align-items: center; gap: 6px;">
-                                {{ __('Belge Başlığı') }} <span class="text-danger">*</span>
-                            </label>
-                            <input type="text" name="title" class="form-control" required
+                                {{ __('Belge Başlığı') }} <span class="text-danger">*</span> </label> <input type="text"
+                                name="title" class="form-control" required
                                 placeholder="{{ __('Örn: 2026 Q1 Bütçe Raporu') }}"
                                 style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px;">
                         </div>
                     </div>
-
                     <div class="form-grid"
-                        style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
-                        <div class="form-group">
-                            <label class="form-label"
+                        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 20px;">
+                        <div class="form-group"> <label class="form-label"
                                 style="font-weight: 600; display: flex; align-items: center; gap: 6px;">
-                                {{ __('Hedef Klasör') }} <span class="text-danger">*</span>
-                                <i data-lucide="help-circle" style="width: 15px; color: #94a3b8; cursor: help;"
+                                {{ __('Hedef Klasör') }} <span class="text-danger">*</span> <i data-lucide="help-circle"
+                                    style="width: 15px; color: #94a3b8; cursor: help;"
                                     title="{{ __('Belge bu klasörün içine yerleşecek ve bu klasörün güvenlik izinlerini miras alacaktır.') }}"></i>
-                            </label>
-                            <select name="folder_id" class="form-control" required
+                            </label> <select name="folder_id" class="form-control" required
                                 style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px;">
                                 <option value="">{{ __('-- Klasör Seçiniz --') }}</option>
                                 @foreach ($flatFolders as $id => $path)
@@ -85,156 +69,124 @@
                                         $folderName = end($parts);
                                         $indent =
                                             $depth > 0 ? str_repeat('&nbsp;&nbsp;&nbsp;&nbsp;', $depth) . '└─ ' : '';
-                                    @endphp
-                                    <option value="{{ $id }}"
+                                    @endphp <option value="{{ $id }}"
                                         {{ request('folder_id') == $id ? 'selected' : '' }}>
-                                        {!! $indent !!}{{ $folderName }}
-                                    </option>
+                                        {!! $indent !!}{{ $folderName }} </option>
                                 @endforeach
-                            </select>
-                            <small class="text-muted"
+                            </select> <small class="text-muted"
                                 style="display: block; margin-top: 5px; font-size: 0.8rem;">{{ __('Belgenin sistemde fiziksel olarak duracağı dizin.') }}</small>
                         </div>
-
-                        <div class="form-group">
-                            <label class="form-label"
+                        <div class="form-group"> <label class="form-label"
                                 style="font-weight: 600; display: flex; align-items: center; gap: 6px;">
-                                {{ __('Gizlilik Seviyesi') }} <span class="text-danger">*</span>
-                                <i data-lucide="help-circle" style="width: 15px; color: #94a3b8; cursor: help;"
+                                {{ __('Gizlilik Seviyesi') }} <span class="text-danger">*</span> <i
+                                    data-lucide="help-circle" style="width: 15px; color: #94a3b8; cursor: help;"
                                     title="{{ __('Bu ayar, klasör yetkilerini ezen ekstra bir kalkan görevi görür.') }}"></i>
-                            </label>
-                            <select name="privacy_level" class="form-control" required
+                            </label> <select name="privacy_level" class="form-control" required
                                 style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px;">
                                 @foreach ($privacyLevels as $key => $label)
                                     <option value="{{ $key }}">{{ __($label) }}</option>
                                 @endforeach
-                            </select>
-                            <small class="text-muted"
+                            </select> <small class="text-muted"
                                 style="display: block; margin-top: 5px; font-size: 0.8rem;">{{ __('Bu belgenin kimlere görüneceğini kısıtlar.') }}</small>
                         </div>
                     </div>
-
-                    <div class="form-group" style="margin-bottom: 20px;">
-                        <label
+                    <div class="form-group" style="margin-bottom: 20px;"> <label
                             style="font-size: 0.85rem; font-weight: 600; margin-bottom: 8px; color: var(--secondary-color); display: block;">
-                            {{ __('Doküman Tipi') }} <span class="text-danger">*</span>
-                        </label>
-                        <select name="document_type_id" id="documentTypeSelect" class="form-control" required
+                            {{ __('Doküman Tipi') }} <span class="text-danger">*</span> </label> <select
+                            name="document_type_id" id="documentTypeSelect" class="form-control" required
                             style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px;">
                             <option value="">{{ __('-- Lütfen Seçiniz --') }}</option>
                             @foreach ($documentTypes as $type)
                                 <option value="{{ $type->id }}"
-                                    {{ old('document_type_id') == $type->id ? 'selected' : '' }}>
-                                    📄 {{ __($type->name) }}
+                                    {{ old('document_type_id') == $type->id ? 'selected' : '' }}> 📄 {{ __($type->name) }}
                                 </option>
                             @endforeach
-                        </select>
-                    </div>
-
+                        </select> </div>
                     <div id="dynamic-custom-fields-container"
                         style="display: none; padding: 20px; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; margin-bottom: 25px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);">
                     </div>
-
-                    <div class="form-group">
-                        <label class="form-label" style="font-weight: 600; display: flex; align-items: center; gap: 6px;">
-                            {{ __('İlgili Departman (Opsiyonel)') }}
-                            <i data-lucide="help-circle" style="width: 15px; color: #94a3b8; cursor: help;"
+                    <div class="form-group"> <label class="form-label"
+                            style="font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                            {{ __('İlgili Departman (Opsiyonel)') }} <i data-lucide="help-circle"
+                                style="width: 15px; color: #94a3b8; cursor: help;"
                                 title="{{ __('Belge belirli bir departmanın iç işleyişini ilgilendiriyorsa seçilmelidir.') }}"></i>
-                        </label>
-                        <select name="related_department_id" class="form-control"
+                        </label> <select name="related_department_id" class="form-control"
                             style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px;">
                             <option value="">{{ __('-- Genel (Tüm Şirket) --') }}</option>
                             @foreach ($departments as $dept)
                                 <option value="{{ $dept->id }}">{{ $dept->name }}</option>
                             @endforeach
-                        </select>
-                        <small class="text-muted"
+                        </select> <small class="text-muted"
                             style="display: block; margin-top: 5px; font-size: 0.8rem;">{{ __('Belge sadece bir departmana aitse seçin, aksi halde boş bırakın.') }}</small>
                     </div>
-                </div>
-
-                <div style="height: 1px; background: var(--border-color); margin: 30px 0;"></div>
-
-                <h3 class="section-title"
-                    style="color: var(--primary-color); font-size: 1.1rem; margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
-                    <i data-lucide="archive" style="color: var(--text-muted);"></i> {{ __('Saklama ve İmha Süreleri') }}
-                </h3>
-
-                <div class="form-grid"
-                    style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
-                    <div class="form-group">
-                        <label class="form-label" style="font-weight: 600;">{{ __('Bölümde Saklama Süresi (Yıl)') }}
-                            <span class="text-danger"></span></label>
-                        <input type="number" name="department_retention_years" class="form-control" min="0"
-                            placeholder="Örn: 1 Yıl"
-                            style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px;">
-                        <small class="text-muted"
-                            style="display: block; margin-top: 5px; font-size: 0.8rem;">{{ __('Aktif olarak departmanda kaç yıl kullanılacak?') }}</small>
+                    <div style="height: 1px; background: var(--border-color); margin: 30px 0;"></div>
+                    <h3 class="section-title"
+                        style="color: var(--primary-color); font-size: 1.1rem; margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
+                        <i data-lucide="archive" style="color: var(--text-muted);"></i>
+                        {{ __('Saklama ve İmha Süreleri') }}
+                    </h3>
+                    <div class="form-grid"
+                        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 20px;">
+                        <div class="form-group"> <label class="form-label"
+                                style="font-weight: 600;">{{ __('Bölümde Saklama Süresi (Yıl)') }}</label> <input
+                                type="number" name="department_retention_years" class="form-control" min="0"
+                                placeholder="Örn: 1 Yıl"
+                                style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px;">
+                            <small class="text-muted"
+                                style="display: block; margin-top: 5px; font-size: 0.8rem;">{{ __('Aktif olarak departmanda kaç yıl kullanılacak?') }}</small>
+                        </div>
+                        <div class="form-group"> <label class="form-label"
+                                style="font-weight: 600;">{{ __('Arşivde Saklama Süresi (Yıl)') }}</label> <input
+                                type="number" name="archive_retention_years" class="form-control" min="0"
+                                placeholder="Örn: 1 Yıl"
+                                style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px;">
+                            <small class="text-muted"
+                                style="display: block; margin-top: 5px; font-size: 0.8rem;">{{ __('Pasife düştükten sonra arşivde (depoda) kaç yıl kalacak?') }}</small>
+                        </div>
                     </div>
-
-                    <div class="form-group">
-                        <label class="form-label" style="font-weight: 600;">{{ __('Arşivde Saklama Süresi (Yıl)') }}
-                            <span class="text-danger"></span></label>
-                        <input type="number" name="archive_retention_years" class="form-control" min="0"
-                            placeholder="Örn: 1 Yıl"
-                            style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px;">
-                        <small class="text-muted"
-                            style="display: block; margin-top: 5px; font-size: 0.8rem;">{{ __('Pasife düştükten sonra arşivde (depoda) kaç yıl kalacak?') }}</small>
-                    </div>
-                </div>
-
-                <div class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                    <div class="form-group">
-                        <label class="form-label" style="font-weight: 600;">{{ __('Geçerlilik Bitiş Tarihi') }}</label>
-                        <input type="date" name="expire_at" class="form-control"
-                            style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px;">
-                        <small class="text-muted"
-                            style="display: block; margin-top: 5px; font-size: 0.8rem;">{{ __('Süreli bir sözleşme veya formsa bitiş tarihini girin.') }}</small>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label" style="font-weight: 600;">{{ __('Etiketler (Opsiyonel)') }}</label>
-
-                        {{-- Select2 kütüphanesi için özel ID ekledik ve multiple-select class'ını kaldırdık --}}
-                        <select name="tags[]" id="visionaryTags" class="form-control" multiple="multiple"
-                            style="width: 100%;">
-                            @foreach ($tags as $tag)
-                                <option value="{{ $tag->id }}">{{ $tag->name }}</option>
-                            @endforeach
-                        </select>
-
-                        {{-- Kullanıcıyı aydınlatan, şık ve açıklayıcı yeni metin --}}
-                        <small class="text-muted"
-                            style="display: block; margin-top: 8px; font-size: 0.85rem; background: #f8fafc; padding: 10px; border-radius: 6px; border-left: 3px solid #3498db;">
-                            💡 <strong>İpucu:</strong> Etiketler, belgeleri klasörden bağımsız olarak gruplamanızı sağlar.
-                            <em>(Örn: Acil, Fatura, 2026_Hedefleri)</em>. İlgili etiketi yazmaya başlayın ve listeden seçin.
-                        </small>
+                    <div class="form-grid"
+                        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                        <div class="form-group"> <label class="form-label"
+                                style="font-weight: 600;">{{ __('Geçerlilik Bitiş Tarihi') }}</label> <input
+                                type="date" name="expire_at" class="form-control"
+                                style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px;">
+                            <small class="text-muted"
+                                style="display: block; margin-top: 5px; font-size: 0.8rem;">{{ __('Süreli bir sözleşme veya formsa bitiş tarihini girin.') }}</small>
+                        </div>
+                        <div class="form-group"> <label class="form-label"
+                                style="font-weight: 600;">{{ __('Etiketler (Opsiyonel)') }}</label> <select
+                                name="tags[]" id="visionaryTags" class="form-control" multiple="multiple"
+                                style="width: 100%;">
+                                @foreach ($tags as $tag)
+                                    <option value="{{ $tag->id }}">{{ $tag->name }}</option>
+                                @endforeach
+                            </select> <small class="text-muted"
+                                style="display: block; margin-top: 8px; font-size: 0.85rem; background: #f8fafc; padding: 10px; border-radius: 6px; border-left: 3px solid #3498db;">
+                                💡 <strong>İpucu:</strong> Etiketler, belgeleri klasörden bağımsız olarak gruplamanızı
+                                sağlar. <em>(Örn: Acil, Fatura, 2026_Hedefleri)</em>. İlgili etiketi yazmaya başlayın ve
+                                listeden seçin. </small> </div>
                     </div>
                 </div>
-
             </div>
         </div>
-
+        {{-- SAĞ TARAF: ONAY AKIŞI KARTI --}}
+        {{-- SAĞ TARAF: ONAY AKIŞI KARTI --}}
         <div class="card glass-card"
-            style="border-radius: var(--border-radius); border: 1px solid var(--border-color); background: var(--surface-color); box-shadow: var(--card-shadow); position: sticky; top: 20px;">
+            style="flex: 1 1 50%; min-width: 300px; border-radius: var(--border-radius); border: 1px solid var(--border-color); background: var(--surface-color); box-shadow: var(--card-shadow); position: sticky; top: 20px;">
             <div class="card-header"
                 style="padding: 20px 25px; border-bottom: 1px solid var(--border-color); background: #f8fafc; font-weight: 600; font-size: 1.1rem; color: var(--primary-color); display: flex; justify-content: space-between; align-items: center;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <i data-lucide="git-merge" style="color: var(--accent-color);"></i> {{ __('Onay Akışı') }}
-                </div>
-                <button type="button" id="add-approver-btn" class="btn btn-sm btn-outline-primary"
-                    style="display: flex; align-items: center; gap: 4px; padding: 6px 12px;">
-                    <i data-lucide="plus" style="width: 14px;"></i> {{ __('Onaycı Ekle') }}
-                </button>
+                <div style="display: flex; align-items: center; gap: 8px;"> <i data-lucide="git-merge"
+                        style="color: var(--accent-color);"></i> {{ __('Onay Akışı') }} </div> <button type="button"
+                    id="add-approver-btn" class="btn btn-sm btn-outline-primary"
+                    style="display: flex; align-items: center; gap: 4px; padding: 6px 12px;"> <i data-lucide="plus"
+                        style="width: 14px;"></i> {{ __('Onaycı Ekle') }} </button>
             </div>
-
             <div class="card-body" style="padding: 25px;">
                 <div class="alert alert-info"
                     style="font-size: 0.85rem; padding: 12px; background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; border-radius: 6px; margin-bottom: 20px; display: flex; gap: 10px; align-items: flex-start;">
                     <i data-lucide="info" style="width: 24px; flex-shrink: 0;"></i>
                     <span>{{ __('Sıralı onay için Adım Numaralarını (1, 2, 3..) ardışık verin. Paralel (aynı anda) onay için aynı adım numarasını kullanın.') }}</span>
                 </div>
-
                 <div id="workflow-container" style="display: flex; flex-direction: column; gap: 15px;">
                     <div class="workflow-empty-state text-muted text-center" id="empty-workflow-msg"
                         style="padding: 30px 10px; border: 1px dashed var(--border-color); border-radius: 8px; background: #f8fafc;">
@@ -244,58 +196,41 @@
                             style="font-size: 0.9rem;">{{ __('Bu belge için onaycı seçilmedi.') }}<br><strong>{{ __('Belge direkt yayına alınır.') }}</strong></span>
                     </div>
                 </div>
-
                 <div style="height: 1px; background: var(--border-color); margin: 25px 0;"></div>
-
-                <div class="form-actions">
-                    <button type="submit" class="btn btn-primary btn-block"
+                <div class="form-actions"> <button type="submit" class="btn btn-primary btn-block"
                         style="width: 100%; padding: 15px; font-size: 1.1rem; justify-content: center; display: flex; align-items: center; gap: 10px; font-weight: bold;">
-                        <i data-lucide="rocket" style="width: 20px;"></i> {{ __('Belgeyi Sisteme Yükle') }}
-                    </button>
+                        <i data-lucide="rocket" style="width: 20px;"></i> {{ __('Belgeyi Sisteme Yükle') }} </button>
                 </div>
             </div>
         </div>
-
         </div>
-    </form>
-
-    <template id="approver-row-template">
+    </form> <template id="approver-row-template">
         <div class="workflow-row"
             style="display: flex; gap: 10px; align-items: flex-end; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
-
-            <div class="workflow-input-group" style="flex: 2;">
-                <label style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 5px;">
-                    {{ __('Onaycı Seçimi') }}
-                </label>
-                <select name="approvers[__INDEX__][user_id]" class="form-control approver-select" required
+            <div class="workflow-input-group" style="flex: 2;"> <label
+                    style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 5px;">
+                    {{ __('Onaycı Seçimi') }} </label> <select name="approvers[__INDEX__][user_id]"
+                    class="form-control approver-select" required
                     style="width: 100%; height: 42px; padding: 0 12px; border: 1px solid var(--border-color); border-radius: 6px;">
                     <option value="">{{ __('-- Kişi Seç --') }}</option>
                     @foreach ($users as $user)
                         <option value="{{ $user->id }}">{{ $user->name }}
-                            ({{ $user->department->name ?? __('Dept Yok') }})</option>
+                            ({{ $user->department->name ?? __('Dept Yok') }})
+                        </option>
                     @endforeach
-                </select>
-            </div>
-
-            <div class="workflow-input-group step-group" style="flex: 1;">
-                <label
+                </select> </div>
+            <div class="workflow-input-group step-group" style="flex: 1;"> <label
                     style="display: flex; align-items: center; gap: 4px; font-size: 0.8rem; font-weight: 600; margin-bottom: 5px;">
-                    {{ __('Adım') }}
-                    <i data-lucide="help-circle" style="width: 12px; color: #94a3b8; cursor: help;"
+                    {{ __('Adım') }} <i data-lucide="help-circle" style="width: 12px; color: #94a3b8; cursor: help;"
                         title="{{ __('Önce 1. adımdakilere bildirim gider, onlar onaylayınca 2. adıma geçer.') }}"></i>
-                </label>
-                <input type="number" name="approvers[__INDEX__][step_order]" class="form-control text-center"
+                </label> <input type="number" name="approvers[__INDEX__][step_order]" class="form-control text-center"
                     min="1" value="1" required
                     style="width: 100%; height: 42px; padding: 0 12px; border: 1px solid var(--border-color); border-radius: 6px; text-align: center;">
             </div>
-
-            <div class="workflow-action">
-                <button type="button" class="btn btn-outline-danger remove-approver" title="{{ __('Onaycıyı Sil') }}"
+            <div class="workflow-action"> <button type="button" class="btn btn-outline-danger remove-approver"
+                    title="{{ __('Onaycıyı Sil') }}"
                     style="display: flex; justify-content: center; align-items: center; padding: 0 15px; height: 42px; border-radius: 6px;">
-                    <i data-lucide="trash-2" style="width: 16px; pointer-events: none;"></i>
-                </button>
-            </div>
-
+                    <i data-lucide="trash-2" style="width: 16px; pointer-events: none;"></i> </button> </div>
         </div>
     </template>
 @endsection
@@ -324,6 +259,38 @@
             border-radius: 4px;
             padding: 4px 8px;
             margin-top: 5px;
+        }
+
+        /* Ana Taşıyıcı Kapsayıcı */
+        .document-create-container {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            /* Başlangıç oranı */
+            gap: 25px;
+            align-items: start;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            /* Yumuşak geçiş */
+            width: 100%;
+        }
+
+        /* Eğer sidebar kapalıysa ve daha fazla alan istiyorsak
+                               veya ekran küçüldüğünde alt alta gelmesi için: */
+        @media (max-width: 1200px) {
+            .document-create-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Dinamik büyütme efekti için yardımcı sınıf */
+        .full-width-layout {
+            grid-template-columns: 1fr !important;
+        }
+
+        /* Sticky Card Ayarı */
+        .sticky-sidebar {
+            position: sticky;
+            top: 20px;
+            z-index: 10;
         }
     </style>
     <script>

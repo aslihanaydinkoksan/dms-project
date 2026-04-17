@@ -8,6 +8,12 @@
     <link rel="stylesheet" href="{{ asset('css/style.css') }}">
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+    {{-- FOUC (Sayfa yüklenirken kayma) Engellemek İçin Bloklayıcı Script --}}
+    <script>
+        if (localStorage.getItem('sidebarCollapsed') === 'true') {
+            document.documentElement.classList.add('sidebar-collapsed');
+        }
+    </script>
 
     <script src="https://unpkg.com/lucide@latest"></script>
 
@@ -359,7 +365,14 @@
         <main class="main-content">
             @auth
                 <header class="topbar">
-                    <div class="search-bar-mini"></div>
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <button type="button" id="sidebarToggleBtn" class="hamburger-btn"
+                            title="{{ __('Menüyü Aç/Kapat') }}">
+                            <i data-lucide="menu" style="width: 24px; height: 24px;"></i>
+                        </button>
+
+                        <div class="search-bar-mini"></div> {{-- Senin mevcut arama kutun --}}
+                    </div>
 
                     <div class="header-actions flex-between" style="gap: 20px;">
 
@@ -553,6 +566,19 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             lucide.createIcons();
+            // --- SİDEBAR AÇ/KAPAT (PUSH MANTIĞI) ---
+            const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
+
+            if (sidebarToggleBtn) {
+                sidebarToggleBtn.addEventListener('click', function() {
+                    // Sınıfı direkt <html> (documentElement) etiketinden değiştiriyoruz
+                    document.documentElement.classList.toggle('sidebar-collapsed');
+
+                    // Yeni durumu hafızaya kaydet
+                    const isNowCollapsed = document.documentElement.classList.contains('sidebar-collapsed');
+                    localStorage.setItem('sidebarCollapsed', isNowCollapsed);
+                });
+            }
 
             @auth
             // --- 1. DİL SEÇİCİ DROPDOWN ---

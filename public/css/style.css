@@ -1074,3 +1074,49 @@ body {
     padding: 2px 6px;
     border-radius: 4px;
 }
+
+/* Sidebar gizlendiğinde sola doğru kayarak ekran dışına çıkar */
+html.sidebar-collapsed .sidebar {
+    transform: translateX(-100%);
+}
+
+/* Sidebar gizlendiğinde ana içerik ekranı kaplar */
+html.sidebar-collapsed .main-content {
+    margin-left: 0;
+    width: 100%;
+}
+
+/* Hamburger Menü Butonu Stili */
+.hamburger-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 8px;
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease;
+}
+
+.hamburger-btn:hover {
+    background: var(--bg-color);
+    /* Hover efekti, kendi renk değişkenini kullan */
+}
+.layout-split {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 25px;
+    transition: all 0.3s ease;
+}
+
+/* Sidebar kapalıyken */
+.sidebar-collapsed .layout-split {
+    grid-template-columns: 1fr; /* tek kolon */
+}
+
+/* Sağ kart aşağı insin */
+.sidebar-collapsed .layout-split > div:last-child {
+    order: 2;
+}
