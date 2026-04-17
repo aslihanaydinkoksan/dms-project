@@ -37,13 +37,27 @@
 
                         <div class="form-group">
                             <label class="form-label">{{ __('Yeni Şifre (İsteğe Bağlı)') }}</label>
-                            <input type="password" name="password" class="form-control"
-                                placeholder="{{ __('Değiştirmek istemiyorsanız boş bırakın') }}">
+                            <div style="position: relative;">
+                                <input type="password" name="password" class="form-control"
+                                    placeholder="{{ __('Değiştirmek istemiyorsanız boş bırakın') }}"
+                                    style="padding-right: 40px;">
+                                <button type="button" class="toggle-password"
+                                    style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--secondary-color);">
+                                    <i data-lucide="eye"></i>
+                                </button>
+                            </div>
                         </div>
 
                         <div class="form-group">
                             <label class="form-label">{{ __('Yeni Şifre (Tekrar)') }}</label>
-                            <input type="password" name="password_confirmation" class="form-control" placeholder="••••••••">
+                            <div style="position: relative;">
+                                <input type="password" name="password_confirmation" class="form-control"
+                                    placeholder="••••••••" style="padding-right: 40px;">
+                                <button type="button" class="toggle-password"
+                                    style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--secondary-color);">
+                                    <i data-lucide="eye"></i>
+                                </button>
+                            </div>
                         </div>
 
                         <button type="submit"
@@ -75,14 +89,27 @@
                             <label class="form-label">
                                 {{ auth()->user()->vault_password ? __('Yeni Kasa Şifresi') : __('Kasa Şifresi Oluştur') }}
                             </label>
-                            <input type="password" name="vault_password" class="form-control"
-                                placeholder="{{ __('Özel kasa şifrenizi girin') }}" required>
+                            <div style="position: relative;">
+                                <input type="password" name="vault_password" class="form-control"
+                                    placeholder="{{ __('Özel kasa şifrenizi girin') }}" required
+                                    style="padding-right: 40px;">
+                                <button type="button" class="toggle-password"
+                                    style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--secondary-color);">
+                                    <i data-lucide="eye"></i>
+                                </button>
+                            </div>
                         </div>
 
                         <div class="form-group">
                             <label class="form-label">{{ __('Şifreyi Onaylayın') }}</label>
-                            <input type="password" name="vault_password_confirmation" class="form-control"
-                                placeholder="{{ __('Tekrar girin') }}" required>
+                            <div style="position: relative;">
+                                <input type="password" name="vault_password_confirmation" class="form-control"
+                                    placeholder="{{ __('Tekrar girin') }}" required style="padding-right: 40px;">
+                                <button type="button" class="toggle-password"
+                                    style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--secondary-color);">
+                                    <i data-lucide="eye"></i>
+                                </button>
+                            </div>
                         </div>
 
                         <button type="submit" class="btn btn-outline-danger btn-block mt-10">
@@ -108,8 +135,14 @@
                                 <div class="form-group" style="flex: 1; margin: 0;">
                                     <label class="form-label" style="font-size: 0.8rem;">{{ __('Ana Sistem Şifreniz') }}
                                         <span class="text-danger">*</span></label>
-                                    <input type="password" name="current_password" class="form-control" required
-                                        placeholder="{{ __('Giriş şifreniz') }}">
+                                    <div style="position: relative;">
+                                        <input type="password" name="current_password" class="form-control" required
+                                            placeholder="{{ __('Giriş şifreniz') }}" style="padding-right: 40px;">
+                                        <button type="button" class="toggle-password"
+                                            style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--secondary-color);">
+                                            <i data-lucide="eye"></i>
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <button type="submit" class="btn btn-danger"
@@ -120,10 +153,38 @@
                             </form>
                         </div>
                     @endif
-
                 </div>
             </div>
-
         </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Sınıfı 'toggle-password' olan tüm butonları seçiyoruz
+            const toggleButtons = document.querySelectorAll('.toggle-password');
+
+            toggleButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    // DOM Traversal: Tıklanan butonun bulunduğu kapsayıcıdaki 'input' elementini buluyoruz
+                    const input = this.parentElement.querySelector('input');
+
+                    // Input tipini kontrol edip tersine çeviriyoruz (Ternary mantığı)
+                    const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
+                    input.setAttribute('type', type);
+
+                    // İlgili butonun içindeki ikonu bulup güncelliyoruz
+                    const iconElement = this.querySelector('svg') || this.querySelector('i');
+                    iconElement.setAttribute('data-lucide', type === 'password' ? 'eye' :
+                    'eye-off');
+
+                    // Lucide kütüphanesi ile sadece bu butonu yeniden render ediyoruz
+                    if (window.lucide) {
+                        lucide.createIcons({
+                            root: this
+                        });
+                    }
+                });
+            });
+        });
+    </script>
 @endsection

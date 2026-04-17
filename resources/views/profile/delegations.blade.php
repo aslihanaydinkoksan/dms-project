@@ -207,4 +207,3 @@
         }
     </style>
 @endpush
-@endsection

@@ -124,15 +124,26 @@
                 </div>
 
                 <div class="form-group" style="margin-bottom: 20px;">
-                    <label for="password" class="form-label"
-                        style="font-weight: 600; color: var(--secondary-color);">{{ __('Şifre') }}</label>
-                    <div class="input-icon-wrapper">
+                    <label for="password" class="form-label" style="font-weight: 600; color: var(--secondary-color);">
+                        {{ __('Şifre') }}
+                    </label>
+                    <div class="input-icon-wrapper" style="position: relative;">
                         <i data-lucide="lock"></i>
                         <input type="password" name="password" id="password" class="form-control" required
-                            placeholder="••••••••">
+                            placeholder="••••••••" style="padding-right: 40px;">
+
+                        <button type="button" id="togglePassword"
+                            style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--secondary-color);">
+                            <i data-lucide="eye" id="toggleIcon"></i>
+                        </button>
                     </div>
-                    <a href="{{ route('password.request') }}"
-                        style="font-size: 0.8rem; color: var(--primary-color); text-decoration: none; font-weight: 500;">{{ __('Şifreni mi unuttun?') }}</a>
+
+                    <div style="margin-top: 5px; text-align: right;">
+                        <a href="{{ route('password.request') }}"
+                            style="font-size: 0.8rem; color: var(--primary-color); text-decoration: none; font-weight: 500;">
+                            {{ __('Şifreni mi unuttun?') }}
+                        </a>
+                    </div>
                 </div>
 
                 <div class="form-group"
@@ -250,6 +261,31 @@
                     modal.style.display = 'none'; // Modalı kapat
                 });
             }
+            const togglePasswordBtn = document.getElementById('togglePassword');
+            const passwordInput = document.getElementById('password');
+
+            togglePasswordBtn.addEventListener('click', function() {
+                // Şifre alanının type özelliğini kontrol et ve değiştir
+                const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                passwordInput.setAttribute('type', type);
+
+                // Lucide kullanıyorsanız, ikonu değiştirmek için elementi güncelleyip yeniden render etmeniz gerekebilir.
+                // Eğer Lucide ikonları SVG olarak render edildiyse, aşağıdaki yaklaşım en temizidir:
+                const iconElement = this.querySelector('svg') || this.querySelector('i');
+
+                if (type === 'password') {
+                    iconElement.setAttribute('data-lucide', 'eye');
+                } else {
+                    iconElement.setAttribute('data-lucide', 'eye-off');
+                }
+
+                // Lucide kütüphanesine sadece bu butondaki ikonu yeniden çizdiriyoruz
+                if (window.lucide) {
+                    lucide.createIcons({
+                        root: togglePasswordBtn
+                    });
+                }
+            });
         });
     </script>
 </body>
