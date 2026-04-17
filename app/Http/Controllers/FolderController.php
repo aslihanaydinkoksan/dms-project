@@ -50,8 +50,17 @@ class FolderController extends Controller
         // Kullanıcının departmanı, klasörün departmanları arasında var mı?
         $isMyDepartment = $folder->departments->contains('id', $user->department_id);
 
-        // Yönetici değilse, Her şeyi görme yetkisi yoksa, Klasör global değilse ve kendi departmanında değilse REDDET!
-        if (!$isAdmin && !$hasViewAll && !$isGlobalFolder && !$isMyDepartment) {
+        // Zırh Delici 1: Kullanıcıya bu klasör için ÖZEL (Granular) yetki verilmiş mi?
+        $hasGranularAccess = $folder->specificUsers()->where('users.id', $user->id)->exists();
+
+        // Zırh Delici 2: Klasör Yetki Matrisinde bu kullanıcının rolüne (Örn: Standart Kullanıcı) 'Görüntüle' izni verilmiş mi?
+        $hasMatrixAccess = $folder->rolePermissions()
+            ->whereIn('role_id', $user->roles->pluck('id'))
+            ->where('can_view', true)
+            ->exists();
+
+        // EĞER KULLANICI BU 6 ŞARTIN HİÇBİRİNİ SAĞLAMIYORSA REDDET!
+        if (!$isAdmin && !$hasViewAll && !$isGlobalFolder && !$isMyDepartment && !$hasGranularAccess && !$hasMatrixAccess) {
             abort(403, 'Bu klasöre erişim yetkiniz bulunmuyor (Departman İzolasyonu).');
         }
 
