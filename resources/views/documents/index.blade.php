@@ -109,7 +109,7 @@
                         {{ __('Onay Bekleyenler') }}
                     </option>
                     <option value="published" {{ request('status') == 'published' ? 'selected' : '' }}>✅
-                        {{ __('Yayında Olanlar') }}
+                        {{ __('Onaylı Belgeler (Yayında Olanlar)') }}
                     </option>
                     <option value="rejected" {{ request('status') == 'rejected' ? 'selected' : '' }}>❌
                         {{ __('Reddedilenler') }}
