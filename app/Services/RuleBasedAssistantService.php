@@ -12,27 +12,35 @@ class RuleBasedAssistantService implements AssistantServiceInterface
 {
     public function ask(string $message, User $user): array
     {
-        // Mesajı küçük harfe çevir ve temizle
-        $messageStr = Str::lower($message);
+        // 1. Geliştirme: Türkçe karakterleri bozmadan küçük harfe çevir
+        $messageStr = mb_strtolower(trim($message), 'UTF-8');
 
-        // Şimdilik performansı etkilemez ama ileride Cache'lenebilir
         $intents = BotIntent::all();
 
         foreach ($intents as $intent) {
             foreach ($intent->keywords as $keyword) {
-                // Eğer kullanıcının cümlesinde anahtar kelime geçiyorsa (Smart Match)
-                if (Str::contains($messageStr, Str::lower($keyword))) {
+                $keywordStr = mb_strtolower(trim($keyword), 'UTF-8');
 
-                    // Rota adı veritabanında var mı ve gerçekten sistemde tanımlı mı?
-                    $url = ($intent->action_route && Route::has($intent->action_route))
-                        ? route($intent->action_route)
-                        : null;
+                // Senaryo A: Birebir yan yana geçiyorsa (Örn: "yeni belge")
+                if (Str::contains($messageStr, $keywordStr)) {
+                    return $this->prepareResponse($intent);
+                }
 
-                    return [
-                        'reply' => $intent->response_text,
-                        'link' => $url,
-                        'link_text' => $intent->action_button_text ?? 'Buraya Tıklayın'
-                    ];
+                // Senaryo B (SİHİRLİ DOKUNUŞ): Kelimelerin sırası farklıysa
+                // Anahtar kelimeyi parçala (["yeni", "belge"]) ve hepsi mesajda var mı bak
+                $keywordWords = array_filter(explode(' ', $keywordStr));
+                $allWordsMatch = true;
+
+                foreach ($keywordWords as $word) {
+                    if (!Str::contains($messageStr, $word)) {
+                        $allWordsMatch = false;
+                        break;
+                    }
+                }
+
+                // Eğer anahtar kelimedeki TÜM kelimeler mesajda dağınık halde varsa eşleş!
+                if (count($keywordWords) > 0 && $allWordsMatch) {
+                    return $this->prepareResponse($intent);
                 }
             }
         }
@@ -42,6 +50,22 @@ class RuleBasedAssistantService implements AssistantServiceInterface
             'reply' => 'Bunu tam anlayamadım, ancak dilerseniz erişim yetkiniz olan tüm belgeleri listeleyebilirim.',
             'link' => route('documents.index'),
             'link_text' => 'Tüm Belgelerim'
+        ];
+    }
+
+    /**
+     * Cevabı formatlayıp döndüren yardımcı metod
+     */
+    private function prepareResponse(BotIntent $intent): array
+    {
+        $url = ($intent->action_route && Route::has($intent->action_route))
+            ? route($intent->action_route)
+            : null;
+
+        return [
+            'reply' => $intent->response_text,
+            'link' => $url,
+            'link_text' => $intent->action_button_text ?? 'İlgili Sayfaya Git'
         ];
     }
 }
