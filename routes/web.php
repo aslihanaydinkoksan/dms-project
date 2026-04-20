@@ -43,6 +43,13 @@ Route::middleware(['auth'])->group(function () {
 
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::post('/assistant/chat', [\App\Http\Controllers\AssistantController::class, 'chat'])->name('assistant.chat');
+    // --- AKILLI ASİSTAN (BOT) YÖNETİMİ ---
+    Route::prefix('settings')->name('settings.')->group(function () {
+        Route::get('/intents', [\App\Http\Controllers\BotIntentController::class, 'index'])->name('intents.index');
+        Route::post('/intents', [\App\Http\Controllers\BotIntentController::class, 'store'])->name('intents.store');
+        Route::delete('/intents/{intent}', [\App\Http\Controllers\BotIntentController::class, 'destroy'])->name('intents.destroy');
+    });
 
     // --- KULLANICI & PROFİL YÖNETİMİ ---
     Route::prefix('profile')->name('profile.')->group(function () {

@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>KÖKSAN DMS</title>
     <link rel="stylesheet" href="{{ asset('css/style.css') }}">
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
@@ -358,6 +359,12 @@
                                     <i data-lucide="mail" class="nav-icon"></i> {{ __('Mail Şablonları ve Ayarlar') }}
                                 </a>
                             </li>
+                            <li>
+                                <a href="{{ route('settings.intents.index') }}"
+                                    class="{{ request()->routeIs('settings.intents.*') ? 'active' : '' }}">
+                                    <i data-lucide="bot" class="nav-icon"></i> {{ __('Asistan Eğitimi') }}
+                                </a>
+                            </li>
                         @endcan
                     @endcanany
                 </ul>
@@ -372,8 +379,8 @@
                             title="{{ __('Gösterge Panelini Aç/Kapat') }}">
                             <i data-lucide="menu" style="width: 24px; height: 24px;"></i>
                         </button>
-                        
-                        <a href="{{ route('dashboard') }}" class="brand-logo" 
+
+                        <a href="{{ route('dashboard') }}" class="brand-logo"
                             style="display: flex; align-items: center; gap: 8px; text-decoration: none; color: var(--primary-color); font-weight: 800; font-size: 1.2rem; letter-spacing: 0.5px; transition: opacity 0.2s; background: transparent !important; padding: 0 !important; margin: 0 !important;">
                             <i data-lucide="layers" style="width: 26px; height: 26px; color: var(--accent-color);"></i>
                             <span class="brand-text">KÖKSAN DMS</span>
@@ -883,6 +890,427 @@
     </script>
 
     @stack('scripts')
+    {{-- ========================================== --}}
+    {{-- KÖKSAN AKILLI ASİSTAN WIDGET (PURE CSS/JS) --}}
+    {{-- ========================================== --}}
+    @auth
+        <div id="smart-assistant-widget">
+            <div id="sa-chat-window" class="sa-hidden">
+                <div class="sa-header">
+                    <div class="sa-header-info">
+                        <div class="sa-avatar"><i data-lucide="bot"></i></div>
+                        <div>
+                            <h4 style="margin:0; font-size:1rem; color:var(--primary-color);">KöksanGPT</h4>
+                            <span style="font-size:0.75rem; color:var(--success-color);">🟢 Çevrimiçi</span>
+                        </div>
+                    </div>
+                    <button id="sa-close-btn"><i data-lucide="x"></i></button>
+                </div>
+
+                <div class="sa-body" id="sa-chat-body">
+                    <div class="sa-msg sa-bot">
+                        <div class="sa-bubble">
+                            Merhaba {{ auth()->user()->name }}! Size nasıl yardımcı olabilirim? Belge yüklemek veya
+                            yetkilerinizi kontrol etmek ister misiniz?
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sa-footer">
+                    <input type="text" id="sa-input" placeholder="Bir şeyler sorun..." autocomplete="off">
+                    <button id="sa-send-btn"><i data-lucide="send"></i></button>
+                </div>
+            </div>
+
+            <button id="sa-toggle-btn" class="sa-floating-btn">
+                <i data-lucide="message-square-plus"></i>
+            </button>
+        </div>
+
+        <style>
+            /* WIDGET KAPSAYICI */
+            #smart-assistant-widget {
+                position: fixed;
+                bottom: 30px;
+                right: 30px;
+                z-index: 9999;
+                font-family: inherit;
+            }
+
+            /* YÜZEN BUTON */
+            .sa-floating-btn {
+                width: 60px;
+                height: 60px;
+                border-radius: 50%;
+                background: var(--accent-color);
+                color: white;
+                border: none;
+                cursor: pointer;
+                box-shadow: 0 10px 25px rgba(59, 130, 246, 0.4);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+
+            .sa-floating-btn:hover {
+                transform: scale(1.1);
+            }
+
+            /* CHAT PENCERESİ (GLASSMORPHISM) */
+            #sa-chat-window {
+                position: absolute;
+                bottom: 80px;
+                right: 0;
+                width: 350px;
+                height: 500px;
+                background: rgba(255, 255, 255, 0.85);
+                backdrop-filter: blur(16px);
+                -webkit-backdrop-filter: blur(16px);
+                border: 1px solid rgba(255, 255, 255, 0.4);
+                border-radius: 16px;
+                box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                transform-origin: bottom right;
+            }
+
+            #sa-chat-window.sa-hidden {
+                transform: scale(0);
+                opacity: 0;
+                pointer-events: none;
+            }
+
+            /* HEADER */
+            .sa-header {
+                padding: 15px 20px;
+                background: rgba(255, 255, 255, 0.9);
+                border-bottom: 1px solid var(--border-color);
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+
+            .sa-header-info {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+
+            .sa-avatar {
+                width: 40px;
+                height: 40px;
+                background: #eff6ff;
+                color: var(--accent-color);
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            #sa-close-btn {
+                background: transparent;
+                border: none;
+                cursor: pointer;
+                color: var(--text-muted);
+                padding: 5px;
+            }
+
+            /* BODY (MESAJ ALANI) */
+            .sa-body {
+                flex: 1;
+                padding: 20px;
+                overflow-y: auto;
+                display: flex;
+                flex-direction: column;
+                gap: 15px;
+                scroll-behavior: smooth;
+            }
+
+            .sa-body::-webkit-scrollbar {
+                width: 6px;
+            }
+
+            .sa-body::-webkit-scrollbar-thumb {
+                background: #cbd5e1;
+                border-radius: 4px;
+            }
+
+            /* MESAJ BALONLARI */
+            .sa-msg {
+                display: flex;
+                flex-direction: column;
+                max-width: 85%;
+                animation: fadeIn 0.3s ease;
+            }
+
+            .sa-bot {
+                align-self: flex-start;
+            }
+
+            .sa-user {
+                align-self: flex-end;
+            }
+
+            .sa-bubble {
+                padding: 12px 16px;
+                border-radius: 16px;
+                font-size: 0.9rem;
+                line-height: 1.4;
+                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            }
+
+            .sa-bot .sa-bubble {
+                background: #f8fafc;
+                border: 1px solid var(--border-color);
+                color: var(--text-color);
+                border-bottom-left-radius: 4px;
+            }
+
+            .sa-user .sa-bubble {
+                background: var(--success-color);
+                color: white;
+                border-bottom-right-radius: 4px;
+            }
+
+            /* AKSİYON BUTONU */
+            .sa-action-link {
+                display: inline-block;
+                margin-top: 8px;
+                padding: 8px 16px;
+                background: var(--accent-color);
+                color: white;
+                text-decoration: none;
+                border-radius: 8px;
+                font-size: 0.85rem;
+                font-weight: 500;
+                transition: background 0.2s;
+            }
+
+            .sa-action-link:hover {
+                background: #2563eb;
+                color: white;
+            }
+
+            /* YÜKLENİYOR ANİMASYONU */
+            .sa-typing {
+                display: flex;
+                gap: 4px;
+                padding: 15px;
+                background: #f8fafc;
+                border-radius: 16px;
+                border-bottom-left-radius: 4px;
+                width: fit-content;
+                border: 1px solid var(--border-color);
+            }
+
+            .sa-dot {
+                width: 6px;
+                height: 6px;
+                background: #94a3b8;
+                border-radius: 50%;
+                animation: sa-bounce 1.4s infinite ease-in-out both;
+            }
+
+            .sa-dot:nth-child(1) {
+                animation-delay: -0.32s;
+            }
+
+            .sa-dot:nth-child(2) {
+                animation-delay: -0.16s;
+            }
+
+            @keyframes fadeIn {
+                from {
+                    opacity: 0;
+                    transform: translateY(10px);
+                }
+
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            @keyframes sa-bounce {
+
+                0%,
+                80%,
+                100% {
+                    transform: scale(0);
+                }
+
+                40% {
+                    transform: scale(1);
+                }
+            }
+
+            /* FOOTER (INPUT) */
+            .sa-footer {
+                padding: 15px;
+                background: rgba(255, 255, 255, 0.9);
+                border-top: 1px solid var(--border-color);
+                display: flex;
+                gap: 10px;
+            }
+
+            #sa-input {
+                flex: 1;
+                padding: 12px 15px;
+                border: 1px solid var(--border-color);
+                border-radius: 20px;
+                outline: none;
+                font-size: 0.9rem;
+                background: #f8fafc;
+                transition: border-color 0.2s;
+            }
+
+            #sa-input:focus {
+                border-color: var(--accent-color);
+            }
+
+            #sa-send-btn {
+                background: var(--accent-color);
+                color: white;
+                border: none;
+                border-radius: 50%;
+                width: 42px;
+                height: 42px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                transition: transform 0.2s;
+            }
+
+            #sa-send-btn:hover {
+                transform: scale(1.05);
+            }
+
+            #sa-send-btn:disabled {
+                background: #cbd5e1;
+                cursor: not-allowed;
+                transform: none;
+            }
+        </style>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const toggleBtn = document.getElementById('sa-toggle-btn');
+                const closeBtn = document.getElementById('sa-close-btn');
+                const chatWindow = document.getElementById('sa-chat-window');
+                const chatBody = document.getElementById('sa-chat-body');
+                const inputField = document.getElementById('sa-input');
+                const sendBtn = document.getElementById('sa-send-btn');
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
+                    '{{ csrf_token() }}';
+
+                // Aç/Kapat Mantığı
+                const toggleChat = () => {
+                    chatWindow.classList.toggle('sa-hidden');
+                    if (!chatWindow.classList.contains('sa-hidden')) {
+                        setTimeout(() => inputField.focus(), 300);
+                    }
+                };
+
+                toggleBtn.addEventListener('click', toggleChat);
+                closeBtn.addEventListener('click', toggleChat);
+
+                // Scroll'u en alta indirme fonksiyonu
+                const scrollToBottom = () => {
+                    chatBody.scrollTop = chatBody.scrollHeight;
+                };
+
+                // Mesaj Ekleme Fonksiyonu
+                const appendMessage = (sender, text, link = null, linkText = null) => {
+                    const msgDiv = document.createElement('div');
+                    msgDiv.className = `sa-msg sa-${sender}`;
+
+                    let html = `<div class="sa-bubble">${text}</div>`;
+
+                    // Eğer asistansa ve link varsa buton ekle
+                    if (sender === 'bot' && link) {
+                        html += `<a href="${link}" class="sa-action-link" target="_self">${linkText}</a>`;
+                    }
+
+                    msgDiv.innerHTML = html;
+                    chatBody.appendChild(msgDiv);
+                    scrollToBottom();
+                };
+
+                // Yazıyor (Loading) Göstergesi
+                const showTyping = () => {
+                    const typingDiv = document.createElement('div');
+                    typingDiv.className = 'sa-msg sa-bot sa-typing-indicator';
+                    typingDiv.innerHTML =
+                        `<div class="sa-typing"><div class="sa-dot"></div><div class="sa-dot"></div><div class="sa-dot"></div></div>`;
+                    chatBody.appendChild(typingDiv);
+                    scrollToBottom();
+                    return typingDiv;
+                };
+
+                // AJAX Fetch İşlemi
+                const sendMessage = async () => {
+                    const message = inputField.value.trim();
+                    if (!message) return;
+
+                    // Kullanıcı mesajını ekle ve inputu temizle
+                    appendMessage('user', message);
+                    inputField.value = '';
+                    inputField.disabled = true;
+                    sendBtn.disabled = true;
+
+                    // Yükleniyor efekti
+                    const typingIndicator = showTyping();
+
+                    try {
+                        const response = await fetch('{{ route('assistant.chat') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                message: message
+                            })
+                        });
+
+                        if (!response.ok) throw new Error('Sunucu hatası');
+
+                        const data = await response.json();
+
+                        // Yükleniyor efektini sil ve cevabı ekle (İnsansı olması için 500ms gecikme)
+                        setTimeout(() => {
+                            typingIndicator.remove();
+                            appendMessage('bot', data.reply, data.link, data.link_text);
+                            lucide.createIcons(); // Varsa yeni ikonları renderla
+                        }, 600);
+
+                    } catch (error) {
+                        typingIndicator.remove();
+                        appendMessage('bot',
+                            'Üzgünüm, şu anda bağlantı kuramıyorum. Lütfen daha sonra tekrar deneyin.');
+                    } finally {
+                        inputField.disabled = false;
+                        sendBtn.disabled = false;
+                        inputField.focus();
+                    }
+                };
+
+                // Tıklama ve Enter Tuşu Eventleri
+                sendBtn.addEventListener('click', sendMessage);
+                inputField.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        sendMessage();
+                    }
+                });
+            });
+        </script>
+    @endauth
 </body>
 
 </html>

@@ -15,7 +15,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(
+            \App\Interfaces\AssistantServiceInterface::class,
+            \App\Services\RuleBasedAssistantService::class
+        );
     }
 
     /**
@@ -26,7 +29,7 @@ class AppServiceProvider extends ServiceProvider
         Document::observe(DocumentObserver::class);
         Paginator::useBootstrapFive();
         Gate::before(function ($user, $ability) {
-        return $user->hasRole('Super Admin') ? true : null;
-    });
+            return $user->hasRole('Super Admin') ? true : null;
+        });
     }
 }
