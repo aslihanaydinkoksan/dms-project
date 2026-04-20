@@ -163,7 +163,7 @@
                             </select> <small class="text-muted"
                                 style="display: block; margin-top: 8px; font-size: 0.85rem; background: #f8fafc; padding: 10px; border-radius: 6px; border-left: 3px solid #3498db;">
                                 💡 <strong>İpucu:</strong> Etiketler, belgeleri klasörden bağımsız olarak gruplamanızı
-                                sağlar. <em>(Örn: Acil, Fatura, 2026_Hedefleri)</em>. İlgili etiketi yazmaya başlayın ve
+                                sağlar. <em>(Örn: Acil, Fatura, 2026_Hedefleri)</em>. İlgili etiketi yazmaya başlayın veya
                                 listeden seçin. </small> </div>
                     </div>
                 </div>

@@ -272,6 +272,13 @@
                 box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
             }
         }
+
+        @media (max-width: 768px) {
+            .brand-text {
+                display: none;
+                /* Mobilde sadece ikon kalsın */
+            }
+        }
     </style>
 
 </head>
@@ -281,11 +288,6 @@
     <div class="app-container">
         @auth
             <aside class="sidebar">
-                <a href="{{ route('dashboard') }}" class="sidebar-brand"
-                    style="text-decoration: none; color: inherit; display: flex; align-items: center;">
-                    <i data-lucide="layers" style="margin-right: 10px; width: 24px; height: 24px;"></i>
-                    <span style="font-weight: 700; letter-spacing: 0.5px;">KÖKSAN DMS</span>
-                </a>
                 <ul class="sidebar-nav">
                     @can('menu.dashboard')
                         <li>
@@ -367,9 +369,15 @@
                 <header class="topbar">
                     <div style="display: flex; align-items: center; gap: 15px;">
                         <button type="button" id="sidebarToggleBtn" class="hamburger-btn"
-                            title="{{ __('Menüyü Aç/Kapat') }}">
+                            title="{{ __('Gösterge Panelini Aç/Kapat') }}">
                             <i data-lucide="menu" style="width: 24px; height: 24px;"></i>
                         </button>
+                        
+                        <a href="{{ route('dashboard') }}" class="brand-logo" 
+                            style="display: flex; align-items: center; gap: 8px; text-decoration: none; color: var(--primary-color); font-weight: 800; font-size: 1.2rem; letter-spacing: 0.5px; transition: opacity 0.2s; background: transparent !important; padding: 0 !important; margin: 0 !important;">
+                            <i data-lucide="layers" style="width: 26px; height: 26px; color: var(--accent-color);"></i>
+                            <span class="brand-text">KÖKSAN DMS</span>
+                        </a>
 
                         <div class="search-bar-mini"></div> {{-- Senin mevcut arama kutun --}}
                     </div>
