@@ -1431,47 +1431,52 @@
 @push('scripts')
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // --- 1. GÖRSEL VE YARDIMCI ARAÇLAR ---
+            // --- LUCIDE İKONLARI ---
             lucide.createIcons();
-
-            // TomSelect (Akıllı Arama) Entegrasyonu
+            // --- TOM SELECT (AKILLI ARAMA) ENTEGRASYONU ---
+            // Sayfadaki ilgili tüm select kutularını bul ve akıllı hale getir
             const selectSelectors =
-                'select[name="user_id"], select[name="delivered_to_user_id"], select[name^="approvers"], #physicalReceiverSelect';
+                'select[name="user_id"], select[name="delivered_to_user_id"], select[name^="approvers"]';
+
             document.querySelectorAll(selectSelectors).forEach((el) => {
-                if (!el.tomselect) {
-                    new TomSelect(el, {
-                        plugins: el.id === 'physicalReceiverSelect' ? ['remove_button',
-                            'drag_drop'] : [],
-                        create: false,
-                        sortField: {
-                            field: "text",
-                            direction: "asc"
-                        },
-                        placeholder: "-- Kullanıcı ara ve seç --",
-                    });
-                }
+                new TomSelect(el, {
+                    create: false,
+                    sortField: {
+                        field: "text",
+                        direction: "asc"
+                    },
+                    placeholder: "-- Kullanıcı ara ve seç --",
+                });
             });
 
-            // --- 2. TAB KONTROLÜ ---
+            // --- TAB KONTROLÜ (SMART TABS) ---
             const tabs = document.querySelectorAll('.tab-item');
             const panes = document.querySelectorAll('.tab-pane');
+
             tabs.forEach(tab => {
                 tab.addEventListener('click', function() {
                     tabs.forEach(t => {
                         t.classList.remove('active');
-                        t.style.cssText =
-                            'padding: 12px 20px; cursor: pointer; display: flex; align-items: center; gap: 10px; border-left: 3px solid transparent; color: var(--text-muted);';
+                        t.style.borderLeftColor = 'transparent';
+                        t.style.background = 'transparent';
+                        t.style.color = 'var(--text-muted)';
+                        t.style.fontWeight = 'normal';
                     });
+
                     panes.forEach(p => {
                         p.style.display = 'none';
                         p.style.opacity = '0';
                     });
 
                     this.classList.add('active');
-                    this.style.cssText =
-                        'padding: 12px 20px; cursor: pointer; display: flex; align-items: center; gap: 10px; border-left: 3px solid var(--accent-color); background: var(--bg-color); color: var(--accent-color); font-weight: 500;';
+                    this.style.borderLeftColor = 'var(--accent-color)';
+                    this.style.background = 'var(--bg-color)';
+                    this.style.color = 'var(--accent-color)';
+                    this.style.fontWeight = '500';
 
-                    const targetPane = document.getElementById(this.getAttribute('data-target'));
+                    const targetId = this.getAttribute('data-target');
+                    const targetPane = document.getElementById(targetId);
+
                     if (targetPane) {
                         targetPane.style.display = 'block';
                         setTimeout(() => {
@@ -1480,9 +1485,308 @@
                     }
                 });
             });
-            if (tabs.length > 0) tabs[0].click();
 
-            // --- 3. DİNAMİK FİZİKSEL MODAL SİSTEMİ (TEK VE DOĞRU FONKSİYON) ---
+            if (tabs.length > 0) {
+                tabs[0].click(); // Sayfa yüklendiğinde ilk tabı aç
+            }
+
+            // --- MODAL YARDIMCI FONKSİYONU ---
+            const setupModal = (btnId, modalId, closeBtnClass = '.close-modal') => {
+                const btn = document.getElementById(btnId);
+                const modal = document.getElementById(modalId);
+                if (btn && modal) {
+                    btn.addEventListener('click', () => {
+                        modal.style.display = 'flex';
+                    });
+                    const closeBtn = modal.querySelector(closeBtnClass);
+                    if (closeBtn) {
+                        closeBtn.addEventListener('click', () => {
+                            modal.style.display = 'none';
+                        });
+                    }
+                    // Dışarı tıklayınca kapatma
+                    modal.addEventListener('click', (e) => {
+                        if (e.target === modal) modal.style.display = 'none';
+                    });
+                }
+            };
+
+            // Tüm modalları init et
+            setupModal('openApprovalModal', 'approvalModal');
+            setupModal('openCheckinModal', 'checkinModal', '.checkin-close');
+            setupModal('openStartWorkflowModal', 'startWorkflowModal', '#closeStartWorkflowModal');
+            setupModal('openAssignPhysicalModal', 'assignPhysicalModal', '#closeAssignModal');
+            setupModal('openConfirmPhysicalModal', 'confirmPhysicalModal', '#closeConfirmModal');
+
+            // --- ONAY/RED SEBEBİ UI KONTROLÜ ---
+            const radios = document.querySelectorAll('input[name="decision"]');
+            const commentWrapper = document.getElementById('rejectCommentWrapper');
+            const commentInput = document.getElementById('rejectComment');
+            const approvalForm = document.getElementById('approvalForm');
+            const decisionLabels = document.querySelectorAll('.decision-label');
+
+            radios.forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    // UI sıfırlama
+                    decisionLabels.forEach(label => {
+                        label.style.borderColor = 'var(--border-color)';
+                        label.style.background = '#fff';
+                        label.querySelector('.decision-icon').style.color =
+                            'var(--text-muted)';
+                        label.querySelector('.decision-text').style.color =
+                            'var(--text-muted)';
+                    });
+
+                    // Seçileni renklendirme
+                    const selectedLabel = e.target.closest('label');
+                    if (e.target.value === 'approve') {
+                        selectedLabel.style.borderColor = 'var(--success-color)';
+                        selectedLabel.style.background = '#f0fdf4';
+                        selectedLabel.querySelector('.decision-icon').style.color =
+                            'var(--success-color)';
+                        selectedLabel.querySelector('.decision-text').style.color =
+                            'var(--success-color)';
+
+                        commentWrapper.style.display = 'none';
+                        commentInput.required = false;
+                        if (approvalForm) approvalForm.action =
+                            '{{ route('documents.approve', $document->id ?? 0) }}';
+                    } else {
+                        selectedLabel.style.borderColor = 'var(--danger-color)';
+                        selectedLabel.style.background = '#fef2f2';
+                        selectedLabel.querySelector('.decision-icon').style.color =
+                            'var(--danger-color)';
+                        selectedLabel.querySelector('.decision-text').style.color =
+                            'var(--danger-color)';
+
+                        commentWrapper.style.display = 'block';
+                        commentInput.required = true;
+                        if (approvalForm) approvalForm.action =
+                            '{{ route('documents.reject', $document->id ?? 0) }}';
+                    }
+                });
+            });
+
+            // --- CHECK-IN DOSYA İSMİ GÖSTERİMİ ---
+            const checkinFileInput = document.getElementById('checkinFile');
+            const checkinFileName = document.getElementById('checkin-file-name');
+            if (checkinFileInput && checkinFileName) {
+                checkinFileInput.addEventListener('change', function(e) {
+                    if (e.target.files.length > 0) {
+                        checkinFileName.textContent = e.target.files[0].name;
+                        checkinFileName.style.color = 'var(--success-color)';
+                        checkinFileName.style.fontWeight = 'bold';
+                    } else {
+                        checkinFileName.textContent = 'Dosya Seçin veya Sürükleyin';
+                        checkinFileName.style.color = 'var(--text-muted)';
+                        checkinFileName.style.fontWeight = 'normal';
+                    }
+                });
+            }
+
+            // --- CHECK-IN AJAX (Sessiz Hata Yakalama) ---
+            const checkinForm = document.getElementById('checkinForm');
+            const checkinError = document.getElementById('checkinError');
+            const checkinSubmitBtn = document.getElementById('checkinSubmitBtn');
+
+            if (checkinForm) {
+                checkinForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    checkinError.style.display = 'none';
+                    checkinError.textContent = '';
+                    checkinSubmitBtn.disabled = true;
+                    checkinSubmitBtn.innerHTML =
+                        '<i data-lucide="loader" class="spin" style="width: 18px;"></i> Yükleniyor...';
+                    lucide.createIcons(); // Spini çizmek için
+
+                    const formData = new FormData(this);
+
+                    fetch(this.action, {
+                            method: 'POST',
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
+                            },
+                            body: formData
+                        })
+                        .then(async response => {
+                            const data = await response.json();
+                            if (!response.ok) {
+                                let errorMsg = data.message || 'Bilinmeyen bir hata oluştu.';
+                                if (response.status === 422 && data.errors) {
+                                    errorMsg = Object.values(data.errors)[0][0];
+                                }
+                                throw new Error(errorMsg);
+                            }
+                            return data;
+                        })
+                        .then(data => {
+                            window.location.reload();
+                        })
+                        .catch(error => {
+                            checkinError.style.display = 'block';
+                            checkinError.textContent = '⚠️ ' + error.message;
+                            checkinSubmitBtn.disabled = false;
+                            checkinSubmitBtn.innerHTML =
+                                '<i data-lucide="unlock" style="width: 18px;"></i> Yükle ve Kilidi Kaldır';
+                            lucide.createIcons();
+                        });
+                });
+            }
+
+            // --- İŞ AKIŞI DİNAMİK SATIR EKLEME (JS) ---
+            let approverIndex = 1;
+            const addApproverBtn = document.getElementById('addApproverBtn');
+            const approversContainer = document.getElementById('approversContainer');
+
+            if (addApproverBtn && approversContainer) {
+                // İlk select box'ın innerHTML'ini kopyalayalım (Tüm kullanıcılar)
+                const firstSelect = approversContainer.querySelector('select');
+                const selectOptions = firstSelect ? firstSelect.innerHTML : '';
+
+                addApproverBtn.addEventListener('click', function() {
+                    const nextStepOrder = approverIndex + 1;
+                    const newRow = document.createElement('div');
+                    newRow.className = 'approver-row';
+                    newRow.style.cssText =
+                        'display: flex; gap: 15px; align-items: flex-end; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-top: 15px;';
+                    newRow.innerHTML = `
+                        <div style="flex: 2;">
+                            <label style="display: block; font-size: 0.85rem; font-weight: 500; margin-bottom: 5px;">${nextStepOrder}. Onaycı <span style="color: var(--danger-color);">*</span></label>
+                            <select name="approvers[${approverIndex}][user_id]" class="form-control" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px;" required>
+                                ${selectOptions}
+                            </select>
+                        </div>
+                        <div style="flex: 1;">
+                            <label style="display: block; font-size: 0.85rem; font-weight: 500; margin-bottom: 5px;">Sıra (Adım) <span style="color: var(--danger-color);">*</span></label>
+                            <input type="number" name="approvers[${approverIndex}][step_order]" value="${nextStepOrder}" min="1" class="form-control" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px;" required>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-danger remove-approver-btn" style="padding: 10px 15px; height: 42px;">
+                            <i data-lucide="trash-2" style="width: 16px;"></i>
+                        </button>
+                    `;
+                    approversContainer.appendChild(newRow);
+                    lucide.createIcons(); // Yeni eklenen ikonları çiz
+                    new TomSelect(newRow.querySelector('select'), {
+                        create: false,
+                        sortField: {
+                            field: "text",
+                            direction: "asc"
+                        },
+                        placeholder: "-- Kullanıcı ara ve seç --",
+                    });
+                    approverIndex++;
+
+                    // Silme butonuna event ekle
+                    newRow.querySelector('.remove-approver-btn').addEventListener('click', function() {
+                        newRow.remove();
+                    });
+                });
+            }
+
+            // --- SAYFADA KALMA SÜRESİ (BEACON API TRACKING) ---
+            let entryTime = Date.now();
+            let isTracking = true;
+
+            const sendTimeLog = () => {
+                if (!isTracking) return;
+                const duration = Math.floor((Date.now() - entryTime) / 1000);
+
+                if (duration > 2) {
+                    const url = '{{ route('documents.log-time', $document->id) }}';
+                    const data = JSON.stringify({
+                        duration: duration,
+                        _token: '{{ csrf_token() }}'
+                    });
+
+                    // Tarayıcı kapanırken verinin gitmesini garantilemek için sendBeacon kullanılır
+                    if (navigator.sendBeacon) {
+                        const blob = new Blob([data], {
+                            type: 'application/json'
+                        });
+                        navigator.sendBeacon(url, blob);
+                    } else {
+                        fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: data,
+                            keepalive: true
+                        }).catch(console.error);
+                    }
+                }
+                isTracking = false;
+            };
+
+            window.addEventListener('beforeunload', sendTimeLog);
+
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'hidden') {
+                    sendTimeLog();
+                } else {
+                    entryTime = Date.now();
+                    isTracking = true;
+                }
+            });
+
+            // --- DİNAMİK FİZİKSEL MODAL KONTROLÜ ---
+            function openPhysicalModal(actionType, movementId = null) {
+                const modal = document.getElementById('dynamicPhysicalModal');
+                const form = document.getElementById('physicalForm');
+                const title = document.getElementById('physicalModalTitle');
+                const actionInput = document.getElementById('physicalAction');
+                const methodInput = document.getElementById('physicalMethod');
+                const receiverSection = document.getElementById('receiverSelection');
+                const submitBtn = document.getElementById('physicalSubmitBtn');
+                const locationField = document.getElementById('locationField');
+
+                actionInput.value = actionType;
+
+                if (actionType === 'initiate') {
+                    title.innerHTML =
+                        '<i data-lucide="send" style="width: 20px; color: var(--accent-color);"></i> Evrak Devrini Başlat';
+                    form.action = "{{ route('physical.store', $document->id) }}";
+                    methodInput.value = 'POST';
+                    receiverSection.style.display = 'block';
+                    locationField.style.display = 'block';
+                    submitBtn.className = 'btn btn-primary';
+                    submitBtn.innerHTML = 'Zimmet İsteği Gönder';
+                } else if (actionType === 'accept') {
+                    title.innerHTML =
+                        '<i data-lucide="check-square" style="width: 20px; color: var(--success-color);"></i> Evrakı Teslim Al';
+                    form.setAttribute('action', "{{ url('physical-movements') }}/" + movementId); // <-- url() kullandık
+                    methodInput.value = 'PUT';
+                    receiverSection.style.display = 'none';
+                    locationField.style.display = 'block';
+                    submitBtn.className = 'btn btn-success';
+                    submitBtn.innerHTML = 'Teslim Aldım Onaylıyorum';
+                } else if (actionType === 'reject') {
+                    title.innerHTML =
+                        '<i data-lucide="x-circle" style="width: 20px; color: var(--danger-color);"></i> Evrakı Reddet';
+                    form.setAttribute('action', "{{ url('physical-movements') }}/" + movementId); // <-- url() kullandık
+                    methodInput.value = 'PUT';
+                    receiverSection.style.display = 'none';
+                    locationField.style.display = 'none'; // Reddediyorsa konum girmesine gerek yok
+                    submitBtn.className = 'btn btn-danger';
+                    submitBtn.innerHTML = 'Reddet ve İade Et';
+                }
+
+                modal.style.display = 'flex';
+                lucide.createIcons();
+            }
+
+            function closePhysicalModal() {
+                document.getElementById('dynamicPhysicalModal').style.display = 'none';
+            }
+
+            // Modal dışına tıklandığında kapatma
+            document.getElementById('dynamicPhysicalModal').addEventListener('click', (e) => {
+                if (e.target === document.getElementById('dynamicPhysicalModal')) {
+                    closePhysicalModal();
+                }
+            });
+            // --- DİNAMİK FİZİKSEL MODAL KONTROLÜ (MODERN EVENT LISTENER) ---
             const physicalModal = document.getElementById('dynamicPhysicalModal');
             const physicalForm = document.getElementById('physicalForm');
             const physicalTitle = document.getElementById('physicalModalTitle');
@@ -1491,13 +1795,12 @@
             const physicalReceiverSection = document.getElementById('receiverSelection');
             const physicalSubmitBtn = document.getElementById('physicalSubmitBtn');
             const physicalLocationField = document.getElementById('locationField');
-            const physicalErrorBox = document.getElementById('physicalErrorBox');
 
+            // Modal Açma Fonksiyonu
             const openModal = (actionType, movementId = null) => {
-                if (!physicalModal) return;
+                if (!physicalModal) return; // Modal yoksa işlem yapma
 
                 physicalActionInput.value = actionType;
-                if (physicalErrorBox) physicalErrorBox.style.display = 'none';
 
                 if (actionType === 'initiate') {
                     physicalTitle.innerHTML =
@@ -1508,91 +1811,132 @@
                     physicalLocationField.style.display = 'block';
                     physicalSubmitBtn.className = 'btn btn-primary';
                     physicalSubmitBtn.innerHTML = 'Zimmet İsteği Gönder';
-                } else {
-                    // Accept veya Reject işlemleri için URL'yi DİNAMİK yapıyoruz (Alt dizin dostu)
-                    const targetUrl = "{{ url('physical-movements') }}/" + movementId;
-                    physicalForm.setAttribute('action', targetUrl);
+
+                    // TomSelect varsa başlat (ÇOKLU SEÇİM VE SÜRÜKLE-BIRAK ÖZELLİĞİ İLE)
+                    const selectEl = document.getElementById('physicalReceiverSelect');
+                    if (selectEl && !selectEl.tomselect) {
+                        new TomSelect(selectEl, {
+                            plugins: ['remove_button',
+                            'drag_drop'], // Sürükle bırak ile sıra değiştirme
+                            create: false,
+                            placeholder: "-- Sırayla Personel(ler) Seçin --"
+                        });
+                    }
+
+                } else if (actionType === 'accept') {
+                    physicalTitle.innerHTML =
+                        '<i data-lucide="check-square" style="width: 20px; color: var(--success-color);"></i> Evrakı Teslim Al';
+                    physicalForm.setAttribute('action', "{{ url('physical-movements') }}/" + movementId);
                     physicalMethodInput.value = 'PUT';
                     physicalReceiverSection.style.display = 'none';
-
-                    if (actionType === 'accept') {
-                        physicalTitle.innerHTML =
-                            '<i data-lucide="check-square" style="width: 20px; color: var(--success-color);"></i> Evrakı Teslim Al';
-                        physicalLocationField.style.display = 'block';
-                        physicalSubmitBtn.className = 'btn btn-success';
-                        physicalSubmitBtn.innerHTML = 'Teslim Aldım Onaylıyorum';
-                    } else {
-                        physicalTitle.innerHTML =
-                            '<i data-lucide="x-circle" style="width: 20px; color: var(--danger-color);"></i> Evrakı Reddet';
-                        physicalLocationField.style.display = 'none';
-                        physicalSubmitBtn.className = 'btn btn-danger';
-                        physicalSubmitBtn.innerHTML = 'Reddet ve İade Et';
-                    }
+                    physicalLocationField.style.display = 'block';
+                    physicalSubmitBtn.className = 'btn btn-success';
+                    physicalSubmitBtn.innerHTML = 'Teslim Aldım Onaylıyorum';
+                } else if (actionType === 'reject') {
+                    physicalTitle.innerHTML =
+                        '<i data-lucide="x-circle" style="width: 20px; color: var(--danger-color);"></i> Evrakı Reddet';
+                    physicalForm.setAttribute('action', "{{ url('physical-movements') }}/" + movementId);
+                    physicalMethodInput.value = 'PUT';
+                    physicalReceiverSection.style.display = 'none';
+                    physicalLocationField.style.display = 'none';
+                    physicalSubmitBtn.className = 'btn btn-danger';
+                    physicalSubmitBtn.innerHTML = 'Reddet ve İade Et';
                 }
+
                 physicalModal.style.display = 'flex';
                 lucide.createIcons();
             };
+            // --- FİZİKSEL FORM AJAX GÖNDERİMİ ---
+            const physicalErrorBox = document.getElementById('physicalErrorBox');
 
-            // --- 4. EVENT LISTENERS (TIKLAMALAR) ---
-            const btnInitiate = document.getElementById('btnInitiatePhysical');
-            if (btnInitiate) btnInitiate.addEventListener('click', (e) => {
-                e.preventDefault();
-                openModal('initiate');
-            });
-
-            document.querySelectorAll('.btn-physical-action').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    openModal(btn.getAttribute('data-action'), btn.getAttribute('data-id'));
-                });
-            });
-
-            // Form Gönderimi (AJAX)
             if (physicalForm) {
                 physicalForm.addEventListener('submit', function(e) {
-                    e.preventDefault();
+                    e.preventDefault(); // Sayfanın klasik yolla yenilenmesini durdur
+
+                    // Butonu yükleniyor moduna al
                     physicalSubmitBtn.disabled = true;
+                    const originalBtnText = physicalSubmitBtn.innerHTML;
                     physicalSubmitBtn.innerHTML =
                         '<i data-lucide="loader" class="spin" style="width: 18px;"></i> Lütfen Bekleyin...';
                     lucide.createIcons();
+                    if (physicalErrorBox) physicalErrorBox.style.display = 'none';
+
+                    const formData = new FormData(this);
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute(
+                        'content');
 
                     fetch(this.getAttribute('action'), {
-                            method: 'POST',
+                            method: 'POST', // Form datasında _method=PUT var zaten
                             headers: {
-                                'X-Requested-With': 'XMLHttpRequest',
-                                'Accept': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
-                                    .content
+                                'X-Requested-With': 'XMLHttpRequest', // Laravel'e AJAX olduğunu söyler
+                                'Accept': 'application/json', // Hataları JSON olarak geri iste
+                                'X-CSRF-TOKEN': csrfToken
                             },
-                            body: new FormData(this)
+                            body: formData
                         })
-                        .then(async res => {
-                            const data = await res.json();
-                            if (!res.ok) throw new Error(data.errors ? Object.values(data.errors)[0]
-                                [0] : data.message);
+                        .then(async response => {
+                            // Eğer Laravel'den hata dönerse (Örn: 422 Validation Hatası)
+                            if (!response.ok) {
+                                const data = await response.json();
+                                let errorMsg = data.message || 'Bilinmeyen bir hata oluştu.';
+                                if (response.status === 422 && data.errors) {
+                                    errorMsg = Object.values(data.errors)[0][0]; // İlk hatayı al
+                                }
+                                throw new Error(errorMsg);
+                            }
+
+                            // Hata yoksa (Başarılıysa) sayfayı yenile ve güncel durumu göster
                             window.location.reload();
                         })
-                        .catch(err => {
-                            physicalErrorBox.textContent = '⚠️ ' + err.message;
-                            physicalErrorBox.style.display = 'block';
+                        .catch(error => {
+                            // Hatayı kutunun içine yaz ve göster
+                            if (physicalErrorBox) {
+                                physicalErrorBox.textContent = '⚠️ ' + error.message;
+                                physicalErrorBox.style.display = 'block';
+                            }
+                            // Butonu eski haline getir
                             physicalSubmitBtn.disabled = false;
-                            physicalSubmitBtn.innerHTML = 'İşlemi Tamamla';
+                            physicalSubmitBtn.innerHTML = originalBtnText;
                             lucide.createIcons();
                         });
                 });
             }
 
-            // Modal Kapatma
-            document.querySelectorAll('.modal-overlay, .close-modal').forEach(el => {
-                el.addEventListener('click', (e) => {
-                    if (e.target === el || el.classList.contains('close-modal')) {
-                        if (physicalModal) physicalModal.style.display = 'none';
-                        // Diğer modalları da burada kapatabilirsin
-                    }
+            // Butonlara Tıklama Eventlerini Bağla
+            const btnInitiate = document.getElementById('btnInitiatePhysical');
+            if (btnInitiate) {
+                btnInitiate.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    openModal('initiate');
+                });
+            }
+
+            // Tablo içindeki Accept/Reject butonları (Event Delegation mantığı)
+            document.querySelectorAll('.btn-physical-action').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const action = btn.getAttribute('data-action');
+                    const id = btn.getAttribute('data-id');
+                    openModal(action, id);
                 });
             });
+
+            // Modal Kapatma
+            document.querySelectorAll('#dynamicPhysicalModal .close-modal').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    physicalModal.style.display = 'none';
+                });
+            });
+
+            if (physicalModal) {
+                physicalModal.addEventListener('click', (e) => {
+                    if (e.target === physicalModal) physicalModal.style.display = 'none';
+                });
+            }
+
         });
     </script>
+
     <style>
         /* Spin animasyonu (Ajax yüklenirken) */
         @keyframes spin {
