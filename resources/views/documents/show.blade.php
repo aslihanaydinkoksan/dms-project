@@ -1755,7 +1755,8 @@
                 } else if (actionType === 'accept') {
                     title.innerHTML =
                         '<i data-lucide="check-square" style="width: 20px; color: var(--success-color);"></i> Evrakı Teslim Al';
-                    form.setAttribute('action', "{{ url('physical-movements') }}/" + movementId); // <-- url() kullandık
+                    form.setAttribute('action', "{{ url('physical-movements') }}/" +
+                        movementId); // <-- url() kullandık
                     methodInput.value = 'PUT';
                     receiverSection.style.display = 'none';
                     locationField.style.display = 'block';
@@ -1764,7 +1765,8 @@
                 } else if (actionType === 'reject') {
                     title.innerHTML =
                         '<i data-lucide="x-circle" style="width: 20px; color: var(--danger-color);"></i> Evrakı Reddet';
-                    form.setAttribute('action', "{{ url('physical-movements') }}/" + movementId); // <-- url() kullandık
+                    form.setAttribute('action', "{{ url('physical-movements') }}/" +
+                        movementId); // <-- url() kullandık
                     methodInput.value = 'PUT';
                     receiverSection.style.display = 'none';
                     locationField.style.display = 'none'; // Reddediyorsa konum girmesine gerek yok
@@ -1813,13 +1815,31 @@
                     physicalSubmitBtn.innerHTML = 'Zimmet İsteği Gönder';
 
                     // TomSelect varsa başlat (ÇOKLU SEÇİM VE SÜRÜKLE-BIRAK ÖZELLİĞİ İLE)
+                    // --- TomSelect Ayarlarını Güncelle (openModal fonksiyonunun içindeki kısım) ---
                     const selectEl = document.getElementById('physicalReceiverSelect');
+
                     if (selectEl && !selectEl.tomselect) {
                         new TomSelect(selectEl, {
-                            plugins: ['remove_button',
-                            'drag_drop'], // Sürükle bırak ile sıra değiştirme
+                            plugins: {
+                                'remove_button': {
+                                    title: 'Bu kişiyi kaldır',
+                                },
+                                'checkbox_options': {} // İsimlerin yanına tickbox ekleyen sihirli plugin
+                            },
                             create: false,
-                            placeholder: "-- Sırayla Personel(ler) Seçin --"
+                            placeholder: "-- Teslim edilecek kişi(leri) seçin --",
+                            maxItems: null, // Sınırsız seçim hakkı
+                            hideSelected: false, // Seçilenler listeden kaybolmasın (yanındaki tick kalksın/dolsun)
+                            render: {
+                                option: function(data, escape) {
+                                    return `<div>
+                    <span class="name">${escape(data.text)}</span>
+                </div>`;
+                                },
+                                item: function(data, escape) {
+                                    return `<div class="item">${escape(data.text)}</div>`;
+                                }
+                            }
                         });
                     }
 
@@ -1993,6 +2013,25 @@
 
         .bg-danger {
             background-color: var(--danger-color) !important;
+        }
+
+        /* TomSelect Tickbox Güzelleştirme */
+        .ts-dropdown .option {
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+        }
+
+        .ts-dropdown .option input[type="checkbox"] {
+            margin-right: 10px;
+            cursor: pointer;
+        }
+
+        .ts-control .item {
+            background-color: var(--primary-color) !important;
+            color: white !important;
+            border-radius: 4px !important;
+            padding: 2px 8px !important;
         }
     </style>
 @endpush
