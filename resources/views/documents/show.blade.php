@@ -152,10 +152,19 @@
                 @endif
 
                 @if ($document->delivered_to_user_id === auth()->id() && $document->physical_receipt_status === 'pending')
-                    <button type="button" id="openConfirmPhysicalModal" class="btn btn-success pulse-animation">
-                        <i data-lucide="check-square" style="width: 18px;"></i>
-                        {{ __('Islak İmzalı Evrakı Teslim Aldım') }}
-                    </button>
+                    @php
+                        $pendingMovement = $document->physicalMovements
+                            ->where('status', 'pending')
+                            ->where('receiver_id', auth()->id())
+                            ->first();
+                    @endphp
+                    @if ($pendingMovement)
+                        <button type="button" class="btn btn-success pulse-animation btn-physical-action"
+                            data-action="accept" data-id="{{ $pendingMovement->id }}">
+                            <i data-lucide="check-square" style="width: 18px;"></i>
+                            {{ __('Islak İmzalı Evrakı Teslim Aldım') }}
+                        </button>
+                    @endif
                 @endif
             @endif
 
@@ -178,7 +187,8 @@
         </div>
     </div>
 
-    <div class="doc-detail-layout" style="display: grid; grid-template-columns: 250px 1fr; gap: 25px; align-items: start;">
+    <div class="doc-detail-layout"
+        style="display: grid; grid-template-columns: 250px 1fr; gap: 25px; align-items: start;">
 
         <aside class="doc-tabs-sidebar card"
             style="padding: 10px 0; background: var(--surface-color); border-radius: var(--border-radius); border: 1px solid var(--border-color);">
@@ -201,6 +211,10 @@
                 <li class="tab-item" data-target="tab-approvals"
                     style="padding: 12px 20px; cursor: pointer; display: flex; align-items: center; gap: 10px; border-left: 3px solid transparent; color: var(--text-muted);">
                     <i data-lucide="check-square" style="width: 18px;"></i> {{ __('İş Akışı Durumu') }}
+                </li>
+                <li class="tab-item" data-target="tab-physical"
+                    style="padding: 12px 20px; cursor: pointer; display: flex; align-items: center; gap: 10px; border-left: 3px solid transparent; color: var(--text-muted);">
+                    <i data-lucide="map-pin" style="width: 18px;"></i> {{ __('Fiziksel Zimmet') }}
                 </li>
 
                 @if (auth()->user()->hasAnyRole(['Super Admin', 'Admin', 'Direktör', 'Müdür']) || $isOwner)
@@ -641,6 +655,207 @@
                     @endforeach
                 </div>
             </div>
+            <div id="tab-physical" class="tab-pane" style="display: none; opacity: 0; transition: opacity 0.3s;">
+                <div class="tab-header flex-between" style="margin-bottom: 20px;">
+                    <h2 style="font-size: 1.25rem; display: flex; align-items: center; gap: 8px;">
+                        <i data-lucide="archive" class="text-warning" style="width: 24px;"></i>
+                        {{ __('Fiziksel Evrak Geçmişi ve Zimmet') }}
+                    </h2>
+                    {{-- Evrak ya bana zimmetliyse YA DA henüz kimseye zimmetlenmemişse ve evrakın sahibi bensem butonu göster --}}
+                    @if (
+                        $document->physical_receipt_status !== 'pending' &&
+                            ($document->delivered_to_user_id == auth()->id() || (is_null($document->delivered_to_user_id) && $isOwner)))
+                        <button id="btnInitiatePhysical" class="btn btn-sm btn-primary"
+                            style="box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);">
+                            <i data-lucide="send" style="width: 16px;"></i> {{ __('Evrakı Başkasına Devret') }}
+                        </button>
+                    @endif
+                </div>
+
+                <div
+                    style="background: #fff; padding: 30px; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);">
+
+                    {{-- Üst Bilgi (Özet) --}}
+                    <div
+                        style="display: flex; align-items: center; gap: 15px; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px dashed var(--border-color);">
+                        <div
+                            style="background: #f8fafc; padding: 15px; border-radius: 8px; flex: 1; border-left: 4px solid var(--primary-color);">
+                            <span
+                                style="display: block; font-size: 0.8rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; margin-bottom: 4px;">Şu
+                                Anki Konum / Zimmet</span>
+                            <strong style="font-size: 1.1rem; color: var(--text-color);">
+                                @if ($document->physical_receipt_status === 'received')
+                                    <i data-lucide="user-check"
+                                        style="width: 18px; vertical-align: middle; color: var(--success-color);"></i>
+                                    {{ $document->deliveredToUser?->name ?? 'Bilinmiyor' }}
+                                    @if ($document->physical_location)
+                                        <span
+                                            style="font-weight: normal; color: var(--text-muted); font-size: 0.9rem;">({{ $document->physical_location }})</span>
+                                    @endif
+                                @elseif($document->physical_receipt_status === 'pending')
+                                    <i data-lucide="hourglass"
+                                        style="width: 18px; vertical-align: middle; color: var(--warning-color);"></i>
+                                    {{ $document->deliveredToUser?->name ?? 'Bilinmiyor' }} (Onay Bekliyor)
+                                @else
+                                    <i data-lucide="folder-minus"
+                                        style="width: 18px; vertical-align: middle; color: var(--text-muted);"></i>
+                                    Zimmet Başlatılmadı (Belge Sahibi:
+                                    {{ $document->currentVersion?->createdBy?->name ?? 'Bilinmiyor' }})
+                                @endif
+                            </strong>
+                        </div>
+                    </div>
+
+                    <div class="timeline" style="margin-left: 15px;">
+                        @forelse($document->physicalMovements as $movement)
+                            @php
+                                // Statüye göre UI ayarları
+                                $statusColors = [
+                                    'pending' => [
+                                        'bg' => '#fffbeb',
+                                        'border' => '#fcd34d',
+                                        'text' => '#d97706',
+                                        'icon' => 'hourglass',
+                                        'label' => 'Teslimat Bekleniyor',
+                                    ],
+                                    'accepted' => [
+                                        'bg' => '#f0fdf4',
+                                        'border' => '#bbf7d0',
+                                        'text' => '#16a34a',
+                                        'icon' => 'check-circle-2',
+                                        'label' => 'Teslim Alındı',
+                                    ],
+                                    'rejected' => [
+                                        'bg' => '#fef2f2',
+                                        'border' => '#fecaca',
+                                        'text' => '#dc2626',
+                                        'icon' => 'x-circle',
+                                        'label' => 'Reddedildi / İade',
+                                    ],
+                                ];
+                                $ui = $statusColors[$movement->status];
+                            @endphp
+
+                            <div class="timeline-item" style="margin-bottom: 30px;">
+                                {{-- Sol taraftaki yuvarlak nokta --}}
+                                <div class="timeline-marker"
+                                    style="background-color: {{ $ui['text'] }}; border-color: #fff;"></div>
+
+                                <div class="timeline-content"
+                                    style="background: #fff; border: 1px solid var(--border-color); border-radius: 10px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.02); transition: transform 0.2s, box-shadow 0.2s;"
+                                    onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 10px 15px -3px rgba(0,0,0,0.05)';"
+                                    onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.02)';">
+
+                                    {{-- Kutu Başlığı (Kimden Kime) --}}
+                                    <div
+                                        style="background: #f8fafc; padding: 12px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                                        <div style="display: flex; align-items: center; gap: 12px; font-size: 0.95rem;">
+                                            <span
+                                                style="display: flex; align-items: center; gap: 6px; font-weight: 600; color: var(--text-color);">
+                                                <div
+                                                    style="width: 24px; height: 24px; border-radius: 50%; background: #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 0.7rem;">
+                                                    {{ substr($movement->sender->name, 0, 1) }}</div>
+                                                {{ $movement->sender->name }}
+                                            </span>
+
+                                            <i data-lucide="arrow-right"
+                                                style="width: 16px; color: var(--text-muted);"></i>
+
+                                            <span
+                                                style="display: flex; align-items: center; gap: 6px; font-weight: 600; color: var(--text-color);">
+                                                <div
+                                                    style="width: 24px; height: 24px; border-radius: 50%; background: #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 0.7rem;">
+                                                    {{ substr($movement->receiver->name, 0, 1) }}</div>
+                                                {{ $movement->receiver->name }}
+                                            </span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 15px;">
+                                            <span
+                                                style="display: inline-flex; align-items: center; gap: 4px; background: {{ $ui['bg'] }}; color: {{ $ui['text'] }}; border: 1px solid {{ $ui['border'] }}; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600;">
+                                                <i data-lucide="{{ $ui['icon'] }}" style="width: 14px;"></i>
+                                                {{ __($ui['label']) }}
+                                            </span>
+                                            <span
+                                                style="color: var(--text-muted); font-size: 0.8rem; display: flex; align-items: center; gap: 4px;">
+                                                <i data-lucide="calendar" style="width: 14px;"></i>
+                                                {{ $movement->action_at->format('d M Y - H:i') }}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {{-- Kutu İçeriği (Notlar ve Lokasyon) --}}
+                                    <div style="padding: 20px;">
+                                        <div style="display: flex; gap: 15px;">
+                                            <i data-lucide="message-square"
+                                                style="width: 20px; color: var(--text-muted); flex-shrink: 0; margin-top: 2px;"></i>
+                                            <div style="flex: 1;">
+                                                @php
+                                                    // Yorum içindeki "[Kabul Notu]:" ve "[Ret Nedeni]:" gibi sistem etiketlerini görsel olarak zenginleştirelim
+                                                    $formattedComment = e($movement->comment);
+                                                    $formattedComment = str_replace(
+                                                        '[Kabul Notu]:',
+                                                        '<br><br><strong style="color: #16a34a;"><i data-lucide="check" style="width:14px; vertical-align:middle;"></i> Kabul Notu:</strong> ',
+                                                        $formattedComment,
+                                                    );
+                                                    $formattedComment = str_replace(
+                                                        '[Ret Nedeni]:',
+                                                        '<br><br><strong style="color: #dc2626;"><i data-lucide="alert-triangle" style="width:14px; vertical-align:middle;"></i> Ret Nedeni:</strong> ',
+                                                        $formattedComment,
+                                                    );
+                                                @endphp
+                                                <p
+                                                    style="margin: 0; color: var(--text-color); line-height: 1.6; font-size: 0.95rem;">
+                                                    {!! nl2br($formattedComment) !!}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        @if ($movement->location_details)
+                                            <div
+                                                style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #f1f5f9; display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 0.85rem;">
+                                                <i data-lucide="map-pin"
+                                                    style="width: 16px; color: var(--primary-color);"></i>
+                                                <strong style="color: var(--text-color);">Belirtilen Lokasyon:</strong>
+                                                {{ $movement->location_details }}
+                                            </div>
+                                        @endif
+
+                                        {{-- Aksiyon Butonları (Sadece Bekleyen ve Alıcı İçin) --}}
+                                        @if ($movement->status === 'pending' && $movement->receiver_id == auth()->id())
+                                            <div
+                                                style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed #cbd5e1; display: flex; gap: 10px;">
+                                                <button class="btn btn-success btn-physical-action" data-action="accept"
+                                                    data-id="{{ $movement->id }}"
+                                                    style="display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 6px -1px rgba(22, 163, 74, 0.2);">
+                                                    <i data-lucide="check-square" style="width: 18px;"></i>
+                                                    {{ __('Evrakı Teslim Al') }}
+                                                </button>
+                                                <button class="btn btn-outline-danger btn-physical-action"
+                                                    data-action="reject" data-id="{{ $movement->id }}"
+                                                    style="display: flex; align-items: center; gap: 6px; background: #fff;">
+                                                    <i data-lucide="x-circle" style="width: 18px;"></i>
+                                                    {{ __('Teslimatı Reddet') }}
+                                                </button>
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                        @empty
+                            <div
+                                style="text-align: center; padding: 40px; background: #f8fafc; border-radius: 12px; border: 2px dashed #cbd5e1;">
+                                <div
+                                    style="width: 64px; height: 64px; background: #e2e8f0; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px;">
+                                    <i data-lucide="folder-clock" style="width: 32px; height: 32px; color: #94a3b8;"></i>
+                                </div>
+                                <h4 style="margin: 0 0 5px 0; color: var(--text-color);">Fiziksel Hareket Yok</h4>
+                                <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;">Bu evrak henüz sistem
+                                    üzerinden kimseye zimmetlenmemiş.</p>
+                            </div>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
 
             @if (auth()->user()->hasAnyRole(['Super Admin', 'Admin']) || $isOwner)
                 <div id="tab-permissions" class="tab-pane" style="display: none; opacity: 0; transition: opacity 0.3s;">
@@ -1072,69 +1287,74 @@
         </div>
     </div>
 
-    <div id="assignPhysicalModal" class="modal-overlay"
-        style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
-        <div class="modal-content"
-            style="background: #fff; padding: 30px; border-radius: 12px; width: 100%; max-width: 450px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h2 style="font-size: 1.25rem;">{{ __('Fiziksel Kopyayı Teslim Et') }}</h2>
-                <button type="button" class="close-modal" id="closeAssignModal"
-                    style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);">&times;</button>
-            </div>
-            <form action="{{ route('documents.assign-physical', $document->id) }}" method="POST">
-                @csrf
-                <div style="margin-bottom: 25px;">
-                    <label
-                        style="display: block; font-size: 0.9rem; font-weight: 500; margin-bottom: 8px;">{{ __('Teslim Edilecek Personel') }}
-                        <span style="color: var(--danger-color);">*</span></label>
-                    @php $allUsers = \App\Models\User::where('is_active', true)->orderBy('name')->get(); @endphp
-                    <select name="delivered_to_user_id" class="form-control"
-                        style="width: 100%; padding: 10px 12px; border: 1px solid var(--border-color); border-radius: 6px;"
-                        required>
-                        <option value="">{{ __('-- Personel Seçin --') }}</option>
-                        @foreach ($allUsers as $u)
-                            <option value="{{ $u->id }}"
-                                {{ $document->delivered_to_user_id == $u->id ? 'selected' : '' }}>{{ $u->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                <button type="submit" class="btn btn-primary"
-                    style="width: 100%; padding: 12px; justify-content: center; font-size: 1rem;">{{ __('Zimmet İşlemini Başlat') }}</button>
-            </form>
-        </div>
-    </div>
 
-    <div id="confirmPhysicalModal" class="modal-overlay"
+    {{-- TEK BİR DİNAMİK MODAL (Tüm Fiziksel İşlemler İçin) --}}
+    <div id="dynamicPhysicalModal" class="modal-overlay"
         style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
         <div class="modal-content"
             style="background: #fff; padding: 30px; border-radius: 12px; width: 100%; max-width: 500px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h2 style="font-size: 1.25rem;">{{ __('Fiziksel Evrakı Teslim Al') }}</h2>
-                <button type="button" class="close-modal" id="closeConfirmModal"
+                <h2 id="physicalModalTitle" style="font-size: 1.25rem;">{{ __('Fiziksel Evrak İşlemi') }}</h2>
+                <button type="button" class="close-modal" onclick="closePhysicalModal()"
                     style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);">&times;</button>
             </div>
-            <form action="{{ route('documents.confirm-physical', $document->id) }}" method="POST">
+
+            <form id="physicalForm" method="POST" action="">
                 @csrf
-                <div
-                    style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 0.9rem;">
-                    <i data-lucide="info"
-                        style="width: 16px; display: inline-block; vertical-align: text-bottom; margin-right: 5px;"></i>
-                    {!! __(
-                        'Evrakın <strong>ıslak imzalı orijinal kopyasını</strong> fiziksel olarak teslim aldığınızı onaylıyorsunuz. Lütfen evrakı koyduğunuz fiziksel konumu (Dolap, Raf, Klasör vb.) belirtin.',
-                    ) !!}
+                <input type="hidden" name="_method" id="physicalMethod" value="POST">
+                <input type="hidden" name="action" id="physicalAction" value="">
+                <div id="physicalErrorBox" class="alert alert-danger"
+                    style="display: none; margin-bottom: 15px; padding: 10px; border-radius: 6px; background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; font-size: 0.85rem;">
                 </div>
+
+                {{-- Devir başlatılıyorsa Alıcı Seçimi Görünür --}}
+                <div id="receiverSelection" style="display: none; margin-bottom: 20px;">
+                    <label
+                        style="display: block; font-size: 0.9rem; font-weight: 500; margin-bottom: 8px;">{{ __('Teslim Edilecek Personel / Rota') }}
+                        <span style="color: var(--danger-color);">*</span></label>
+                    @php
+                        $allUsersPhysical = \App\Models\User::where('is_active', true)
+                            ->where('id', '!=', auth()->id())
+                            ->orderBy('name')
+                            ->get();
+                    @endphp
+
+                    {{-- YENİ: multiple ve name="receiver_ids[]" eklendi --}}
+                    <select name="receiver_ids[]" id="physicalReceiverSelect" class="form-control" style="width: 100%;"
+                        multiple>
+                        <option value="">{{ __('-- Sırayla Personel(ler) Seçin --') }}</option>
+                        @foreach ($allUsersPhysical as $u)
+                            <option value="{{ $u->id }}">{{ $u->name }}
+                                ({{ $u->roles->pluck('name')->first() ?? 'Personel' }})
+                            </option>
+                        @endforeach
+                    </select>
+                    <small style="color: var(--text-muted); font-size: 0.75rem; margin-top: 5px; display: block;">
+                        <i data-lucide="info" style="width: 12px; vertical-align: middle;"></i> Zincirleme posta rotası
+                        (Routing Slip) oluşturmak için sırayla birden fazla kişi seçebilirsiniz.
+                    </small>
+                </div>
+
+                <div id="locationField" style="margin-bottom: 20px;">
+                    <label
+                        style="display: block; font-size: 0.9rem; font-weight: 500; margin-bottom: 8px;">{{ __('Evrakın Konumu (Opsiyonel)') }}</label>
+                    <input type="text" name="location_details" class="form-control"
+                        style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px;"
+                        placeholder="Örn: Arşiv B, Dolap 4">
+                </div>
+
                 <div style="margin-bottom: 25px;">
                     <label
-                        style="display: block; font-size: 0.9rem; font-weight: 500; margin-bottom: 8px;">{{ __('Arşiv Konumu') }}
+                        style="display: block; font-size: 0.9rem; font-weight: 500; margin-bottom: 8px;">{{ __('Açıklama / Not') }}
                         <span style="color: var(--danger-color);">*</span></label>
-                    <input type="text" name="physical_location" class="form-control"
-                        style="width: 100%; padding: 10px 12px; border: 1px solid var(--border-color); border-radius: 6px;"
-                        placeholder="{{ __('Örn: Arşiv Odası B, Çelik Kasa 4, Mavi Klasör') }}" required>
+                    <textarea name="comment" class="form-control" rows="3" required
+                        style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; font-family: inherit;"
+                        placeholder="{{ __('Zorunlu açıklama giriniz...') }}"></textarea>
                 </div>
-                <button type="submit" class="btn btn-success"
+
+                <button type="submit" id="physicalSubmitBtn" class="btn btn-primary"
                     style="width: 100%; padding: 12px; justify-content: center; font-size: 1rem;">
-                    <i data-lucide="check-square" style="width: 18px;"></i> {{ __('Teslim Aldım ve Arşive Kaldırdım') }}
+                    {{ __('İşlemi Tamamla') }}
                 </button>
             </form>
         </div>
@@ -1510,6 +1730,210 @@
                 }
             });
 
+            // --- DİNAMİK FİZİKSEL MODAL KONTROLÜ ---
+            function openPhysicalModal(actionType, movementId = null) {
+                const modal = document.getElementById('dynamicPhysicalModal');
+                const form = document.getElementById('physicalForm');
+                const title = document.getElementById('physicalModalTitle');
+                const actionInput = document.getElementById('physicalAction');
+                const methodInput = document.getElementById('physicalMethod');
+                const receiverSection = document.getElementById('receiverSelection');
+                const submitBtn = document.getElementById('physicalSubmitBtn');
+                const locationField = document.getElementById('locationField');
+
+                actionInput.value = actionType;
+
+                if (actionType === 'initiate') {
+                    title.innerHTML =
+                        '<i data-lucide="send" style="width: 20px; color: var(--accent-color);"></i> Evrak Devrini Başlat';
+                    form.action = "{{ route('physical.store', $document->id) }}";
+                    methodInput.value = 'POST';
+                    receiverSection.style.display = 'block';
+                    locationField.style.display = 'block';
+                    submitBtn.className = 'btn btn-primary';
+                    submitBtn.innerHTML = 'Zimmet İsteği Gönder';
+                } else if (actionType === 'accept') {
+                    title.innerHTML =
+                        '<i data-lucide="check-square" style="width: 20px; color: var(--success-color);"></i> Evrakı Teslim Al';
+                    form.action = `/physical-movements/${movementId}`;
+                    methodInput.value = 'PUT';
+                    receiverSection.style.display = 'none';
+                    locationField.style.display = 'block';
+                    submitBtn.className = 'btn btn-success';
+                    submitBtn.innerHTML = 'Teslim Aldım Onaylıyorum';
+                } else if (actionType === 'reject') {
+                    title.innerHTML =
+                        '<i data-lucide="x-circle" style="width: 20px; color: var(--danger-color);"></i> Evrakı Reddet';
+                    form.action = `/physical-movements/${movementId}`;
+                    methodInput.value = 'PUT';
+                    receiverSection.style.display = 'none';
+                    locationField.style.display = 'none'; // Reddediyorsa konum girmesine gerek yok
+                    submitBtn.className = 'btn btn-danger';
+                    submitBtn.innerHTML = 'Reddet ve İade Et';
+                }
+
+                modal.style.display = 'flex';
+                lucide.createIcons();
+            }
+
+            function closePhysicalModal() {
+                document.getElementById('dynamicPhysicalModal').style.display = 'none';
+            }
+
+            // Modal dışına tıklandığında kapatma
+            document.getElementById('dynamicPhysicalModal').addEventListener('click', (e) => {
+                if (e.target === document.getElementById('dynamicPhysicalModal')) {
+                    closePhysicalModal();
+                }
+            });
+            // --- DİNAMİK FİZİKSEL MODAL KONTROLÜ (MODERN EVENT LISTENER) ---
+            const physicalModal = document.getElementById('dynamicPhysicalModal');
+            const physicalForm = document.getElementById('physicalForm');
+            const physicalTitle = document.getElementById('physicalModalTitle');
+            const physicalActionInput = document.getElementById('physicalAction');
+            const physicalMethodInput = document.getElementById('physicalMethod');
+            const physicalReceiverSection = document.getElementById('receiverSelection');
+            const physicalSubmitBtn = document.getElementById('physicalSubmitBtn');
+            const physicalLocationField = document.getElementById('locationField');
+
+            // Modal Açma Fonksiyonu
+            const openModal = (actionType, movementId = null) => {
+                if (!physicalModal) return; // Modal yoksa işlem yapma
+
+                physicalActionInput.value = actionType;
+
+                if (actionType === 'initiate') {
+                    physicalTitle.innerHTML =
+                        '<i data-lucide="send" style="width: 20px; color: var(--accent-color);"></i> Evrak Devrini Başlat';
+                    physicalForm.setAttribute('action', "{{ route('physical.store', $document->id) }}");
+                    physicalMethodInput.value = 'POST';
+                    physicalReceiverSection.style.display = 'block';
+                    physicalLocationField.style.display = 'block';
+                    physicalSubmitBtn.className = 'btn btn-primary';
+                    physicalSubmitBtn.innerHTML = 'Zimmet İsteği Gönder';
+
+                    // TomSelect varsa başlat (ÇOKLU SEÇİM VE SÜRÜKLE-BIRAK ÖZELLİĞİ İLE)
+                    const selectEl = document.getElementById('physicalReceiverSelect');
+                    if (selectEl && !selectEl.tomselect) {
+                        new TomSelect(selectEl, {
+                            plugins: ['remove_button',
+                            'drag_drop'], // Sürükle bırak ile sıra değiştirme
+                            create: false,
+                            placeholder: "-- Sırayla Personel(ler) Seçin --"
+                        });
+                    }
+
+                } else if (actionType === 'accept') {
+                    physicalTitle.innerHTML =
+                        '<i data-lucide="check-square" style="width: 20px; color: var(--success-color);"></i> Evrakı Teslim Al';
+                    physicalForm.setAttribute('action', `/physical-movements/${movementId}`);
+                    physicalMethodInput.value = 'PUT';
+                    physicalReceiverSection.style.display = 'none';
+                    physicalLocationField.style.display = 'block';
+                    physicalSubmitBtn.className = 'btn btn-success';
+                    physicalSubmitBtn.innerHTML = 'Teslim Aldım Onaylıyorum';
+                } else if (actionType === 'reject') {
+                    physicalTitle.innerHTML =
+                        '<i data-lucide="x-circle" style="width: 20px; color: var(--danger-color);"></i> Evrakı Reddet';
+                    physicalForm.setAttribute('action', `/physical-movements/${movementId}`);
+                    physicalMethodInput.value = 'PUT';
+                    physicalReceiverSection.style.display = 'none';
+                    physicalLocationField.style.display = 'none';
+                    physicalSubmitBtn.className = 'btn btn-danger';
+                    physicalSubmitBtn.innerHTML = 'Reddet ve İade Et';
+                }
+
+                physicalModal.style.display = 'flex';
+                lucide.createIcons();
+            };
+            // --- FİZİKSEL FORM AJAX GÖNDERİMİ ---
+            const physicalErrorBox = document.getElementById('physicalErrorBox');
+
+            if (physicalForm) {
+                physicalForm.addEventListener('submit', function(e) {
+                    e.preventDefault(); // Sayfanın klasik yolla yenilenmesini durdur
+
+                    // Butonu yükleniyor moduna al
+                    physicalSubmitBtn.disabled = true;
+                    const originalBtnText = physicalSubmitBtn.innerHTML;
+                    physicalSubmitBtn.innerHTML =
+                        '<i data-lucide="loader" class="spin" style="width: 18px;"></i> Lütfen Bekleyin...';
+                    lucide.createIcons();
+                    if (physicalErrorBox) physicalErrorBox.style.display = 'none';
+
+                    const formData = new FormData(this);
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute(
+                        'content');
+
+                    fetch(this.getAttribute('action'), {
+                            method: 'POST', // Form datasında _method=PUT var zaten
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest', // Laravel'e AJAX olduğunu söyler
+                                'Accept': 'application/json', // Hataları JSON olarak geri iste
+                                'X-CSRF-TOKEN': csrfToken
+                            },
+                            body: formData
+                        })
+                        .then(async response => {
+                            // Eğer Laravel'den hata dönerse (Örn: 422 Validation Hatası)
+                            if (!response.ok) {
+                                const data = await response.json();
+                                let errorMsg = data.message || 'Bilinmeyen bir hata oluştu.';
+                                if (response.status === 422 && data.errors) {
+                                    errorMsg = Object.values(data.errors)[0][0]; // İlk hatayı al
+                                }
+                                throw new Error(errorMsg);
+                            }
+
+                            // Hata yoksa (Başarılıysa) sayfayı yenile ve güncel durumu göster
+                            window.location.reload();
+                        })
+                        .catch(error => {
+                            // Hatayı kutunun içine yaz ve göster
+                            if (physicalErrorBox) {
+                                physicalErrorBox.textContent = '⚠️ ' + error.message;
+                                physicalErrorBox.style.display = 'block';
+                            }
+                            // Butonu eski haline getir
+                            physicalSubmitBtn.disabled = false;
+                            physicalSubmitBtn.innerHTML = originalBtnText;
+                            lucide.createIcons();
+                        });
+                });
+            }
+
+            // Butonlara Tıklama Eventlerini Bağla
+            const btnInitiate = document.getElementById('btnInitiatePhysical');
+            if (btnInitiate) {
+                btnInitiate.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    openModal('initiate');
+                });
+            }
+
+            // Tablo içindeki Accept/Reject butonları (Event Delegation mantığı)
+            document.querySelectorAll('.btn-physical-action').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const action = btn.getAttribute('data-action');
+                    const id = btn.getAttribute('data-id');
+                    openModal(action, id);
+                });
+            });
+
+            // Modal Kapatma
+            document.querySelectorAll('#dynamicPhysicalModal .close-modal').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    physicalModal.style.display = 'none';
+                });
+            });
+
+            if (physicalModal) {
+                physicalModal.addEventListener('click', (e) => {
+                    if (e.target === physicalModal) physicalModal.style.display = 'none';
+                });
+            }
+
         });
     </script>
 
@@ -1533,6 +1957,42 @@
         .approval-card:hover {
             transform: translateX(4px);
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Timeline CSS */
+        .timeline {
+            border-left: 2px solid var(--border-color);
+            padding-left: 20px;
+            margin-left: 10px;
+            margin-top: 10px;
+        }
+
+        .timeline-item {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .timeline-marker {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            left: -28px;
+            top: 15px;
+            border: 3px solid #fff;
+            box-shadow: 0 0 0 2px var(--border-color);
+        }
+
+        .bg-success {
+            background-color: var(--success-color) !important;
+        }
+
+        .bg-warning {
+            background-color: var(--warning-color) !important;
+        }
+
+        .bg-danger {
+            background-color: var(--danger-color) !important;
         }
     </style>
 @endpush

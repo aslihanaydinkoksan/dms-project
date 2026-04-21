@@ -39,6 +39,6 @@ class CustomResetPasswordNotification extends Notification implements ShouldQueu
             ->action('Yeni Şifre Belirle', $url)
             ->line('Bu şifre sıfırlama bağlantısının süresi 60 dakika içinde dolacaktır.')
             ->line('Eğer bu talebi siz yapmadıysanız, herhangi bir işlem yapmanıza gerek yoktur. Hesabınız güvendedir.')
-            ->salutation('İyi çalışmalar dileriz, KÖKSAN BT Departmanı');
+            ->salutation('İyi çalışmalar dileriz, KÖKSAN Opex Departmanı');
     }
 }

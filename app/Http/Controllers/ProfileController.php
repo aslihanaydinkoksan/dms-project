@@ -214,4 +214,21 @@ class ProfileController extends Controller
             'rejectionRate'
         ));
     }
+    /**
+     * Tek bir bildirimi okundu olarak işaretler ve hedefe yönlendirir.
+     */
+    public function readAndRedirect($id)
+    {
+        // 1. Bildirimi bul
+        $notification = Auth::user()->notifications()->findOrFail($id);
+
+        // 2. Okundu olarak işaretle (read_at kolonunu doldurur)
+        $notification->markAsRead();
+
+        // 3. Bildirimin içindeki hedef URL'yi al (Eğer yoksa güvenli liman olarak dashboard'a at)
+        $url = $notification->data['url'] ?? route('dashboard');
+
+        // 4. Hedefe uçuşa geç
+        return redirect($url);
+    }
 }

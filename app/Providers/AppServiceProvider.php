@@ -5,6 +5,8 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use App\Models\Document;
 use App\Observers\DocumentObserver;
+use App\Models\DocumentPhysicalMovement;
+use App\Observers\DocumentPhysicalMovementObserver;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Gate;
 
@@ -31,5 +33,6 @@ class AppServiceProvider extends ServiceProvider
         Gate::before(function ($user, $ability) {
             return $user->hasRole('Super Admin') ? true : null;
         });
+        DocumentPhysicalMovement::observe(DocumentPhysicalMovementObserver::class);
     }
 }

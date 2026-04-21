@@ -20,6 +20,7 @@ class Document extends Model
     protected $fillable = [
         'folder_id',
         'physical_location',
+        'physical_route',
         'delivered_to_user_id',
         'physical_receipt_status',
         'title',
@@ -36,12 +37,14 @@ class Document extends Model
         'related_department_id',
         'department_retention_years',
         'archive_retention_years',
-        'metadata'
+        'metadata',
+        'expire_at'
     ];
 
     protected $casts = [
         'is_locked' => 'boolean',
         'metadata' => 'array',
+        'physical_route' => 'array',
     ];
 
     public function folder(): BelongsTo
@@ -118,13 +121,19 @@ class Document extends Model
             ->toArray();
 
         $hasStrictlyConfidential = $user->hasPermissionTo('document.view_strictly_confidential') ||
-                                   $delegators->contains(function(User $d) { return $d->hasPermissionTo('document.view_strictly_confidential'); });
+            $delegators->contains(function (User $d) {
+                return $d->hasPermissionTo('document.view_strictly_confidential');
+            });
 
         $hasViewAll = $user->hasPermissionTo('document.view_all') ||
-                      $delegators->contains(function(User $d) { return $d->hasPermissionTo('document.view_all'); });
+            $delegators->contains(function (User $d) {
+                return $d->hasPermissionTo('document.view_all');
+            });
 
-        return $query->where(function ($q) use ($allUserIds, $allowedDocumentTypeNames, $hasStrictlyConfidential, $hasViewAll) {
-            // KURAL A: Kendisinin VEYA Vekilinin Yüklediği Belgeler
+        // DİKKAT: "use" kısmına $user değişkenini de ekledik
+        return $query->where(function ($q) use ($allUserIds, $allowedDocumentTypeNames, $hasStrictlyConfidential, $hasViewAll, $user) {
+
+            // KURAL A: Kendisinin VEYA Vekilinin Yüklediği Belgeler (Taslak dahil her şeyi görür)
             $q->whereHas('versions', function ($versionQuery) use ($allUserIds) {
                 $versionQuery->whereIn('created_by', $allUserIds);
             })
@@ -132,21 +141,47 @@ class Document extends Model
                 ->orWhereHas('approvals', function ($approvalQuery) use ($allUserIds) {
                     $approvalQuery->whereIn('user_id', $allUserIds);
                 })
-                ->orWhereHas('specificUsers', function ($s) use ($allUserIds) { $s->whereIn('users.id', $allUserIds); })
-                // KURAL C: Matris ve Gizlilik Kuralları
-                ->orWhere(function ($subQ) use ($allowedDocumentTypeNames, $hasStrictlyConfidential, $hasViewAll) {
+                ->orWhereHas('specificUsers', function ($s) use ($allUserIds) {
+                    $s->whereIn('users.id', $allUserIds);
+                })
+                // KURAL C: Matris, Klasör ve Gizlilik Kuralları
+                ->orWhere(function ($subQ) use ($allowedDocumentTypeNames, $hasStrictlyConfidential, $hasViewAll, $user) {
+
+                    // Çok gizli (strictly_confidential) yetkisi yoksa o belgeleri direkt kalkanın dışında bırak
                     if (!$hasStrictlyConfidential) {
                         $subQ->where('privacy_level', '!=', 'strictly_confidential');
                     }
-                    $subQ->where(function ($accessQ) use ($allowedDocumentTypeNames, $hasViewAll) {
+
+                    $subQ->where(function ($accessQ) use ($allowedDocumentTypeNames, $hasViewAll, $user) {
                         if ($hasViewAll) {
                             $accessQ->whereNotNull('id');
                         } else {
+                            // 1. Kategori Matrisi Yetkisi
                             $accessQ->whereHas('documentType', function ($typeQ) use ($allowedDocumentTypeNames) {
                                 $typeQ->whereIn('name', $allowedDocumentTypeNames);
-                            })->orWhere(function ($publicQ) {
-                                $publicQ->whereNull('document_type_id')->where('privacy_level', 'public');
-                            });
+                            })
+                                // 2. Kategori Yoksa ve Public ise
+                                ->orWhere(function ($publicQ) {
+                                    $publicQ->whereNull('document_type_id')->where('privacy_level', 'public');
+                                })
+                                // 3. YENİ EKLENEN: KLASÖR VE DEPARTMAN BAZLI ERİŞİM
+                                ->orWhere(function ($folderLogicQ) use ($user) {
+                                    // Sadece yayınlanmış/onaylanmış/arşivlenmiş belgeleri görebilir (Başkasının taslaklarını göremez)
+                                    $folderLogicQ->whereIn('status', ['published', 'approved', 'archived'])
+                                        ->whereHas('folder', function ($folderQ) use ($user) {
+                                            $folderQ->where(function ($q) use ($user) {
+                                                // DURUM 1: Klasörün hiç departmanı yoksa (Yani GLOBAL / Herkese Açık klasörse)
+                                                $q->doesntHave('departments');
+
+                                                // DURUM 2: VEYA Klasör kullanıcının kendi departmanına atanmışsa
+                                                if ($user->department_id) {
+                                                    $q->orWhereHas('departments', function ($depQ) use ($user) {
+                                                        $depQ->where('departments.id', $user->department_id);
+                                                    });
+                                                }
+                                            });
+                                        });
+                                });
                         }
                     });
                 });
@@ -347,5 +382,22 @@ class Document extends Model
             $q->where('title', 'like', "%{$keyword}%")
                 ->orWhere('document_number', 'like', "%{$keyword}%");
         });
+    }
+    // Fiziksel Hareket Geçmişi
+    public function physicalMovements()
+    {
+        return $this->hasMany(DocumentPhysicalMovement::class)->latest('action_at');
+    }
+
+    // En Güncel Fiziksel Hareket
+    public function latestPhysicalMovement()
+    {
+        return $this->hasOne(DocumentPhysicalMovement::class)->latestOfMany('action_at');
+    }
+
+    // Fiziksel Durum Özelliği (Sanal Kolon)
+    public function getCurrentPhysicalStatusAttribute()
+    {
+        return $this->latestPhysicalMovement ? $this->latestPhysicalMovement->status : 'none';
     }
 }

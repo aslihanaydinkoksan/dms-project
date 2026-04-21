@@ -10,6 +10,8 @@ Artisan::command('inspire', function () {
 
 Schedule::command('dms:check-expiring-documents')->dailyAt('01:00');
 Schedule::command('dms:archive-expired')->dailyAt('00:00');
+// Arşiv süresi dolan fiziksel evrakları kontrol eder
+Schedule::command('dms:check-retention')->dailyAt('02:00');
 // GÜNLÜK Raporlar (Her gün saat 18:00'da çalışır)
 Schedule::command('reports:send daily')->dailyAt('18:00');
 

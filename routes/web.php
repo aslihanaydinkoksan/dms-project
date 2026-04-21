@@ -41,6 +41,8 @@ Route::middleware('guest')->group(function () {
 // ==========================================================================
 Route::middleware(['auth'])->group(function () {
 
+    Route::get('/notifications/{id}/read', [App\Http\Controllers\ProfileController::class, 'readAndRedirect'])->name('notifications.read');
+
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('/assistant/chat', [\App\Http\Controllers\AssistantController::class, 'chat'])->name('assistant.chat');
@@ -92,6 +94,10 @@ Route::middleware(['auth'])->group(function () {
     // --- RAPORLAR ---
     Route::get('/reports', [ReportEngineController::class, 'index'])->name('reports.index');
     Route::post('/reports/store', [ReportEngineController::class, 'store'])->name('reports.store');
+
+    // ---  FİZİKSEL EVRAK YÖNETİMİ ---
+    Route::post('/documents/{document}/physical', [\App\Http\Controllers\DocumentPhysicalController::class, 'store'])->name('physical.store');
+    Route::put('/physical-movements/{movement}', [\App\Http\Controllers\DocumentPhysicalController::class, 'update'])->name('physical.update');
 
     // --- DOKÜMAN YÖNETİMİ ---
     Route::prefix('documents')->name('documents.')->group(function () {

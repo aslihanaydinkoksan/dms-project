@@ -421,25 +421,36 @@
                                     </form>
                                 </div>
                                 <div class="dropdown-body">
-                                    @forelse(auth()->user()->unreadNotifications->take(5) as $notification)
-                                        <a href="{{ $notification->data['url'] ?? '#' }}" class="notification-item unread">
-                                            <div class="notif-icon"><i
-                                                    data-lucide="{{ $notification->data['icon'] ?? 'info' }}"></i></div>
-                                            <div class="notif-content">
+                                    {{-- DEĞİŞİKLİK 1: Sadece okunmamışları değil, genel olarak en son 5 bildirimi getiriyoruz --}}
+                                    @forelse(auth()->user()->notifications()->limit(5)->get() as $notification)
+                                        {{-- DEĞİŞİKLİK 2: Eğer read_at sütunu boşsa (null), 'unread' sınıfını ekle, değilse boş bırak --}}
+                                        <a href="{{ route('notifications.read', $notification->id) }}"
+                                            class="notification-item {{ is_null($notification->read_at) ? 'unread' : '' }}"
+                                            style="text-decoration: none; color: inherit;">
+
+                                            <div class="notif-icon">
+                                                <i data-lucide="{{ $notification->data['icon'] ?? 'info' }}"></i>
+                                            </div>
+
+                                            <div class="notification-content">
                                                 <div class="notif-title">
-                                                    {{ __($notification->data['title'] ?? 'Bildirim') }}</div>
-                                                <div class="notif-desc">{{ __($notification->data['message'] ?? '') }}
+                                                    {{ __($notification->data['title'] ?? 'Bildirim') }}
                                                 </div>
-                                                <div class="notif-time">{{ $notification->created_at->diffForHumans() }}
+                                                <div class="notif-desc">
+                                                    {{ __($notification->data['message'] ?? '') }}
+                                                </div>
+                                                <div class="notif-time">
+                                                    {{ $notification->created_at->diffForHumans() }}
                                                 </div>
                                             </div>
                                         </a>
                                     @empty
                                         <div class="text-center p-20 text-muted" style="padding: 20px;">
-                                            <div style="display: flex; justify-content: center; margin-bottom: 10px;"><i
-                                                    data-lucide="mail-open"
-                                                    style="width: 32px; height: 32px; opacity: 0.5;"></i></div>
-                                            {{ __('Yeni bildiriminiz yok.') }}
+                                            <div style="display: flex; justify-content: center; margin-bottom: 10px;">
+                                                <i data-lucide="mail-open"
+                                                    style="width: 32px; height: 32px; opacity: 0.5;"></i>
+                                            </div>
+                                            {{ __('Henüz bir bildiriminiz yok.') }}
                                         </div>
                                     @endforelse
                                 </div>
