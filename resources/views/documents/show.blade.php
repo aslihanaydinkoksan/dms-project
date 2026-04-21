@@ -1755,7 +1755,7 @@
                 } else if (actionType === 'accept') {
                     title.innerHTML =
                         '<i data-lucide="check-square" style="width: 20px; color: var(--success-color);"></i> Evrakı Teslim Al';
-                    form.action = `/physical-movements/${movementId}`;
+                    form.setAttribute('action', "{{ url('physical-movements') }}/" + movementId);
                     methodInput.value = 'PUT';
                     receiverSection.style.display = 'none';
                     locationField.style.display = 'block';
@@ -1764,7 +1764,7 @@
                 } else if (actionType === 'reject') {
                     title.innerHTML =
                         '<i data-lucide="x-circle" style="width: 20px; color: var(--danger-color);"></i> Evrakı Reddet';
-                    form.action = `/physical-movements/${movementId}`;
+                    form.setAttribute('action', "{{ url('physical-movements') }}/" + movementId);
                     methodInput.value = 'PUT';
                     receiverSection.style.display = 'none';
                     locationField.style.display = 'none'; // Reddediyorsa konum girmesine gerek yok
