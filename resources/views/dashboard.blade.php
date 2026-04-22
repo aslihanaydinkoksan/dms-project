@@ -183,9 +183,24 @@
                                     </div>
                                     <div class="action-content">
                                         <strong>{{ $doc->document_number }}</strong>
+
+                                        @php
+                                            // Tarihleri gün başlangıcına eşitleyip farkı değişkene atıyoruz
+                                            $daysLeft = \Carbon\Carbon::parse($doc->expire_at)
+                                                ->startOfDay()
+                                                ->diffInDays(now()->startOfDay());
+                                        @endphp
+
                                         <span style="color: var(--danger-color); font-weight: bold;">
                                             {{ __('Bitiş:') }} {{ \Carbon\Carbon::parse($doc->expire_at)->format('d.m.Y') }}
-                                            ({{ __(':count gün kaldı', ['count' => \Carbon\Carbon::parse($doc->expire_at)->diffInDays(now())]) }})
+
+                                            @if ($daysLeft == 0)
+                                                ({{ __('BUGÜN BİTİYOR!') }})
+                                            @elseif($daysLeft < 0)
+                                                ({{ __('Süresi geçti!') }})
+                                            @else
+                                                ({{ __(':count gün kaldı', ['count' => $daysLeft]) }})
+                                            @endif
                                         </span>
                                     </div>
                                     <div class="action-arrow"><i data-lucide="chevron-right"></i></div>

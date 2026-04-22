@@ -159,11 +159,20 @@
                             ->first();
                     @endphp
                     @if ($pendingMovement)
-                        <button type="button" class="btn btn-success pulse-animation btn-physical-action"
-                            data-action="accept" data-id="{{ $pendingMovement->id }}">
-                            <i data-lucide="check-square" style="width: 18px;"></i>
-                            {{ __('Islak İmzalı Evrakı Teslim Aldım') }}
-                        </button>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <button type="button" class="btn btn-success pulse-animation btn-physical-action"
+                                data-action="accept" data-id="{{ $pendingMovement->id }}"
+                                style="box-shadow: 0 4px 6px -1px rgba(22, 163, 74, 0.3);">
+                                <i data-lucide="check-square" style="width: 18px;"></i>
+                                {{ __('Islak İmzalı Evrakı Teslim Aldım') }}
+                            </button>
+
+                            <button type="button" class="btn btn-outline-danger btn-physical-action" data-action="reject"
+                                data-id="{{ $pendingMovement->id }}" style="background: #fff;">
+                                <i data-lucide="x-circle" style="width: 18px;"></i>
+                                {{ __('Teslimatı Reddet') }}
+                            </button>
+                        </div>
                     @endif
                 @endif
             @endif
@@ -681,13 +690,14 @@
                         <div
                             style="background: #f8fafc; padding: 15px; border-radius: 8px; flex: 1; border-left: 4px solid var(--primary-color);">
                             <span
-                                style="display: block; font-size: 0.8rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; margin-bottom: 4px;">Şu
-                                Anki Konum / Zimmet</span>
+                                style="display: block; font-size: 0.8rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; margin-bottom: 4px;">
+                                {{ __('Şu Anki Konum / Zimmet') }}
+                            </span>
                             <strong style="font-size: 1.1rem; color: var(--text-color);">
                                 @if ($document->physical_receipt_status === 'received')
                                     <i data-lucide="user-check"
                                         style="width: 18px; vertical-align: middle; color: var(--success-color);"></i>
-                                    {{ $document->deliveredToUser?->name ?? 'Bilinmiyor' }}
+                                    {{ $document->deliveredToUser?->name ?? __('Bilinmiyor') }}
                                     @if ($document->physical_location)
                                         <span
                                             style="font-weight: normal; color: var(--text-muted); font-size: 0.9rem;">({{ $document->physical_location }})</span>
@@ -695,12 +705,13 @@
                                 @elseif($document->physical_receipt_status === 'pending')
                                     <i data-lucide="hourglass"
                                         style="width: 18px; vertical-align: middle; color: var(--warning-color);"></i>
-                                    {{ $document->deliveredToUser?->name ?? 'Bilinmiyor' }} (Onay Bekliyor)
+                                    {{ $document->deliveredToUser?->name ?? __('Bilinmiyor') }}
+                                    ({{ __('Onay Bekliyor') }})
                                 @else
                                     <i data-lucide="folder-minus"
                                         style="width: 18px; vertical-align: middle; color: var(--text-muted);"></i>
-                                    Zimmet Başlatılmadı (Belge Sahibi:
-                                    {{ $document->currentVersion?->createdBy?->name ?? 'Bilinmiyor' }})
+                                    {{ __('Zimmet Başlatılmadı (Belge Sahibi:') }}
+                                    {{ $document->currentVersion?->createdBy?->name ?? __('Bilinmiyor') }})
                                 @endif
                             </strong>
                         </div>
@@ -790,16 +801,20 @@
                                                 style="width: 20px; color: var(--text-muted); flex-shrink: 0; margin-top: 2px;"></i>
                                             <div style="flex: 1;">
                                                 @php
-                                                    // Yorum içindeki "[Kabul Notu]:" ve "[Ret Nedeni]:" gibi sistem etiketlerini görsel olarak zenginleştirelim
+                                                    // Yorum içindeki "[Kabul Notu]:" ve "[Ret Nedeni]:" gibi sistem etiketlerini görsel olarak zenginleştirelim ve çevirelim
                                                     $formattedComment = e($movement->comment);
                                                     $formattedComment = str_replace(
                                                         '[Kabul Notu]:',
-                                                        '<br><br><strong style="color: #16a34a;"><i data-lucide="check" style="width:14px; vertical-align:middle;"></i> Kabul Notu:</strong> ',
+                                                        '<br><br><strong style="color: #16a34a;"><i data-lucide="check" style="width:14px; vertical-align:middle;"></i> ' .
+                                                            __('Kabul Notu:') .
+                                                            '</strong> ',
                                                         $formattedComment,
                                                     );
                                                     $formattedComment = str_replace(
                                                         '[Ret Nedeni]:',
-                                                        '<br><br><strong style="color: #dc2626;"><i data-lucide="alert-triangle" style="width:14px; vertical-align:middle;"></i> Ret Nedeni:</strong> ',
+                                                        '<br><br><strong style="color: #dc2626;"><i data-lucide="alert-triangle" style="width:14px; vertical-align:middle;"></i> ' .
+                                                            __('Ret Nedeni:') .
+                                                            '</strong> ',
                                                         $formattedComment,
                                                     );
                                                 @endphp
@@ -815,7 +830,8 @@
                                                 style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #f1f5f9; display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 0.85rem;">
                                                 <i data-lucide="map-pin"
                                                     style="width: 16px; color: var(--primary-color);"></i>
-                                                <strong style="color: var(--text-color);">Belirtilen Lokasyon:</strong>
+                                                <strong
+                                                    style="color: var(--text-color);">{{ __('Belirtilen Lokasyon:') }}</strong>
                                                 {{ $movement->location_details }}
                                             </div>
                                         @endif
@@ -848,9 +864,10 @@
                                     style="width: 64px; height: 64px; background: #e2e8f0; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px;">
                                     <i data-lucide="folder-clock" style="width: 32px; height: 32px; color: #94a3b8;"></i>
                                 </div>
-                                <h4 style="margin: 0 0 5px 0; color: var(--text-color);">Fiziksel Hareket Yok</h4>
-                                <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;">Bu evrak henüz sistem
-                                    üzerinden kimseye zimmetlenmemiş.</p>
+                                <h4 style="margin: 0 0 5px 0; color: var(--text-color);">{{ __('Fiziksel Hareket Yok') }}
+                                </h4>
+                                <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;">
+                                    {{ __('Bu evrak henüz sistem üzerinden kimseye zimmetlenmemiş.') }}</p>
                             </div>
                         @endforelse
                     </div>
