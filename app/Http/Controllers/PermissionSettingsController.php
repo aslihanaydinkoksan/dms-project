@@ -212,7 +212,8 @@ class PermissionSettingsController extends Controller
         // Model Observer'ımız (created olayı) Spatie yetkilerini otomatik üretecek!
         DocumentType::create([
             'name' => $request->name,
-            'custom_fields' => empty($fields) ? null : $fields // Boşsa null yap
+            'custom_fields' => empty($fields) ? null : $fields ,
+            'requires_expiration_date' => $request->has('requires_expiration_date')
         ]);
 
         return back()->with('success', '📄 Yeni doküman tipi ve özel form alanları başarıyla oluşturuldu.');
@@ -233,7 +234,8 @@ class PermissionSettingsController extends Controller
 
         $documentType->update([
             'name' => $request->name,
-            'custom_fields' => empty($fields) ? null : $fields
+            'custom_fields' => empty($fields) ? null : $fields,
+            'requires_expiration_date' => $request->has('requires_expiration_date')
         ]);
 
         return back()->with('success', 'Doküman tipi ve özel form alanları başarıyla güncellendi.');

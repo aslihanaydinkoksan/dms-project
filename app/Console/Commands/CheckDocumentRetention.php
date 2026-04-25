@@ -4,7 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use App\Models\Document;
-use App\Notifications\DocumentExpiringNotification; // SENİN YAZDIĞIN BİLDİRİM SINIFI
+use App\Notifications\DocumentRetentionNotification;
 
 class CheckDocumentRetention extends Command
 {
@@ -54,13 +54,13 @@ class CheckDocumentRetention extends Command
 
         // 1. Belge Sahibine Gönder
         if ($owner) {
-            $owner->notify(new DocumentExpiringNotification($document, $daysLeft));
+            $owner->notify(new DocumentRetentionNotification($document, $daysLeft));
             $this->line("-> Uyarı gönderildi: {$owner->name}");
         }
 
         // 2. Departman Müdürüne Gönder (Belge sahibi ile aynı kişi değilse)
         if ($departmentManager && $departmentManager->id !== $owner?->id) {
-            $departmentManager->notify(new DocumentExpiringNotification($document, $daysLeft));
+            $departmentManager->notify(new DocumentRetentionNotification($document, $daysLeft));
             $this->line("-> Uyarı gönderildi (Yönetici): {$departmentManager->name}");
         }
     }

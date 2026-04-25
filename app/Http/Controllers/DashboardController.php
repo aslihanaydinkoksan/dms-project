@@ -30,7 +30,9 @@ class DashboardController extends Controller
         // 2. Özel Listeler
         $lockedDocuments = $this->getLockedDocuments($user->id);
         $recentUploads = $this->getRecentUploads($user->id);
-        $expiringContracts = $this->getExpiringContracts($user);
+
+        // DEĞİŞEN KISIM: Değişken ve fonksiyon adı 'Documents' oldu
+        $expiringDocuments = $this->getExpiringDocuments($user);
 
         // 3. İstatistikler
         $stats = $this->getQuickStats($user);
@@ -55,7 +57,9 @@ class DashboardController extends Controller
             'myLockedDocuments' => $lockedDocuments->take(5),
             'totalLockedCount' => $lockedDocuments->count(),
             'myRecentUploads' => $recentUploads,
-            'expiringContracts' => $expiringContracts,
+
+            // DEĞİŞEN KISIM: Blade'e 'expiringDocuments' olarak gönderiyoruz
+            'expiringDocuments' => $expiringDocuments,
 
             // İstatistikler (Destructuring)
             'totalAccessible' => $stats['accessible'],
@@ -133,9 +137,9 @@ class DashboardController extends Controller
     }
 
     /**
-     * Yaklaşan sözleşmeleri yetkiye göre filtreleyip getirir
+     * DEĞİŞEN KISIM: Yaklaşan belgeleri yetkiye göre filtreleyip getirir
      */
-    private function getExpiringContracts($user): Collection
+    private function getExpiringDocuments($user): Collection
     {
         $today = Carbon::today();
         $thirtyDaysLater = Carbon::today()->addDays(30);

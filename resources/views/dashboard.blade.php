@@ -156,61 +156,61 @@
             </div>
         </div>
 
-        @hasanyrole('Super Admin|Admin|Hukuk')
-            <div class="widget-card">
-                <div class="widget-header flex-between">
-                    <h3 style="color: #b45309;">
-                        <i data-lucide="hourglass" style="width: 20px; margin-right: 8px; color: #d97706;"></i>
-                        {{ __('Yaklaşan Sözleşmeler') }}
-                    </h3>
-                    <a href="{{ route('documents.index') }}" class="btn btn-sm btn-outline-secondary"
-                        style="background: #fff;">{{ __('Tümünü Gör') }}</a>
-                </div>
-                <div class="widget-body" style="background: #f8fafc;">
-                    @if ($expiringContracts->count() == 0)
-                        <div class="empty-state">
-                            <i data-lucide="shield-check"
-                                style="width: 48px; height: 48px; margin: 0 auto 10px; color: var(--success-color); opacity: 0.8;"></i>
-                            <p>{{ __('Önümüzdeki 30 gün içinde süresi dolacak aktif sözleşme yok.') }}</p>
-                        </div>
-                    @else
-                        <ul class="action-list">
-                            @foreach ($expiringContracts as $doc)
-                                <a href="{{ route('documents.show', $doc->id) }}" class="action-item"
-                                    style="border-left: 4px solid #f59e0b;">
-                                    <div class="action-icon" style="background: #fef3c7; color: #b45309;">
-                                        <i data-lucide="calendar-off" style="width: 18px;"></i>
-                                    </div>
-                                    <div class="action-content">
-                                        <strong>{{ $doc->document_number }}</strong>
-
-                                        @php
-                                            // Tarihleri gün başlangıcına eşitleyip farkı değişkene atıyoruz
-                                            $daysLeft = \Carbon\Carbon::parse($doc->expire_at)
-                                                ->startOfDay()
-                                                ->diffInDays(now()->startOfDay());
-                                        @endphp
-
-                                        <span style="color: var(--danger-color); font-weight: bold;">
-                                            {{ __('Bitiş:') }} {{ \Carbon\Carbon::parse($doc->expire_at)->format('d.m.Y') }}
-
-                                            @if ($daysLeft == 0)
-                                                ({{ __('BUGÜN BİTİYOR!') }})
-                                            @elseif($daysLeft < 0)
-                                                ({{ __('Süresi geçti!') }})
-                                            @else
-                                                ({{ __(':count gün kaldı', ['count' => $daysLeft]) }})
-                                            @endif
-                                        </span>
-                                    </div>
-                                    <div class="action-arrow"><i data-lucide="chevron-right"></i></div>
-                                </a>
-                            @endforeach
-                        </ul>
-                    @endif
-                </div>
+        {{--  herkes görecek (ama sadece yetkisi olan belgeleri) --}}
+        <div class="widget-card">
+            <div class="widget-header flex-between">
+                <h3 style="color: #b45309;">
+                    <i data-lucide="hourglass" style="width: 20px; margin-right: 8px; color: #d97706;"></i>
+                    {{ __('Süresi Yaklaşan Belgeler') }}
+                </h3>
+                <a href="{{ route('documents.index') }}" class="btn btn-sm btn-outline-secondary"
+                    style="background: #fff;">{{ __('Tümünü Gör') }}</a>
             </div>
-        @endhasanyrole
+            <div class="widget-body" style="background: #f8fafc;">
+                @if ($expiringDocuments->count() == 0)
+                    <div class="empty-state">
+                        <i data-lucide="shield-check"
+                            style="width: 48px; height: 48px; margin: 0 auto 10px; color: var(--success-color); opacity: 0.8;"></i>
+                        <p>{{ __('Önümüzdeki 30 gün içinde süresi dolacak aktif belge bulunmuyor.') }}</p>
+                    </div>
+                @else
+                    <ul class="action-list">
+                        @foreach ($expiringDocuments as $doc)
+                            <a href="{{ route('documents.show', $doc->id) }}" class="action-item"
+                                style="border-left: 4px solid #f59e0b;">
+                                <div class="action-icon" style="background: #fef3c7; color: #b45309;">
+                                    <i data-lucide="calendar-off" style="width: 18px;"></i>
+                                </div>
+                                <div class="action-content">
+                                    <strong>{{ $doc->document_number }}</strong> <span
+                                        style="font-size: 0.8rem; color: var(--text-muted);">({{ __($doc->documentType?->name ?? 'Belge') }})</span>
+
+                                    @php
+                                        // Tarihleri gün başlangıcına eşitleyip farkı değişkene atıyoruz
+                                        $daysLeft = \Carbon\Carbon::parse($doc->expire_at)
+                                            ->startOfDay()
+                                            ->diffInDays(now()->startOfDay());
+                                    @endphp
+
+                                    <span style="color: var(--danger-color); font-weight: bold;">
+                                        {{ __('Bitiş:') }} {{ \Carbon\Carbon::parse($doc->expire_at)->format('d.m.Y') }}
+
+                                        @if ($daysLeft == 0)
+                                            ({{ __('BUGÜN BİTİYOR!') }})
+                                        @elseif($daysLeft < 0)
+                                            ({{ __('Süresi geçti!') }})
+                                        @else
+                                            ({{ __(':count gün kaldı', ['count' => $daysLeft]) }})
+                                        @endif
+                                    </span>
+                                </div>
+                                <div class="action-arrow"><i data-lucide="chevron-right"></i></div>
+                            </a>
+                        @endforeach
+                    </ul>
+                @endif
+            </div>
+        </div>
 
         <div class="widget-card">
             <div class="widget-header">

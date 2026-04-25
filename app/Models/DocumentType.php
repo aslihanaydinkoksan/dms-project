@@ -8,9 +8,10 @@ use Spatie\Permission\Models\Permission;
 
 class DocumentType extends Model
 {
-    protected $fillable = ['name', 'slug',  'description', 'is_active', 'custom_fields'];
+    protected $fillable = ['name', 'slug',  'description', 'is_active', 'custom_fields', 'requires_expiration_date'];
     protected $casts = [
         'custom_fields' => 'array', // Veritabanından çıkarken diziye çevirir
+        'requires_expiration_date' => 'boolean',
     ];
 
     // İsim girildiğinde slug otomatik dolsun

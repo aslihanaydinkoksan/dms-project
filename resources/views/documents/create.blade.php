@@ -92,16 +92,20 @@
                     </div>
                     <div class="form-group" style="margin-bottom: 20px;"> <label
                             style="font-size: 0.85rem; font-weight: 600; margin-bottom: 8px; color: var(--secondary-color); display: block;">
-                            {{ __('Doküman Tipi') }} <span class="text-danger">*</span> </label> <select
-                            name="document_type_id" id="documentTypeSelect" class="form-control" required
+                            {{ __('Doküman Tipi') }} <span class="text-danger">*</span> </label>
+                        <select name="document_type_id" id="documentTypeSelect" class="form-control" required
                             style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px;">
-                            <option value="">{{ __('-- Lütfen Seçiniz --') }}</option>
+                            <option value="" data-requires-expiration="false">{{ __('-- Lütfen Seçiniz --') }}
+                            </option>
                             @foreach ($documentTypes as $type)
                                 <option value="{{ $type->id }}"
-                                    {{ old('document_type_id') == $type->id ? 'selected' : '' }}> 📄 {{ __($type->name) }}
+                                    data-requires-expiration="{{ $type->requires_expiration_date ? 'true' : 'false' }}"
+                                    {{ old('document_type_id') == $type->id ? 'selected' : '' }}>
+                                    📄 {{ __($type->name) }}
                                 </option>
                             @endforeach
-                        </select> </div>
+                        </select>
+                    </div>
                     <div id="dynamic-custom-fields-container"
                         style="display: none; padding: 20px; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; margin-bottom: 25px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);">
                     </div>
@@ -169,7 +173,6 @@
                 </div>
             </div>
         </div>
-        {{-- SAĞ TARAF: ONAY AKIŞI KARTI --}}
         {{-- SAĞ TARAF: ONAY AKIŞI KARTI --}}
         <div class="card glass-card"
             style="flex: 1 1 50%; min-width: 300px; border-radius: var(--border-radius); border: 1px solid var(--border-color); background: var(--surface-color); box-shadow: var(--card-shadow); position: sticky; top: 20px;">
@@ -274,7 +277,7 @@
         }
 
         /* Eğer sidebar kapalıysa ve daha fazla alan istiyorsak
-                               veya ekran küçüldüğünde alt alta gelmesi için: */
+                                                   veya ekran küçüldüğünde alt alta gelmesi için: */
         @media (max-width: 1200px) {
             .document-create-container {
                 grid-template-columns: 1fr;
@@ -486,6 +489,37 @@
                     tokenSeparators: [',']
                 });
             });
+            // --- DOKÜMAN TİPİNE GÖRE AKILLI ZORUNLULUK (DATA-DRIVEN) ---
+            const docTypeSelect = document.getElementById('documentTypeSelect');
+            const expireInput = document.querySelector('input[name="expire_at"]');
+            const expireLabel = expireInput.closest('.form-group').querySelector('label');
+
+            if (docTypeSelect && expireInput) {
+                docTypeSelect.addEventListener('change', function() {
+                    // Seçilen option'ı bul ve data özelliğini oku
+                    const selectedOption = this.options[this.selectedIndex];
+                    const requiresExpiration = selectedOption.getAttribute('data-requires-expiration') ===
+                        'true';
+
+                    // Veritabanı "Bu belge için tarih zorunludur" diyorsa:
+                    if (requiresExpiration) {
+                        expireInput.required = true;
+                        expireInput.style.border = '2px solid #ef4444'; // Tailwind Red-500 (Kesin görünür)
+                        expireInput.style.backgroundColor = '#fef2f2'; // Hafif kırmızı arka plan
+
+                        if (!expireLabel.querySelector('.expire-star')) {
+                            expireLabel.innerHTML += ' <span class="text-danger expire-star">*</span>';
+                        }
+                    } else {
+                        expireInput.required = false;
+                        expireInput.style.border = '1px solid var(--border-color)'; // Eski haline döndür
+                        expireInput.style.backgroundColor = '#ffffff';
+
+                        const star = expireLabel.querySelector('.expire-star');
+                        if (star) star.remove();
+                    }
+                });
+            }
         });
     </script>
 @endpush

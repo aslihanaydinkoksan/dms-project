@@ -76,7 +76,7 @@
                                             <td style="padding: 12px 15px; vertical-align: middle;">
                                                 <div style="display: flex; gap: 8px; justify-content: flex-end;">
                                                     <button type="button" class="btn btn-sm btn-outline-primary action-btn"
-                                                        onclick="editDocType({{ $type->id }}, '{{ $type->name }}', {{ json_encode($type->custom_fields ?? []) }})"
+                                                        onclick="editDocType({{ $type->id }}, '{{ $type->name }}', {{ json_encode($type->custom_fields ?? []) }}, {{ $type->requires_expiration_date ? 'true' : 'false' }})"
                                                         title="{{ __('Düzenle') }}">
                                                         <i data-lucide="edit"></i>
                                                     </button>
@@ -129,6 +129,15 @@
                                     <input type="text" name="name" id="dtName" class="form-control"
                                         placeholder="{{ __('Örn: Sözleşme') }}" required
                                         style="padding: 10px; border-radius: 6px;">
+                                </div>
+                                <div class="col-md-6" style="display: flex; align-items: flex-end; padding-bottom: 5px;">
+                                    <label
+                                        style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 600; color: var(--text-color); cursor: pointer; margin: 0;">
+                                        <input type="checkbox" name="requires_expiration_date" id="dtRequiresExp"
+                                            value="1"
+                                            style="width: 18px; height: 18px; accent-color: var(--primary-color);">
+                                        {{ __('Geçerlilik Tarihi Zorunlu Olsun') }}
+                                    </label>
                                 </div>
                             </div>
 
@@ -817,8 +826,9 @@
                 addBtn.addEventListener('click', () => addFieldRow());
             }
 
-            window.editDocType = function(id, name, customFieldsJson) {
+            window.editDocType = function(id, name, customFieldsJson, requiresExp) {
                 document.getElementById('dtName').value = name || '';
+                document.getElementById('dtRequiresExp').checked = requiresExp;
                 const form = document.getElementById('docTypeForm');
                 form.action = `{{ url('/settings/document-types') }}/${id}`;
                 document.getElementById('methodSpoofer').innerHTML =
@@ -840,6 +850,7 @@
             if (cancelBtn) {
                 cancelBtn.addEventListener('click', function() {
                     document.getElementById('dtName').value = '';
+                    document.getElementById('dtRequiresExp').checked = false;
                     wrapper.innerHTML = '';
                     fieldIndex = 0;
                     document.getElementById('docTypeForm').action =
