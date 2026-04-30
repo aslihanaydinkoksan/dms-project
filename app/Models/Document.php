@@ -96,18 +96,26 @@ class Document extends Model
     }
 
     // --- LİSTELEME GÜVENLİK ZIRHI (3D MATRİS VE VEKALET ENTEGRELİ) ---
-    public function scopeAuthorizedForUser($query, User $user)
+    public function scopeAuthorizedForUser(Builder $query, User $user)
     {
         $delegatorIds = $user->getActiveDelegatorIds();
         $allUserIds = array_merge([$user->id], $delegatorIds);
         $delegators = User::with('roles')->whereIn('id', $delegatorIds)->get();
 
+        // 1. ADMİN Mİ?
         $isAdmin = $user->id === 1 || $user->hasAnyRole(['Super Admin', 'Admin']) ||
             $delegators->contains(function (User $d) {
                 return $d->id === 1 || $d->hasAnyRole(['Super Admin', 'Admin']);
             });
 
-        if ($isAdmin) {
+        // 2. GOD-MODE (Tüm Belgeleri Görüntüleme) YETKİSİ VAR MI?
+        $hasViewAll = $user->hasPermissionTo('document.view_all') ||
+            $delegators->contains(function (User $d) {
+                return $d->hasPermissionTo('document.view_all');
+            });
+
+        // EĞER ADMİN VEYA SÜPER OKUYUCU İSE, HİÇBİR KISITLAMA UYGULAMADAN TÜM SORGULARI VER!
+        if ($isAdmin || $hasViewAll) {
             return $query;
         }
 
@@ -125,13 +133,8 @@ class Document extends Model
                 return $d->hasPermissionTo('document.view_strictly_confidential');
             });
 
-        $hasViewAll = $user->hasPermissionTo('document.view_all') ||
-            $delegators->contains(function (User $d) {
-                return $d->hasPermissionTo('document.view_all');
-            });
-
-        // DİKKAT: "use" kısmına $user değişkenini de ekledik
-        return $query->where(function ($q) use ($allUserIds, $allowedDocumentTypeNames, $hasStrictlyConfidential, $hasViewAll, $user) {
+        // DİKKAT: "use" kısmından $hasViewAll'u silebiliriz artık, çünkü yukarıda erken çıkış yaptık.
+        return $query->where(function ($q) use ($allUserIds, $allowedDocumentTypeNames, $hasStrictlyConfidential, $user) {
 
             // KURAL A: Kendisinin VEYA Vekilinin Yüklediği Belgeler (Taslak dahil her şeyi görür)
             $q->whereHas('versions', function ($versionQuery) use ($allUserIds) {
@@ -145,44 +148,42 @@ class Document extends Model
                     $s->whereIn('users.id', $allUserIds);
                 })
                 // KURAL C: Matris, Klasör ve Gizlilik Kuralları
-                ->orWhere(function ($subQ) use ($allowedDocumentTypeNames, $hasStrictlyConfidential, $hasViewAll, $user) {
+                ->orWhere(function ($subQ) use ($allowedDocumentTypeNames, $hasStrictlyConfidential, $user) {
 
                     // Çok gizli (strictly_confidential) yetkisi yoksa o belgeleri direkt kalkanın dışında bırak
                     if (!$hasStrictlyConfidential) {
                         $subQ->where('privacy_level', '!=', 'strictly_confidential');
                     }
 
-                    $subQ->where(function ($accessQ) use ($allowedDocumentTypeNames, $hasViewAll, $user) {
-                        if ($hasViewAll) {
-                            $accessQ->whereNotNull('id');
-                        } else {
-                            // 1. Kategori Matrisi Yetkisi
-                            $accessQ->whereHas('documentType', function ($typeQ) use ($allowedDocumentTypeNames) {
-                                $typeQ->whereIn('name', $allowedDocumentTypeNames);
-                            })
-                                // 2. Kategori Yoksa ve Public ise
-                                ->orWhere(function ($publicQ) {
-                                    $publicQ->whereNull('document_type_id')->where('privacy_level', 'public');
-                                })
-                                // 3. YENİ EKLENEN: KLASÖR VE DEPARTMAN BAZLI ERİŞİM
-                                ->orWhere(function ($folderLogicQ) use ($user) {
-                                    // Sadece yayınlanmış/onaylanmış/arşivlenmiş belgeleri görebilir (Başkasının taslaklarını göremez)
-                                    $folderLogicQ->whereIn('status', ['published', 'approved', 'archived'])
-                                        ->whereHas('folder', function ($folderQ) use ($user) {
-                                            $folderQ->where(function ($q) use ($user) {
-                                                // DURUM 1: Klasörün hiç departmanı yoksa (Yani GLOBAL / Herkese Açık klasörse)
-                                                $q->doesntHave('departments');
+                    $subQ->where(function ($accessQ) use ($allowedDocumentTypeNames, $user) {
+                        // (Artık burada if($hasViewAll) kontrolüne gerek kalmadı, yukarıda hallettik)
 
-                                                // DURUM 2: VEYA Klasör kullanıcının kendi departmanına atanmışsa
-                                                if ($user->department_id) {
-                                                    $q->orWhereHas('departments', function ($depQ) use ($user) {
-                                                        $depQ->where('departments.id', $user->department_id);
-                                                    });
-                                                }
-                                            });
+                        // 1. Kategori Matrisi Yetkisi
+                        $accessQ->whereHas('documentType', function ($typeQ) use ($allowedDocumentTypeNames) {
+                            $typeQ->whereIn('name', $allowedDocumentTypeNames);
+                        })
+                            // 2. Kategori Yoksa ve Public ise
+                            ->orWhere(function ($publicQ) {
+                                $publicQ->whereNull('document_type_id')->where('privacy_level', 'public');
+                            })
+                            // 3. KLASÖR VE DEPARTMAN BAZLI ERİŞİM
+                            ->orWhere(function ($folderLogicQ) use ($user) {
+                                // Sadece yayınlanmış/onaylanmış/arşivlenmiş belgeleri görebilir (Başkasının taslaklarını göremez)
+                                $folderLogicQ->whereIn('status', ['published', 'approved', 'archived'])
+                                    ->whereHas('folder', function ($folderQ) use ($user) {
+                                        $folderQ->where(function ($q) use ($user) {
+                                            // DURUM 1: Klasörün hiç departmanı yoksa (Yani GLOBAL / Herkese Açık klasörse)
+                                            $q->doesntHave('departments');
+
+                                            // DURUM 2: VEYA Klasör kullanıcının kendi departmanına atanmışsa
+                                            if ($user->department_id) {
+                                                $q->orWhereHas('departments', function ($depQ) use ($user) {
+                                                    $depQ->where('departments.id', $user->department_id);
+                                                });
+                                            }
                                         });
-                                });
-                        }
+                                    });
+                            });
                     });
                 });
         });
@@ -248,7 +249,7 @@ class Document extends Model
      * SADECE metinsel verilerde arama yapar.
      * KULLANIM: $query->advancedSearch($keyword);
      */
-    public function scopeAdvancedSearch($query, $term)
+    public function scopeAdvancedSearch(Builder $query, string $term)
     {
         // Eğer arama kelimesi boşsa veya sadece boşluklardan oluşuyorsa sorguyu bozma, aynen geri döndür.
         if (empty(trim($term))) {
@@ -374,7 +375,7 @@ class Document extends Model
             ->withPivot('note')
             ->withTimestamps();
     }
-    public function scopeSearchInFavorites($query, $keyword)
+    public function scopeSearchInFavorites(Builder $query, string $keyword)
     {
         if (empty($keyword)) return $query;
 

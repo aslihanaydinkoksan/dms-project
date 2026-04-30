@@ -8,7 +8,7 @@
                 🔒
             </div>
 
-            <h2 class="vault-title">{{ __('Sıfır Güven (Zero Trust) Doğrulaması') }}</h2>
+            <h2 class="vault-title">{{ __('Gizli Dosya Güvenlik Doğrulaması') }}</h2>
             <p class="vault-desc">
                 {{ __('Erişmeye çalıştığınız') }} <strong>"{{ $document->title }}"</strong>
                 {{ __('belgesi yüksek gizlilik seviyesine') }} (<span
