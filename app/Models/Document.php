@@ -249,7 +249,7 @@ class Document extends Model
      * SADECE metinsel verilerde arama yapar.
      * KULLANIM: $query->advancedSearch($keyword);
      */
-    public function scopeAdvancedSearch(Builder $query, string $term)
+    public function scopeAdvancedSearch(Builder $query, ?string $term)
     {
         // Eğer arama kelimesi boşsa veya sadece boşluklardan oluşuyorsa sorguyu bozma, aynen geri döndür.
         if (empty(trim($term))) {
@@ -375,7 +375,7 @@ class Document extends Model
             ->withPivot('note')
             ->withTimestamps();
     }
-    public function scopeSearchInFavorites(Builder $query, string $keyword)
+    public function scopeSearchInFavorites(Builder $query, ?string $keyword)
     {
         if (empty($keyword)) return $query;
 
