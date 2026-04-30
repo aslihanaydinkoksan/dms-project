@@ -52,6 +52,7 @@ class DocumentPolicy
     {
         return true; // Listeleme ekranında (Index) arama yapabilmeleri için açık bırakıyoruz, filtrelemeyi Scope yapıyor.
     }
+
     /**
      * Kullanıcı bu belgeyi görebilir mi? (Hem Klasik Zırh Hem 3D Matris Hem Dinamik Kalkan)
      */
@@ -61,16 +62,28 @@ class DocumentPolicy
         $delegatorIds = $user->getActiveDelegatorIds();
         $allUserIds = array_merge([$user->id], $delegatorIds);
 
-        // 1. İSTİSNALAR (Vekalet Dahil)
-        // Kullanıcının kendisi Admin mi?
+        // =========================================================
+        // 1. İSTİSNALAR VE GLOBAL BYPASS (MUTLAK GÜÇLER)
+        // =========================================================
+
+        // A. Sistem Yöneticisi Zırhı
         if ($user->hasAnyRole(['Super Admin', 'Admin'])) {
             return true;
         }
 
-        // Vekalet verenler arasında Admin var mı? (Veritabanı seviyesinde sorgu, RAM dostu)
+        // B. GOD-MODE READ-ONLY (Yönetim Kurulu Asistanı / Denetçi Kalkanı)
+        // Bu yetki en üstte olduğu için aşağıdaki Gizlilik Kalkanı veya Matrislere HİÇ BAKMADAN doğrudan erişim verir.
+        try {
+            if ($user->hasPermissionTo('document.view_all')) {
+                return true;
+            }
+        } catch (PermissionDoesNotExist $e) {
+        }
+
+        // C. Vekalet verenler arasında Admin var mı? 
         if (!empty($delegatorIds)) {
             $hasAdminDelegator = User::whereIn('id', $delegatorIds)
-                ->role(['Super Admin', 'Admin']) // Spatie'nin hazır scope'u
+                ->role(['Super Admin', 'Admin'])
                 ->exists();
 
             if ($hasAdminDelegator) {
@@ -88,27 +101,26 @@ class DocumentPolicy
             return true;
         }
 
-        // 2. DİNAMİK GİZLİLİK SEVİYESİ KALKANI (YENİLENDİ!)
-        // 'public' (Herkese Açık) dışındaki tüm gizlilik seviyeleri için bu kalkan devreye girer.
+        // =========================================================
+        // 2. DİNAMİK GİZLİLİK SEVİYESİ KALKANI
+        // =========================================================
         if (!empty($document->privacy_level) && $document->privacy_level !== 'public') {
             $isOwner = $document->currentVersion && $document->currentVersion->created_by === $user->id;
             $hasClearance = false;
 
             try {
-                // Belgenin gizlilik koduna göre dinamik yetki sorgula (Örn: document.view_board_only)
                 $hasClearance = $user->hasPermissionTo('document.view_' . $document->privacy_level);
             } catch (PermissionDoesNotExist $e) {
-                // Eğer yetki Spatie tablolarında henüz yoksa clearance false kalır
             }
 
-            // KURAL: Eğer belgenin sahibi değilse VE bu özel kalkanı aşacak yetkisi yoksa,
-            // Aşağıdaki 3D Matriste "Görebilir" yetkisi olsa dahi ERİŞİM REDDEDİLİR!
             if (!$isOwner && !$hasClearance) {
                 return false;
             }
         }
 
+        // =========================================================
         // 3. LEGAL DMS 3D MATRİS KONTROLÜ
+        // =========================================================
         if ($document->document_type_id && $document->documentType) {
             $hasMatrixView = $this->hasMatrixPermission($user, $document->documentType->name, 'can_view');
             $isOwner = $document->currentVersion && $document->currentVersion->created_by === $user->id;
@@ -116,16 +128,9 @@ class DocumentPolicy
             return $hasMatrixView || $isOwner;
         }
 
-        // 4. KLASİK YETKİ KONTROLÜ (Kategorisi olmayan eski/normal belgeler için)
-        $hasViewAll = false;
-        try {
-            $hasViewAll = $user->hasPermissionTo('document.view_all');
-        } catch (PermissionDoesNotExist $e) {
-        }
-
-        if ($hasViewAll) {
-            return true;
-        }
+        // =========================================================
+        // 4. STANDART KONTROL (Kategorisiz public belgeler)
+        // =========================================================
         if (empty($document->category) && $document->privacy_level === 'public') {
             return true;
         }

@@ -51,6 +51,14 @@ class FolderPolicy
 
     public function view(User $user, Folder $folder): bool
     {
+        // GOD-MODE READ-ONLY: Eğer tüm belgeleri görme yetkisi varsa, tüm klasörleri de görebilsin.
+        try {
+            if ($user->hasPermissionTo('document.view_all')) {
+                return true;
+            }
+        } catch (\Spatie\Permission\Exceptions\PermissionDoesNotExist $e) {
+        }
+
         return $this->checkMatrix($user, $folder, 'can_view');
     }
 
