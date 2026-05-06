@@ -4,9 +4,9 @@
 # {{ $greeting }}
 @else
 @if ($level === 'error')
-# @lang('Whoops!')
+# Eyvah Bir Hata Oluştu!
 @else
-# @lang('Hello!')
+# Merhaba!
 @endif
 @endif
 
@@ -34,10 +34,19 @@
 {{ $line }}
 
 @endforeach
+
+{{-- Salutation --}}
+@if (! empty($salutation))
+{{ $salutation }}
+@else
+İyi çalışmalar dileriz,<br>
+{{ config('app.name') }}
+@endif
+
 {{-- Subcopy --}}
 @isset($actionText)
 <x-slot:subcopy>
-"{{ $actionText }}" butonuna tıklamakta sorun yaşıyorsanız, aşağıdaki bağlantıyı kopyalayıp web tarayıcınıza yapıştırın: 
+"{{ $actionText }}" butonuna tıklamakta sorun yaşıyorsanız, aşağıdaki bağlantıyı kopyalayıp web tarayıcınıza yapıştırın:
 
 <span class="break-all">[{{ $displayableActionUrl }}]({{ $actionUrl }})</span>
 </x-slot:subcopy>
