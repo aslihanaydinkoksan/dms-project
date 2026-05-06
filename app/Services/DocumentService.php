@@ -398,20 +398,24 @@ class DocumentService
     }
 
     /**
-     * Toplu Yükleme Bildirim ve Audit Log Motoru
+     * Toplu Yükleme Bildirim ve Audit Log Motoru (DEBUG VERSİYONU)
      */
     public function notifySuperiorsBatch(array $documents, array $notifiedUserIds, User $uploader): void
     {
-        if (empty($notifiedUserIds) || empty($documents)) return;
+        \Illuminate\Support\Facades\Log::info('--- BİLDİRİM TESTİ BAŞLADI ---');
+        \Illuminate\Support\Facades\Log::info('1. Fonksiyon tetiklendi. Formdan gelen Yönetici ID listesi:', $notifiedUserIds);
+
+        if (empty($notifiedUserIds) || empty($documents)) {
+            \Illuminate\Support\Facades\Log::warning('2. HATA: Bildirim iptal edildi! Çünkü seçili yönetici yok veya belge listesi boş geldi.');
+            return;
+        }
 
         $validUsers = User::whereIn('id', $notifiedUserIds)->get();
         $usersToNotify = collect();
 
         foreach ($validUsers as $targetUser) {
-            /** @var \App\Models\User $targetUser */
             $allowedDocs = collect();
 
-            // Her belge için kullanıcının "Çok Gizli" clearance kontrolü
             foreach ($documents as $doc) {
                 if ($doc->privacy_level === 'strictly_confidential') {
                     try {
@@ -426,7 +430,6 @@ class DocumentService
             }
 
             if ($allowedDocs->isNotEmpty()) {
-                // Her belge için Audit Log (Pivot) yaz
                 foreach ($allowedDocs as $d) {
                     $d->notifiedUsers()->syncWithoutDetaching([$targetUser->id]);
                 }
@@ -434,11 +437,21 @@ class DocumentService
             }
         }
 
+        \Illuminate\Support\Facades\Log::info('3. Güvenlik filtresinden geçen ve bildirim atılacak son kişi sayısı: ' . $usersToNotify->count());
+
         if ($usersToNotify->isNotEmpty()) {
-            \Illuminate\Support\Facades\Notification::send(
-                $usersToNotify,
-                new \App\Notifications\BatchDocumentUploadedNotification($documents, $uploader)
-            );
+            try {
+                \Illuminate\Support\Facades\Notification::send(
+                    $usersToNotify,
+                    new \App\Notifications\BatchDocumentUploadedNotification($documents, $uploader)
+                );
+                \Illuminate\Support\Facades\Log::info('4. BAŞARILI! Notification::send komutu çalıştırıldı ve işlem kuyruğa atıldı.');
+            } catch (Exception $e) {
+                \Illuminate\Support\Facades\Log::error('5. KRİTİK HATA: Bildirim gönderilirken kod çöktü: ' . $e->getMessage());
+            }
+        } else {
+            \Illuminate\Support\Facades\Log::warning('4. İPTAL: Güvenlik duvarından (Clearance) geçebilen hiçbir yönetici kalmadı.');
         }
+        \Illuminate\Support\Facades\Log::info('--- BİLDİRİM TESTİ BİTTİ ---');
     }
 }
