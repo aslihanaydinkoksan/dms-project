@@ -102,89 +102,94 @@ class Document extends Model
         $allUserIds = array_merge([$user->id], $delegatorIds);
         $delegators = User::with('roles')->whereIn('id', $delegatorIds)->get();
 
-        // 1. ADMİN Mİ?
+        // 1. ADMİN VEYA GOD-MODE Mİ? (Hiçbir kurala takılmadan her şeyi görür)
         $isAdmin = $user->id === 1 || $user->hasAnyRole(['Super Admin', 'Admin']) ||
             $delegators->contains(function (User $d) {
                 return $d->id === 1 || $d->hasAnyRole(['Super Admin', 'Admin']);
             });
 
-        // 2. GOD-MODE (Tüm Belgeleri Görüntüleme) YETKİSİ VAR MI?
         $hasViewAll = $user->hasPermissionTo('document.view_all') ||
             $delegators->contains(function (User $d) {
                 return $d->hasPermissionTo('document.view_all');
             });
 
-        // EĞER ADMİN VEYA SÜPER OKUYUCU İSE, HİÇBİR KISITLAMA UYGULAMADAN TÜM SORGULARI VER!
         if ($isAdmin || $hasViewAll) {
             return $query;
         }
 
         // Matris Rollere Vekilleri de Ekle
         $allRoleIds = array_merge($user->roles->pluck('id')->toArray(), $delegators->flatMap->roles->pluck('id')->toArray());
-
         $allowedDocumentTypeNames = \Illuminate\Support\Facades\DB::table('role_category_permissions')
             ->whereIn('role_id', $allRoleIds)
             ->where('can_view', 1)
             ->pluck('category')
             ->toArray();
 
+        // Çok Gizli Belge Yetkisi
         $hasStrictlyConfidential = $user->hasPermissionTo('document.view_strictly_confidential') ||
             $delegators->contains(function (User $d) {
                 return $d->hasPermissionTo('document.view_strictly_confidential');
             });
 
-        // DİKKAT: "use" kısmından $hasViewAll'u silebiliriz artık, çünkü yukarıda erken çıkış yaptık.
         return $query->where(function ($q) use ($allUserIds, $allowedDocumentTypeNames, $hasStrictlyConfidential, $user) {
 
-            // KURAL A: Kendisinin VEYA Vekilinin Yüklediği Belgeler (Taslak dahil her şeyi görür)
+            // KURAL A: Kendisinin veya Vekilinin Yüklediği Belgeler (Taslak dahil her şeyi görür)
             $q->whereHas('versions', function ($versionQuery) use ($allUserIds) {
                 $versionQuery->whereIn('created_by', $allUserIds);
             })
-                // KURAL B: Kendisinin VEYA Vekilinin ONAY ZİNCİRİNDE Olduğu Belgeler
+                // KURAL B: Kendisinin veya Vekilinin Onay/Zimmet Zincirinde Olduğu Belgeler
                 ->orWhereHas('approvals', function ($approvalQuery) use ($allUserIds) {
                     $approvalQuery->whereIn('user_id', $allUserIds);
                 })
                 ->orWhereHas('specificUsers', function ($s) use ($allUserIds) {
                     $s->whereIn('users.id', $allUserIds);
                 })
-                // KURAL C: Matris, Klasör ve Gizlilik Kuralları
+
+                // KURAL C: YAYINLANMIŞ BELGELER İÇİN YENİ KURUMSAL GİZLİLİK MANTIKLARI
                 ->orWhere(function ($subQ) use ($allowedDocumentTypeNames, $hasStrictlyConfidential, $user) {
 
-                    // Çok gizli (strictly_confidential) yetkisi yoksa o belgeleri direkt kalkanın dışında bırak
-                    if (!$hasStrictlyConfidential) {
-                        $subQ->where('privacy_level', '!=', 'strictly_confidential');
-                    }
+                    // Sadece onaylanmış/yayınlanmış/arşivlenmiş belgeler bu genel kurala girer
+                    $subQ->whereIn('status', ['published', 'approved', 'archived'])
+                        ->where(function ($accessQ) use ($allowedDocumentTypeNames, $hasStrictlyConfidential, $user) {
 
-                    $subQ->where(function ($accessQ) use ($allowedDocumentTypeNames, $user) {
-                        // (Artık burada if($hasViewAll) kontrolüne gerek kalmadı, yukarıda hallettik)
+                            // DURUM 1: PUBLIC (HERKESE AÇIK)
+                            // Mantık: Departman veya klasör duvarlarını DELER GEÇER! Tüm şirket görebilir.
+                            $accessQ->where('privacy_level', 'public')
 
-                        // 1. Kategori Matrisi Yetkisi
-                        $accessQ->whereHas('documentType', function ($typeQ) use ($allowedDocumentTypeNames) {
-                            $typeQ->whereIn('name', $allowedDocumentTypeNames);
-                        })
-                            // 2. Kategori Yoksa ve Public ise
-                            ->orWhere(function ($publicQ) {
-                                $publicQ->whereNull('document_type_id')->where('privacy_level', 'public');
-                            })
-                            // 3. KLASÖR VE DEPARTMAN BAZLI ERİŞİM
-                            ->orWhere(function ($folderLogicQ) use ($user) {
-                                // Sadece yayınlanmış/onaylanmış/arşivlenmiş belgeleri görebilir (Başkasının taslaklarını göremez)
-                                $folderLogicQ->whereIn('status', ['published', 'approved', 'archived'])
-                                    ->whereHas('folder', function ($folderQ) use ($user) {
-                                        $folderQ->where(function ($q) use ($user) {
-                                            // DURUM 1: Klasörün hiç departmanı yoksa (Yani GLOBAL / Herkese Açık klasörse)
-                                            $q->doesntHave('departments');
+                                // DURUM 2: CONFIDENTIAL (Departmana Özel) & STRICTLY CONFIDENTIAL (Çok Gizli)
+                                ->orWhere(function ($restrictedQ) use ($allowedDocumentTypeNames, $hasStrictlyConfidential, $user) {
+                                    $restrictedQ->whereIn('privacy_level', ['confidential', 'strictly_confidential']);
 
-                                            // DURUM 2: VEYA Klasör kullanıcının kendi departmanına atanmışsa
-                                            if ($user->department_id) {
-                                                $q->orWhereHas('departments', function ($depQ) use ($user) {
-                                                    $depQ->where('departments.id', $user->department_id);
+                                    // Eğer belge Çok Gizli ise, kullanıcının mutlaka "Çok Gizli" yetkisi (Clearance) olmalı!
+                                    if (!$hasStrictlyConfidential) {
+                                        $restrictedQ->where('privacy_level', '!=', 'strictly_confidential');
+                                    }
+
+                                    // Klasör ve Departman Duvarı: Bu kısıtlı belgeleri görmek için duvardan geçmesi gerekir
+                                    $restrictedQ->where(function ($logicQ) use ($allowedDocumentTypeNames, $user) {
+
+                                        // A) Ya kullanıcının Rol Matrisinde bu Doküman Tipine (Kategori) özel izni vardır
+                                        $logicQ->whereHas('documentType', function ($typeQ) use ($allowedDocumentTypeNames) {
+                                            $typeQ->whereIn('name', $allowedDocumentTypeNames);
+                                        })
+
+                                            // B) Ya da Klasörün Departmanı, kullanıcının departmanıyla eşleşiyordur (veya klasör departmansızdır)
+                                            ->orWhereHas('folder', function ($folderQ) use ($user) {
+                                                $folderQ->where(function ($q) use ($user) {
+                                                    // Klasörün HİÇ departmanı yoksa (Departmansız Ana Klasör) -> Herkese Açıktır
+                                                    $q->doesntHave('departments');
+
+                                                    // Klasörün departmanı varsa -> Kullanıcının kendi departmanı klasöre atanmış mı bak
+                                                    if ($user->department_id) {
+                                                        $q->orWhereHas('departments', function ($depQ) use ($user) {
+                                                            $depQ->where('departments.id', $user->department_id);
+                                                        });
+                                                    }
                                                 });
-                                            }
-                                        });
+                                            });
                                     });
-                            });
-                    });
+                                });
+                        });
                 });
         });
     }
@@ -328,7 +333,7 @@ class Document extends Model
         // Sabit match yerine, controller'da yaptığın gibi veritabanından çekiyoruz
         $privacyLevels = \App\Models\SystemSetting::getByKey('privacy_levels', [
             'public' => 'Herkese Açık',
-            'confidential' => 'Hizmete Özel',
+            'confidential' => 'Departmana Özel',
             'strictly_confidential' => 'Çok Gizli'
         ]);
 
@@ -400,5 +405,13 @@ class Document extends Model
     public function getCurrentPhysicalStatusAttribute()
     {
         return $this->latestPhysicalMovement ? $this->latestPhysicalMovement->status : 'none';
+    }
+    /**
+     * Belge yüklenirken manuel olarak bilgilendirilen yöneticiler (Audit Log)
+     */
+    public function notifiedUsers()
+    {
+        return $this->belongsToMany(User::class, 'document_notified_users')
+            ->withTimestamps();
     }
 }

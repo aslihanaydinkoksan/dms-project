@@ -878,15 +878,19 @@
                 <div id="tab-permissions" class="tab-pane" style="display: none; opacity: 0; transition: opacity 0.3s;">
                     <h2 style="font-size: 1.25rem; margin-bottom: 20px;">{{ __('Erişim ve Yetki Matrisi') }}</h2>
 
+                    {{-- 1. BÖLÜM: SİSTEM KURALLARI (Genel Kurallar) --}}
                     <div
                         style="border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; margin-bottom: 30px; background: #fafafa;">
                         <h3
                             style="font-size: 1rem; margin-bottom: 15px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px;">
-                            {{ __('Miras Alınan Sistem Yetkileri') }}</h3>
+                            <i data-lucide="settings"
+                                style="width: 18px; vertical-align: middle; color: var(--text-muted); margin-right: 5px;"></i>
+                            {{ __('Otomatik Sistem İzinleri (Genel Kurallar)') }}
+                        </h3>
                         <div class="alert alert-info" style="font-size: 0.9rem; margin-bottom: 15px;">
                             <strong>{{ __('Mevcut Gizlilik Seviyesi:') }}</strong>
                             {{ mb_strtoupper(__($document->privacy_level_text)) }}<br>
-                            {{ __('Bu seviyedeki dokümanları kurallar gereği sadece aşağıdaki gruplar görebilir:') }}
+                            {{ __('Sistem kuralları gereği bu belgeyi varsayılan olarak aşağıdaki gruplar görebilir:') }}
                         </div>
                         <ul
                             style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px;">
@@ -908,20 +912,113 @@
                                 </li>
                                 <li
                                     style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: #fff; border: 1px solid #e2e8f0; border-radius: 6px;">
-                                    <i data-lucide="globe" style="width: 16px; color: var(--text-muted);"></i>
-                                    {{ __('Diğer Yetkili Personeller (Klasör iznine bağlı)') }}
+                                    <i data-lucide="folder-check" style="width: 16px; color: var(--text-muted);"></i>
+                                    {{ __('Klasör Yetkisi Olanlar') }} <span
+                                        style="font-size: 0.8rem; color: var(--text-muted); font-style: italic;">({{ __('Gizlilik seviyesi engel olmadığı sürece') }})</span>
                                 </li>
                             @endif
                         </ul>
                     </div>
 
+                    {{-- YENİ 2. BÖLÜM: KLASÖR YETKİLERİ --}}
+                    @if ($document->folder)
+                        <div
+                            style="border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; margin-bottom: 30px; background: #f8fafc;">
+                            <h3
+                                style="font-size: 1rem; margin-bottom: 15px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; color: var(--primary-color); display: flex; align-items: center; gap: 8px;">
+                                <i data-lucide="folder-open" style="width: 18px;"></i>
+                                {{ __('Klasörün Erişim Yetkileri') }} ({{ $document->folder->name }})
+                            </h3>
+
+                            <div class="alert alert-warning"
+                                style="font-size: 0.85rem; margin-bottom: 15px; padding: 10px; background: #fffbeb; border-left: 4px solid #f59e0b; color: #92400e;">
+                                <i data-lucide="info" style="width: 16px; vertical-align: middle;"></i>
+                                <strong>{{ __('Bilgilendirme:') }}</strong>
+                                {{ __('Aşağıdaki kişi ve departmanlar bu klasöre giriş yapabilirler. Ancak bir klasöre giriş izni olmak, içindeki yüksek gizlilikli belgeleri okuyabilmek anlamına gelmez. Eğer kişi klasöre giriyor ama bu belgeyi göremiyorsa, alttaki "Belgeye Özel İstisnalar" alanından kişiye özel okuma yetkisi vermelisiniz.') }}
+                            </div>
+
+                            <div style="display: flex; flex-direction: column; gap: 15px;">
+                                {{-- Rol Bazlı Klasör Yetkileri --}}
+                                @if ($document->folder->rolePermissions && $document->folder->rolePermissions->count() > 0)
+                                    <div>
+                                        <strong
+                                            style="font-size: 0.85rem; color: var(--text-color);">{{ __('Klasöre Girebilen Departman ve Roller:') }}</strong>
+                                        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
+                                            @foreach ($document->folder->rolePermissions as $rp)
+                                                <span class="badge badge-secondary"
+                                                    style="background: #fff; border: 1px solid #cbd5e1; color: #475569; padding: 6px 12px; font-size: 0.8rem;">
+                                                    <i data-lucide="users"
+                                                        style="width: 14px; margin-right: 4px; display: inline-block; vertical-align: middle;"></i>
+                                                    {{ \Spatie\Permission\Models\Role::find($rp->role_id)?->name ?? 'Bilinmeyen Rol' }}
+                                                    <span style="opacity: 0.7; margin-left: 5px;">
+                                                        (@if ($rp->can_manage)
+                                                            Tam Yetki
+                                                        @elseif($rp->can_upload)
+                                                            Yükleme
+                                                        @else
+                                                            Sadece Okuma
+                                                        @endif)
+                                                    </span>
+                                                </span>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
+
+                                {{-- Kullanıcı Bazlı (Granular) Klasör Yetkileri --}}
+                                @if ($document->folder->specificUsers && $document->folder->specificUsers->count() > 0)
+                                    <div>
+                                        <strong
+                                            style="font-size: 0.85rem; color: var(--text-color);">{{ __('Klasöre Özel Tanımlı Personeller:') }}</strong>
+                                        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
+                                            @foreach ($document->folder->specificUsers as $su)
+                                                <span class="badge badge-secondary"
+                                                    style="background: #fff; border: 1px solid #cbd5e1; color: #475569; padding: 6px 12px; font-size: 0.8rem;">
+                                                    <i data-lucide="user"
+                                                        style="width: 14px; margin-right: 4px; display: inline-block; vertical-align: middle;"></i>
+                                                    {{ $su->name }}
+                                                    <span style="opacity: 0.7; margin-left: 5px;">
+                                                        (@if ($su->pivot->access_level === 'manage')
+                                                            Yönetici
+                                                        @elseif($su->pivot->access_level === 'upload')
+                                                            Yükleme
+                                                        @elseif($su->pivot->access_level === 'edit')
+                                                            Düzenleme
+                                                        @else
+                                                            Okuma
+                                                        @endif)
+                                                    </span>
+                                                </span>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
+
+                                {{-- Klasör tamamen açıksa (Global) --}}
+                                @if (
+                                    (!isset($document->folder->rolePermissions) || $document->folder->rolePermissions->count() === 0) &&
+                                        (!isset($document->folder->specificUsers) || $document->folder->specificUsers->count() === 0))
+                                    <div
+                                        style="font-size: 0.85rem; color: var(--text-muted); font-style: italic; background: #fff; padding: 10px; border-radius: 6px; border: 1px dashed #cbd5e1;">
+                                        <i data-lucide="globe"
+                                            style="width: 14px; vertical-align: middle; margin-right: 5px;"></i>
+                                        {{ __('Bu klasör genel erişime açıktır. Sistemdeki tüm kullanıcılar (Gizlilik kurallarına takılmadığı sürece) bu klasöre erişebilir.') }}
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                    @endif
+
+                    {{-- 3. BÖLÜM: BELGEYE ÖZEL İSTİSNALAR --}}
                     <div
                         style="border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; background: #fff;">
                         <h3 style="font-size: 1rem; color: var(--primary-color); margin-bottom: 5px;">
-                            {{ __('Belgeye Özel İstisnalar (Granular Access)') }}</h3>
+                            {{ __('Sadece Bu Belgeye Özel Atanan Personeller') }}
+                        </h3>
                         <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;">
-                            {{ __('Klasör ve gizlilik yetkilerini') }} <strong>{{ __('ezerek') }}</strong>,
-                            {{ __('bu belgeye özel erişim izinleri tanımlayabilirsiniz.') }}</p>
+                            {{ __('Klasör ve sistem yetkilerine') }} <strong>{{ __('ek olarak') }}</strong>,
+                            {{ __('sadece bu belgeyi görebilmesi/düzenleyebilmesi için kişilere özel izinler verebilirsiniz.') }}
+                        </p>
 
                         <form action="{{ route('documents.permissions.store', $document->id) }}" method="POST"
                             style="display: flex; gap: 15px; align-items: flex-end; background: var(--bg-color); padding: 15px; border-radius: 8px; border: 1px dashed #cbd5e1; margin-bottom: 25px;">
@@ -955,8 +1052,9 @@
                                 </select>
                             </div>
                             <button type="submit" class="btn btn-primary"
-                                style="height: 42px; padding: 0 20px; white-space: nowrap;"><i data-lucide="plus"
-                                    style="width: 16px;"></i> {{ __('Yetki Ekle') }}</button>
+                                style="height: 42px; padding: 0 20px; white-space: nowrap;">
+                                <i data-lucide="plus" style="width: 16px;"></i> {{ __('Yetki Ekle') }}
+                            </button>
                         </form>
 
                         <div style="border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden;">
@@ -985,18 +1083,21 @@
                                             <td style="padding: 12px 15px;">
                                                 @if ($specUser->pivot->access_level === 'edit')
                                                     <span class="badge badge-warning"
-                                                        style="display: inline-flex; align-items: center; gap: 4px;"><i
-                                                            data-lucide="edit-2" style="width: 12px;"></i>
-                                                        {{ __('Okur ve Düzenler') }}</span>
+                                                        style="display: inline-flex; align-items: center; gap: 4px;">
+                                                        <i data-lucide="edit-2" style="width: 12px;"></i>
+                                                        {{ __('Okur ve Düzenler') }}
+                                                    </span>
                                                 @else
                                                     <span class="badge badge-secondary"
-                                                        style="display: inline-flex; align-items: center; gap: 4px;"><i
-                                                            data-lucide="eye" style="width: 12px;"></i>
-                                                        {{ __('Sadece Okur') }}</span>
+                                                        style="display: inline-flex; align-items: center; gap: 4px;">
+                                                        <i data-lucide="eye" style="width: 12px;"></i>
+                                                        {{ __('Sadece Okur') }}
+                                                    </span>
                                                 @endif
                                             </td>
                                             <td style="padding: 12px 15px; color: var(--text-muted);">
-                                                {{ $specUser->pivot->created_at->format('d.m.Y H:i') }}</td>
+                                                {{ $specUser->pivot->created_at->format('d.m.Y H:i') }}
+                                            </td>
                                             <td style="padding: 12px 15px; text-align: right;">
                                                 <form
                                                     action="{{ route('documents.permissions.destroy', [$document->id, $specUser->id]) }}"
@@ -1004,9 +1105,10 @@
                                                     onsubmit="return confirm('{{ __('Bu özel yetkiyi kaldırmak istediğinize emin misiniz?') }}');">
                                                     @csrf @method('DELETE')
                                                     <button type="submit" class="btn btn-sm btn-outline-danger"
-                                                        style="padding: 6px 10px; display: inline-flex; align-items: center; gap: 4px;"><i
-                                                            data-lucide="trash-2" style="width: 14px;"></i>
-                                                        {{ __('Kaldır') }}</button>
+                                                        style="padding: 6px 10px; display: inline-flex; align-items: center; gap: 4px;">
+                                                        <i data-lucide="trash-2" style="width: 14px;"></i>
+                                                        {{ __('Kaldır') }}
+                                                    </button>
                                                 </form>
                                             </td>
                                         </tr>

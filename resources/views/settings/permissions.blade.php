@@ -572,6 +572,11 @@
                                                 </div>
 
                                                 {{-- EĞER SİSTEME BAŞKA BİR YETKİ EKLENİRSE (FALLBACK) --}}
+                                            @elseif($sp->name == 'notify.global')
+                                                <div
+                                                    style="font-weight: 700; color: #0284c7; margin-bottom: 6px; font-size: 0.9rem;">
+                                                    🌐 {{ __('Küresel Bildirim Yetkisi') }}
+                                                </div>
                                             @else
                                                 <div
                                                     style="font-weight: 700; color: #475569; margin-bottom: 6px; font-size: 0.85rem; font-family: monospace;">

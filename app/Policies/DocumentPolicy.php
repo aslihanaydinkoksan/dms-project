@@ -54,7 +54,7 @@ class DocumentPolicy
     }
 
     /**
-     * Kullanıcı bu belgeyi görebilir mi? (Hem Klasik Zırh Hem 3D Matris Hem Dinamik Kalkan)
+     * Kullanıcı bu belgeyi görebilir mi? (Listeleme Kalkanı ile %100 Senkronize Policy)
      */
     public function view(User $user, Document $document): bool
     {
@@ -72,7 +72,6 @@ class DocumentPolicy
         }
 
         // B. GOD-MODE READ-ONLY (Yönetim Kurulu Asistanı / Denetçi Kalkanı)
-        // Bu yetki en üstte olduğu için aşağıdaki Gizlilik Kalkanı veya Matrislere HİÇ BAKMADAN doğrudan erişim verir.
         try {
             if ($user->hasPermissionTo('document.view_all')) {
                 return true;
@@ -80,63 +79,105 @@ class DocumentPolicy
         } catch (PermissionDoesNotExist $e) {
         }
 
-        // C. Vekalet verenler arasında Admin var mı? 
+        // C. Vekalet verenler arasında Admin veya God Mode var mı? 
         if (!empty($delegatorIds)) {
-            $hasAdminDelegator = User::whereIn('id', $delegatorIds)
-                ->role(['Super Admin', 'Admin'])
-                ->exists();
+            $delegators = User::with('roles', 'permissions')->whereIn('id', $delegatorIds)->get();
+            $hasAdminOrGod = $delegators->contains(function (User $d) {
+                $hasViewAll = false;
+                try {
+                    $hasViewAll = $d->hasPermissionTo('document.view_all');
+                } catch (\Exception $e) {
+                }
+                return $d->hasAnyRole(['Super Admin', 'Admin']) || $hasViewAll;
+            });
 
-            if ($hasAdminDelegator) {
+            if ($hasAdminOrGod) return true;
+        }
+
+        // =========================================================
+        // 2. SÜREÇ KATILIMI (Sahiplik, Granular, Onaycı)
+        // =========================================================
+
+        // Sahiplik Kontrolü (Kendisinin veya vekilinin yüklediği belge)
+        $isOwner = $document->versions()->whereIn('created_by', $allUserIds)->exists();
+        if ($isOwner) return true;
+
+        // Granular Access Kontrolü (Özel İzinli Kullanıcı)
+        if ($document->specificUsers()->whereIn('user_id', $allUserIds)->exists()) return true;
+
+        // Onaycı Kontrolü (Sürece Dahil Edilen Kullanıcı)
+        if ($document->approvals()->whereIn('user_id', $allUserIds)->exists()) return true;
+
+        // =========================================================
+        // 3. KURUMSAL GİZLİLİK VE KALITIM MANTIĞI (Yayınlanmış Belgeler)
+        // =========================================================
+
+        // Eğer belge "Yayında, Onaylanmış veya Arşivlenmiş" DEĞİLSE, 
+        // ve kullanıcı da belgenin sahibi/onaycısı/admini değilse taslakları göremez!
+        if (!in_array($document->status, ['published', 'approved', 'archived'])) {
+            return false;
+        }
+
+        // A) HERKESE AÇIK (PUBLIC) DUVAR DELİCİ
+        if ($document->privacy_level === 'public') {
+            return true;
+        }
+
+        // B) ÇOK GİZLİ (STRICTLY CONFIDENTIAL) KALKANI
+        if ($document->privacy_level === 'strictly_confidential') {
+            $hasStrictClearance = false;
+            try {
+                $hasStrictClearance = $user->hasPermissionTo('document.view_strictly_confidential');
+            } catch (\Exception $e) {
+            }
+
+            // Vekillerinde bu yetki var mı?
+            if (!$hasStrictClearance && !empty($delegatorIds)) {
+                $hasStrictClearance = $delegators->contains(function (User $d) {
+                    try {
+                        return $d->hasPermissionTo('document.view_strictly_confidential');
+                    } catch (\Exception $e) {
+                        return false;
+                    }
+                });
+            }
+
+            // Çok Gizli belgede yetkisi yoksa anında reddet!
+            if (!$hasStrictClearance) return false;
+        }
+
+        // C) İZOLASYON DUVARI (Departman/Klasör Uyumu VEYA Matris Yetkisi)
+
+        // 1. LEGAL DMS 3D MATRİS KONTROLÜ
+        if ($document->document_type_id && $document->documentType) {
+            if ($this->hasMatrixPermission($user, $document->documentType->name, 'can_view')) {
                 return true;
             }
         }
 
-        // Granular Access Kontrolü (Vekalet Entegreli)
-        if ($document->specificUsers()->whereIn('user_id', $allUserIds)->exists()) {
-            return true;
-        }
+        // 2. KLASÖR VE DEPARTMAN UYUMU (Listeleme Scope'u ile Aynı Kural)
+        $folder = $document->folder;
+        $userDeptIds = array_filter(array_merge([$user->department_id], User::whereIn('id', $delegatorIds)->pluck('department_id')->toArray()));
 
-        // Onaycı Kontrolü (Vekalet Entegreli)
-        if ($document->approvals()->whereIn('user_id', $allUserIds)->exists()) {
-            return true;
-        }
-
-        // =========================================================
-        // 2. DİNAMİK GİZLİLİK SEVİYESİ KALKANI
-        // =========================================================
-        if (!empty($document->privacy_level) && $document->privacy_level !== 'public') {
-            $isOwner = $document->currentVersion && $document->currentVersion->created_by === $user->id;
-            $hasClearance = false;
-
-            try {
-                $hasClearance = $user->hasPermissionTo('document.view_' . $document->privacy_level);
-            } catch (PermissionDoesNotExist $e) {
+        if ($folder) {
+            // Klasörün hiç departmanı yoksa (Departmansız Ana Klasör), Departmana Özel olsa dahi herkese açıktır.
+            if ($folder->departments->isEmpty()) {
+                return true;
             }
 
-            if (!$isOwner && !$hasClearance) {
-                return false;
+            // Klasörün departmanlarından biri, kullanıcının (veya vekilinin) departmanı mı?
+            if ($folder->departments->whereIn('id', $userDeptIds)->isNotEmpty()) {
+                return true;
+            }
+        } else {
+            // Klasörsüz (kök dizin) yüklenmişse belgenin departmanına bakılır
+            if (!$document->related_department_id || in_array($document->related_department_id, $userDeptIds)) {
+                return true;
             }
         }
 
-        // =========================================================
-        // 3. LEGAL DMS 3D MATRİS KONTROLÜ
-        // =========================================================
-        if ($document->document_type_id && $document->documentType) {
-            $hasMatrixView = $this->hasMatrixPermission($user, $document->documentType->name, 'can_view');
-            $isOwner = $document->currentVersion && $document->currentVersion->created_by === $user->id;
-
-            return $hasMatrixView || $isOwner;
-        }
-
-        // =========================================================
-        // 4. STANDART KONTROL (Kategorisiz public belgeler)
-        // =========================================================
-        if (empty($document->category) && $document->privacy_level === 'public') {
-            return true;
-        }
-
-        // Sadece kendi yüklediği belgeleri görebilsin
-        return $document->currentVersion && $document->currentVersion->created_by === $user->id;
+        // Hiçbir şartı sağlayamayan Aslıhanları kapıda durdur :)
+        return false;
     }
 
     /**

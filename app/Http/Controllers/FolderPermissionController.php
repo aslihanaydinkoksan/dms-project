@@ -76,9 +76,10 @@ class FolderPermissionController extends Controller
             'access_level' => 'required|in:read,upload,manage'
         ]);
 
-        $folder->specificUsers()->syncWithoutDetaching([
-            $request->user_id => ['access_level' => $request->access_level]
-        ]);
+        \App\Models\FolderUserPermission::updateOrCreate(
+            ['user_id' => $request->user_id, 'folder_id' => $folder->id],
+            ['access_level' => $request->access_level]
+        );
 
         return back()->with('success', 'Kullanıcıya klasör için özel yetki başarıyla tanımlandı.');
     }

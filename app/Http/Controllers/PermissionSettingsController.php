@@ -28,7 +28,7 @@ class PermissionSettingsController extends Controller
         // YENİ: Gizlilik Seviyelerini Çek ve Yetki İsimlerine Dönüştür
         $privacyLevels = \App\Models\SystemSetting::getByKey('privacy_levels', [
             'public' => 'Herkese Açık',
-            'confidential' => 'Hizmete Özel',
+            'confidential' => 'Departmana Özel',
             'strictly_confidential' => 'Çok Gizli'
         ]);
 
@@ -43,7 +43,8 @@ class PermissionSettingsController extends Controller
         $specialPermissions = Permission::whereIn('name', array_merge([
             'document.view_all',
             'document.manage_all',
-            'document.force_unlock'
+            'document.force_unlock',
+            'notify.global'
         ], $dynamicPrivacyPermissions))->get();
 
         $menuPermissions = Permission::where('name', 'like', 'menu.%')->get();
@@ -340,7 +341,7 @@ class PermissionSettingsController extends Controller
         // Mevcut ayarları çek
         $privacyLevels = \App\Models\SystemSetting::getByKey('privacy_levels', [
             'public' => 'Herkese Açık',
-            'confidential' => 'Hizmete Özel',
+            'confidential' => 'Departmana Özel',
             'strictly_confidential' => 'Çok Gizli'
         ]);
 

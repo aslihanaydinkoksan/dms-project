@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Models\Document;
+use App\Models\Folder;
 use Illuminate\Support\Facades\Request;
 use App\Models\AuditLog;
 use Illuminate\Support\Facades\Auth;
@@ -10,6 +11,26 @@ use Illuminate\Support\Facades\Auth;
 
 class DocumentObserver
 {
+    /**
+     * Belge veritabanına KAYDEDİLMEDEN HEMEN ÖNCE çalışır.
+     * Klasörden Departman Kalıtımını (Inheritance) Pivot tablodan çekerek zorunlu kılar.
+     */
+    public function saving(Document $document): void
+    {
+        if ($document->folder_id) {
+            // Klasörü, pivot tablosundaki departmanlarıyla birlikte çek
+            $folder = Folder::with('departments')->find($document->folder_id);
+
+            // Klasöre atanmış en az 1 departman varsa, ilkini alıp belgenin meta verisine kalıtımla aktar
+            if ($folder && $folder->departments->isNotEmpty()) {
+                $firstDepartment = $folder->departments->first();
+                $document->related_department_id = $firstDepartment->id;
+            } else {
+                // Eğer "Departmansız Ana Klasör" ise belge de departmansız (Tüm şirkete açık) kalsın
+                $document->related_department_id = null;
+            }
+        }
+    }
     /**
      * Handle the Document "created" event.
      */

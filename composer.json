@@ -11,11 +11,11 @@
         "laravel/scout": "^10.24",
         "laravel/tinker": "^2.10.1",
         "setasign/fpdi": "^2.6",
-        "spatie/laravel-permission": "^6.24",
+        "spatie/laravel-permission": "^6.25",
         "tecnickcom/tcpdf": "^6.11"
     },
     "require-dev": {
-        "barryvdh/laravel-ide-helper": "^3.6",
+        "barryvdh/laravel-ide-helper": "^3.7",
         "fakerphp/faker": "^1.23",
         "laravel/pail": "^1.2.2",
         "laravel/pint": "^1.24",

@@ -86,6 +86,39 @@
                         ],
                     ],
                 ],
+                // KLASÖR YETKİLENDİRME BİLDİRİMİ BURAYA EKLENDİ
+                [
+                    'key' => 'folder_permission',
+                    'title' => __('Klasör Yetkilendirme Bildirimi'),
+                    'icon' => 'folder-lock',
+                    'color' => '#4338ca',
+                    'bg' => '#e0e7ff',
+                    'subject_val' =>
+                        $settings['mail_subject_folder_permission'] ?? __('Yeni Klasör Yetkisi: {folder_name}'),
+                    'body_val' =>
+                        $settings['mail_template_folder_permission'] ??
+                        __(
+                            "Sayın {user_name},\n\n{assigner_name} tarafından size '{folder_name}' klasörü için '{permission_level}' yetkisi tanımlanmıştır.\n\nİyi çalışmalar dileriz.",
+                        ),
+                    'smart_tags' => [
+                        '{user_name}' => ['label' => __('Personel Adı'), 'icon' => 'user', 'preview' => 'Ahmet Yılmaz'],
+                        '{assigner_name}' => [
+                            'label' => __('Atayan Kişi'),
+                            'icon' => 'user-check',
+                            'preview' => 'Yönetici Adı',
+                        ],
+                        '{folder_name}' => [
+                            'label' => __('Klasör Adı'),
+                            'icon' => 'folder',
+                            'preview' => 'Finans Raporları',
+                        ],
+                        '{permission_level}' => [
+                            'label' => __('Yetki Seviyesi'),
+                            'icon' => 'shield',
+                            'preview' => 'Yükleme ve Görüntüleme',
+                        ],
+                    ],
+                ],
             ];
         @endphp
 

@@ -15,46 +15,64 @@ class StoreDocumentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            // --- 1. TEMEL BELGE BİLGİLERİ (KATI ZIRH EKLENDİ) ---
-            'file' => [
+            // =========================================================
+            // 1. GLOBAL BELGE BİLGİLERİ (Tüm seçili dosyalar için ortak)
+            // =========================================================
+            'folder_id' => ['required', 'exists:folders,id'],
+            'privacy_level' => ['required', 'string', 'in:public,confidential,strictly_confidential'],
+
+            // --- KURUMSAL METADATA VE İMHA POLİTİKASI ---
+            'related_department_id' => ['nullable', 'integer', 'exists:departments,id'],
+            'system_article_no' => ['nullable', 'string', 'max:255'],
+            'department_retention_years' => ['nullable', 'integer', 'min:0'],
+            'archive_retention_years' => ['nullable', 'integer', 'min:0'],
+
+            // --- ETİKETLER ---
+            'tags' => ['nullable', 'array'],
+
+            // --- DİNAMİK ONAY AKIŞI (WORKFLOW) VE BİLDİRİMLER ---
+            'approvers' => ['nullable', 'array'],
+            'approvers.*.user_id' => ['required_with:approvers', 'exists:users,id'],
+            'approvers.*.step_order' => ['required_with:approvers', 'integer', 'min:1'],
+            'notified_user_ids' => ['nullable', 'array'],
+
+            // =========================================================
+            // 2. ÇOKLU DOSYA (BATCH UPLOAD) KONTROLLERİ
+            // =========================================================
+
+            // Eski 'file' => [...] kısmı, 'files.*' şeklinde çoklandı
+            'files' => ['required', 'array', 'min:1'],
+            'files.*' => [
                 'required',
                 'file',
                 'mimes:pdf,doc,docx,jpg,jpeg,png,html',
                 'mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png,text/html',
                 'max:20480'
             ],
-            'title' => ['required', 'string', 'max:255'],
-           // 'document_number' => ['required', 'string', 'max:100', 'unique:documents,document_number'],
-            'folder_id' => ['required', 'exists:folders,id'],
-            'privacy_level' => ['required', 'string', 'in:public,confidential,strictly_confidential'],
-            'expire_at' => ['nullable', 'date'],
 
-            // --- 2. KURUMSAL METADATA VE İMHA POLİTİKASI ---
-            'document_type_id' => 'required|exists:document_types,id',
-            'related_department_id' => 'nullable|integer|exists:departments,id',
-            'system_article_no' => ['nullable', 'string', 'max:255'],
-            'department_retention_years' => ['nullable', 'integer', 'min:0'],
-            'archive_retention_years' => ['nullable', 'integer', 'min:0'],
-
-            // --- 3. ETİKETLER ---
-            'tags' => ['nullable', 'array'],
-
-            // --- 4. DİNAMİK ONAY AKIŞI (WORKFLOW) ---
-            'approvers' => ['nullable', 'array'],
-            'approvers.*.user_id' => ['required_with:approvers', 'exists:users,id'],
-            'approvers.*.step_order' => ['required_with:approvers', 'integer', 'min:1'],
-            'metadata' => 'nullable|array', // Dinamik alanları kabul et
+            // Eski 'title', 'document_type_id', 'expire_at', 'metadata' 
+            // alanları her bir dosya için özel olduğundan array içine alındı
+            'documents' => ['required', 'array'],
+            'documents.*.title' => ['required', 'string', 'max:255'],
+            'documents.*.document_type_id' => ['required', 'exists:document_types,id'],
+            'documents.*.expire_at' => ['nullable', 'date'],
+            'documents.*.metadata' => ['nullable', 'array'],
         ];
     }
 
     public function messages(): array
     {
         return [
+            // Eski mesajların korundu, array yapısına uyarlandı
             'document_number.unique' => 'Bu Evrak Kayıt No sistemde zaten mevcut. Lütfen değiştirin.',
-            'file.max' => 'Yükleyeceğiniz dosya boyutu 20MB sınırını aşamaz.',
-            'file.mimes' => 'Sisteme sadece PDF, Word, JPG, PNG ve HTML formatında belgeler yüklenebilir.',
-            'file.mimetypes' => 'Dosya uzantısı değiştirilmiş zararlı bir içerik tespit edildi. İşlem reddedildi.',
-            'document_type.required' => 'Lütfen belgenin tipini (Prosedür, Talimat vb.) seçiniz.',
+            'files.required' => 'Lütfen sisteme yüklenecek en az bir dosya seçin.',
+            'files.*.max' => 'Yükleyeceğiniz dosya boyutu 20MB sınırını aşamaz.',
+            'files.*.mimes' => 'Sisteme sadece PDF, Word, JPG, PNG ve HTML formatında belgeler yüklenebilir.',
+            'files.*.mimetypes' => 'Dosya uzantısı değiştirilmiş zararlı bir içerik tespit edildi. İşlem reddedildi.',
+
+            'documents.*.document_type_id.required' => 'Lütfen eklediğiniz tüm belgelerin tipini (Prosedür, Talimat vb.) seçiniz.',
+            'documents.*.title.required' => 'Eklediğiniz tüm belgeler için bir başlık girmek zorunludur.',
+
             'department_retention_years.min' => 'Bölümde saklama süresi 0\'dan küçük olamaz.',
             'archive_retention_years.min' => 'Arşivde saklama süresi 0\'dan küçük olamaz.',
         ];

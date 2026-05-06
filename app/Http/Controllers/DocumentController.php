@@ -117,7 +117,7 @@ class DocumentController extends Controller
         );
         $privacyLevels = SystemSetting::getByKey('privacy_levels', [
             'public' => 'Herkese Açık',
-            'confidential' => 'Hizmete Özel',
+            'confidential' => 'Departmana Özel',
             'strictly_confidential' => 'Çok Gizli'
         ]);
 
@@ -183,7 +183,7 @@ class DocumentController extends Controller
 
         $privacyLevels = SystemSetting::getByKey('privacy_levels', [
             'public' => 'Herkese Açık',
-            'confidential' => 'Hizmete Özel',
+            'confidential' => 'Departmana Özel',
             'strictly_confidential' => 'Gizli'
         ]);
 
@@ -199,17 +199,18 @@ class DocumentController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('documents.create', compact('flatFolders', 'privacyLevels', 'tags', 'users', 'departments', 'documentTypes'));
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        $notifiableSuperiors = $this->documentService->getNotifiableSuperiors($user);
+
+        return view('documents.create', compact('flatFolders', 'privacyLevels', 'tags', 'users', 'departments', 'documentTypes', 'notifiableSuperiors'));
     }
     /**
      * AJAX İsteği: Seçilen Doküman Tipinin Dinamik Form Alanlarını (JSON) döner
      */
-    public function getCustomFields($id): JsonResponse
+    public function getCustomFields(int|string $id): JsonResponse
     {
         $documentType = DocumentType::findOrFail($id);
-
-        // Veritabanındaki 'custom_fields' JSON sütununu direkt döndürüyoruz.
-        // Eğer boşsa hata vermemesi için boş dizi [] döner.
         return response()->json($documentType->custom_fields ?? []);
     }
 
@@ -219,89 +220,52 @@ class DocumentController extends Controller
     protected $approvalService;
 
     /**
-     * Formdan gelen devasa veriyi işler, belgeyi kaydeder ve akışı başlatır.
+     * Formdan gelen devasa veriyi işler, belgeleri topluca kaydeder ve akışları başlatır.
      */
     public function store(StoreDocumentRequest $request): RedirectResponse
     {
         try {
-            $generatedDocNo = ''; // Başarı mesajında göstermek için dışarıda tanımladık
+            $data = $request->validated();
 
-            DB::transaction(function () use ($request, &$generatedDocNo) {
-                $data = $request->validated();
+            $approvers = $request->input('approvers', []);
+            $notifiedUsers = $request->input('notified_user_ids', []);
+            $files = $request->file('files'); // Artık tek bir 'file' değil, array
+            $documentsMeta = $request->input('documents'); // Dinamik kartlardan gelenler
 
-                // 1. OTOMATİK KODLAMA: Klasör önekine göre numarayı üret
-                $data['document_number'] = $this->numberService->generateNextNumber($data['folder_id']);
-                $generatedDocNo = $data['document_number'];
-
-                // ====================================================================
-                // 🌟 VİZYONER ETİKET SİSTEMİ MOTORU (YERİ DEĞİŞTİ)
-                // ====================================================================
-                // DocumentService işlemi yapmadan ÖNCE etiketleri sayılara çevirmeliyiz
-                if (isset($data['tags']) && is_array($data['tags'])) {
-                    $tagIds = [];
-                    foreach ($data['tags'] as $tag) {
-                        if (is_numeric($tag)) {
-                            // Zaten var olan etiketin ID'si
-                            $tagIds[] = (int) $tag;
-                        } else {
-                            // Yeni etiket! Veritabanında yarat ve yeni ID'sini al
-                            $newTag = Tag::firstOrCreate(['name' => $tag]);
-                            $tagIds[] = $newTag->id;
-                        }
-                    }
-                    // Eski metinli listeyi, temiz ID listesiyle değiştiriyoruz
-                    // Böylece DocumentService aşağıda çalışırken hiçbir şeyin farkına varmayacak :)
-                    $data['tags'] = $tagIds;
-                }
-                // ====================================================================
-
-                // 2. Dosyayı Sunucuya Kaydet ve Metadata'yı Oluştur (DocumentService)
-                $document = $this->documentService->storeDocument(
-                    $data,
-                    $request->file('file')
-                );
-
-                // --- 3. ZORUNLU DEPARTMAN ONAYI ENJEKSİYONU ---
-                $user = Auth::user();
-                $approvers = $request->input('approvers') ?? [];
-
-                if ($user->department && $user->department->requires_approval_on_upload) {
-                    $deptAdmin = User::role('Admin')
-                        ->where('department_id', $user->department_id)
-                        ->first()
-                        ?? User::role('Super Admin')->first();
-
-                    if ($deptAdmin) {
-                        foreach ($approvers as &$app) {
-                            $app['step_order'] += 1;
-                        }
-
-                        array_unshift($approvers, [
-                            'user_id' => $deptAdmin->id,
-                            'step_order' => 1
-                        ]);
+            if (isset($data['tags']) && is_array($data['tags'])) {
+                $tagIds = [];
+                foreach ($data['tags'] as $tag) {
+                    if (is_numeric($tag)) {
+                        $tagIds[] = (int) $tag;
+                    } else {
+                        $newTag = Tag::firstOrCreate(['name' => $tag]);
+                        $tagIds[] = $newTag->id;
                     }
                 }
+                $data['tags'] = $tagIds;
+            }
 
-                // 4. Workflow'u Başlat veya Direkt Yayınla
-                if (count($approvers) > 0) {
-                    $this->approvalService->startWorkflow(
-                        $document,
-                        $approvers,
-                        Auth::id(),
-                        $request->ip() ?? '0.0.0.0',
-                        $request->userAgent() ?? 'Unknown'
-                    );
-                } else {
-                    $document->updateQuietly(['status' => 'published']);
-                }
-            });
+            /** @var \App\Models\User $user */
+            $user = Auth::user();
 
-            return redirect()->route('documents.index')->with('success', "Belge başarıyla yüklendi! Sistem tarafından atanan kod: <strong>{$generatedDocNo}</strong>");
+            // Tüm işlemi güvenle Service'e devret
+            $createdDocs = $this->documentService->batchStore(
+                $data,
+                $files,
+                $documentsMeta,
+                $approvers,
+                $notifiedUsers,
+                $user,
+                $request->ip() ?? '0.0.0.0',
+                $request->userAgent() ?? 'Unknown'
+            );
+
+            $count = count($createdDocs);
+            return redirect()->route('documents.index')
+                ->with('success', "İşlem Başarılı! <strong>{$count} adet</strong> belge sisteme yüklendi ve otomatik numaralandırıldı.");
         } catch (Exception $e) {
             Log::error('DMS Genel Upload Hatası: ' . $e->getMessage(), [
-                'user_id' => Auth::id(),
-                'file_name' => $request->file('file')?->getClientOriginalName()
+                'user_id' => Auth::id()
             ]);
 
             return back()->withInput()->with('error', 'İşlem sırasında kritik bir hata oluştu: ' . $e->getMessage());
@@ -375,7 +339,7 @@ class DocumentController extends Controller
         $flatFolders = $this->folderService->getFlatFolderList();
         $privacyLevels = SystemSetting::getByKey('privacy_levels', [
             'public' => 'Herkese Açık',
-            'confidential' => 'Hizmete Özel',
+            'confidential' => 'Departmana Özel',
             'strictly_confidential' => 'Çok Gizli'
         ]);
         $tags = Tag::orderBy('name')->get();

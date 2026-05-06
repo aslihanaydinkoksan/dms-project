@@ -31,7 +31,7 @@ class EnsureSensitiveAccess
         }
 
         // --- 2. ADIM - SONRA DOĞRULAMA (AUTHENTICATION / SUDO) KONTROLÜ ---
-        // Gizlilik Seviyesi Kontrolü (Hizmete Özel veya Çok Gizli ise Kasa devreye girer)
+        // Gizlilik Seviyesi Kontrolü (Departmana Özel veya Çok Gizli ise Kasa devreye girer)
         if (in_array($document->privacy_level, ['confidential', 'strictly_confidential'])) {
             $unlockedUntil = session('vault_unlocked_until');
 

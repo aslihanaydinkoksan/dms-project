@@ -365,6 +365,15 @@
                                     <i data-lucide="bot" class="nav-icon"></i> {{ __('Asistan Eğitimi') }}
                                 </a>
                             </li>
+                            @if (auth()->user()->hasRole('Super Admin'))
+                                <li class="menu-item">
+                                    <a href="{{ route('system.logs.index') }}"
+                                        class="menu-link {{ request()->routeIs('system.logs.index') ? 'active' : '' }}">
+                                        <i data-lucide="shield-alert"></i>
+                                        <span>Kanıt ve Log Merkezi</span>
+                                    </a>
+                                </li>
+                            @endif
                         @endcan
                     @endcanany
                 </ul>

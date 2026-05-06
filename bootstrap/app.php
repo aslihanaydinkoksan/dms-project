@@ -22,5 +22,8 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        // Sunucu Post_Max_Size sınırını aşan istekleri zarifçe geri çevir (413 Payload Too Large)
+        $exceptions->render(function (\Illuminate\Http\Exceptions\PostTooLargeException $e, \Illuminate\Http\Request $request) {
+            return back()->withInput()->withErrors(['Hata' => 'Sunucu kapasitesini (40MB) aşan boyutta bir toplu yükleme denediniz. Lütfen dosyaları bölerek yükleyiniz.']);
+        });
     })->create();

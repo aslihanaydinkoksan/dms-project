@@ -34,5 +34,10 @@ class AppServiceProvider extends ServiceProvider
             return $user->hasRole('Super Admin') ? true : null;
         });
         DocumentPhysicalMovement::observe(DocumentPhysicalMovementObserver::class);
+        // Rol matrisi için
+        \App\Models\FolderRolePermission::observe(\App\Observers\FolderPermissionObserver::class);
+
+        // Pivot tablo için özel event tanımları
+        \App\Models\FolderUserPermission::observe(\App\Observers\FolderPermissionObserver::class);
     }
 }

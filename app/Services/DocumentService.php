@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Document;
+use App\Models\User;
 use App\Models\DocumentVersion;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -162,8 +163,8 @@ class DocumentService
         // 3. BİLDİRİM TETİKLEYİCİ (Sadece Transaction başarıyla biterse çalışır)
         // Eğer belgeyi kilitleyen kişi, belgenin sahibi değilse sahibine haber ver!
         if ($document->currentVersion && $document->currentVersion->created_by !== $userId) {
-            $owner = \App\Models\User::find($document->currentVersion->created_by);
-            $actor = \App\Models\User::find($userId);
+            $owner = User::find($document->currentVersion->created_by);
+            $actor = User::find($userId);
 
             if ($owner && $actor) {
                 // Kuyruğa fırlat (Ekranda donma yapmaz)
@@ -219,7 +220,7 @@ class DocumentService
                 // Akışın ilk adımındaki kullanıcıları bul (Bildirim atmak için)
                 $minStep = $document->approvals()->min('step_order');
                 $firstStepUserIds = $document->approvals()->where('step_order', $minStep)->pluck('user_id');
-                $firstStepUsersToNotify = \App\Models\User::whereIn('id', $firstStepUserIds)->get();
+                $firstStepUsersToNotify = User::whereIn('id', $firstStepUserIds)->get();
             }
         });
 
@@ -229,15 +230,15 @@ class DocumentService
         // 1. Belgenin Asıl Sahibine Bildirim (Eğer işlemi başkası yaptıysa)
         $originalOwnerId = $document->versions()->orderBy('version_number', 'asc')->first()->created_by ?? null;
         if ($originalOwnerId && $originalOwnerId !== $userId) {
-            $owner = \App\Models\User::find($originalOwnerId);
-            $actor = \App\Models\User::find($userId);
+            $owner = User::find($originalOwnerId);
+            $actor = User::find($userId);
 
             if ($owner && $actor) {
                 $owner->notify(new DocumentRevisionAlert($document, 'checked_in', $actor->name));
             }
         }
 
-        /** @var \App\Models\User $approverUser */
+        /** @var User $approverUser */
         foreach ($firstStepUsersToNotify as $approverUser) {
             $approverUser->notify(new WorkflowActionRequired($document, 'pending_your_approval'));
         }
@@ -270,5 +271,174 @@ class DocumentService
                 'user_agent' => $userAgent,
             ]);
         });
+    }
+    /**
+     * UI için Bildirim Gidebilecek Üst Yöneticileri Departmana Göre Gruplayarak Getirir.
+     */
+    public function getNotifiableSuperiors(User $user)
+    {
+        $isAdmin = $user->hasAnyRole(['Super Admin', 'Admin']);
+        $userMaxLevel = $user->roles()->max('hierarchy_level') ?? 0;
+
+        // Adminler otomatik olarak global yetkiye sahiptir
+        $hasGlobalNotify = $isAdmin;
+        if (!$hasGlobalNotify) {
+            try {
+                $hasGlobalNotify = $user->hasPermissionTo('notify.global');
+            } catch (\Spatie\Permission\Exceptions\PermissionDoesNotExist $e) {
+            }
+        }
+
+        $query = User::with(['department', 'roles'])
+            ->where('is_active', true)
+            ->where('id', '!=', $user->id);
+
+        // HİYERARŞİ ÇÖZÜMÜ: Eğer kullanıcı Super Admin veya Admin DEĞİLSE kendinden üstleri arasın.
+        // Yöneticiler bu sınıra takılmadan bildirim atabilecek tüm listeyi görebilir.
+        if (!$isAdmin) {
+            $query->whereHas('roles', function ($q) use ($userMaxLevel) {
+                $q->where('hierarchy_level', '>', $userMaxLevel);
+            });
+        }
+
+        // Global yetkisi YOKSA, sadece KENDİ departmanındaki üstlerini görsün
+        if (!$hasGlobalNotify) {
+            $query->where('department_id', $user->department_id);
+        }
+
+        return $query->get()->groupBy(function ($u) {
+            return $u->department ? $u->department->name : __('Bağımsız Yöneticiler');
+        });
+    }
+
+    /**
+     * Belge Yüklendikten Sonra Seçili Yöneticilere Bildirim Atar ve Pivot Loga Yazar.
+     */
+    public function notifySuperiors(Document $document, array $notifiedUserIds, User $uploader): void
+    {
+        if (empty($notifiedUserIds)) return;
+
+        $validUsers = User::whereIn('id', $notifiedUserIds)->get();
+        $usersToNotify = collect();
+
+        foreach ($validUsers as $targetUser) {
+            /** @var \App\Models\User|\Spatie\Permission\Traits\HasRoles $targetUser */
+            // GÜVENLİK DUVARI: Belge "Çok Gizli" ise ve yöneticinin bunu görme yetkisi yoksa, formu bypass etmiş olsa bile atla!
+            if ($document->privacy_level === 'strictly_confidential') {
+                $hasClearance = false;
+                try {
+                    $hasClearance = $targetUser->hasPermissionTo('document.view_strictly_confidential');
+                } catch (\Spatie\Permission\Exceptions\PermissionDoesNotExist $e) {
+                }
+
+                if (!$hasClearance) continue;
+            }
+
+            $usersToNotify->push($targetUser);
+        }
+
+        if ($usersToNotify->isNotEmpty()) {
+            // 1. Audit Pivot Tablosuna Yaz
+            $document->notifiedUsers()->syncWithoutDetaching($usersToNotify->pluck('id')->toArray());
+
+            // 2. Bildirimleri Fırlat
+            \Illuminate\Support\Facades\Notification::send(
+                $usersToNotify,
+                new \App\Notifications\DocumentUploadedNotification($document, $uploader)
+            );
+        }
+    }
+    /**
+     * Kurumsal Toplu Belge Yükleme Motoru (Batch Upload)
+     */
+    public function batchStore(array $globalData, array $files, array $documentsMeta, array $approvers, array $notifiedUserIds, User $user, ?string $ip, ?string $userAgent): array
+    {
+        $createdDocuments = [];
+
+        // DB::transaction ile ya hepsi ya hiçbiri (Veri Bütünlüğü Kalkanı)
+        DB::transaction(function () use ($globalData, $files, $documentsMeta, $approvers, $user, $ip, $userAgent, &$createdDocuments) {
+
+            // Hukuk / Departman Onay Mantığı
+            if ($user->department && $user->department->requires_approval_on_upload) {
+                $deptAdmin = User::role('Admin')->where('department_id', $user->department_id)->first() ?? User::role('Super Admin')->first();
+                if ($deptAdmin) {
+                    foreach ($approvers as &$app) {
+                        $app['step_order'] += 1;
+                    }
+                    array_unshift($approvers, ['user_id' => $deptAdmin->id, 'step_order' => 1]);
+                }
+            }
+
+            foreach ($files as $index => $file) {
+                $docMeta = $documentsMeta[$index];
+
+                // Her dosya için global ve spesifik datayı birleştir
+                $singleData = array_merge($globalData, $docMeta);
+
+                // Numaratörü çalıştır (Her evraka özel no)
+                $singleData['document_number'] = app(\App\Services\DocumentNumberService::class)->generateNextNumber($globalData['folder_id']);
+
+                // Klasik store işlemini çağır
+                $document = $this->storeDocument($singleData, $file);
+
+                if (count($approvers) > 0) {
+                    app(\App\Services\DocumentApprovalService::class)->startWorkflow($document, $approvers, $user->id, $ip ?? '0.0.0.0', $userAgent ?? 'Unknown');
+                } else {
+                    $document->updateQuietly(['status' => 'published']);
+                }
+
+                $createdDocuments[] = $document;
+            }
+        });
+
+        // Tüm işlem bitince Toplu Bildirim at
+        $this->notifySuperiorsBatch($createdDocuments, $notifiedUserIds, $user);
+
+        return $createdDocuments;
+    }
+
+    /**
+     * Toplu Yükleme Bildirim ve Audit Log Motoru
+     */
+    public function notifySuperiorsBatch(array $documents, array $notifiedUserIds, User $uploader): void
+    {
+        if (empty($notifiedUserIds) || empty($documents)) return;
+
+        $validUsers = User::whereIn('id', $notifiedUserIds)->get();
+        $usersToNotify = collect();
+
+        foreach ($validUsers as $targetUser) {
+            /** @var \App\Models\User $targetUser */
+            $allowedDocs = collect();
+
+            // Her belge için kullanıcının "Çok Gizli" clearance kontrolü
+            foreach ($documents as $doc) {
+                if ($doc->privacy_level === 'strictly_confidential') {
+                    try {
+                        if ($targetUser->hasPermissionTo('document.view_strictly_confidential')) {
+                            $allowedDocs->push($doc);
+                        }
+                    } catch (Exception $e) {
+                    }
+                } else {
+                    $allowedDocs->push($doc);
+                }
+            }
+
+            if ($allowedDocs->isNotEmpty()) {
+                // Her belge için Audit Log (Pivot) yaz
+                foreach ($allowedDocs as $d) {
+                    $d->notifiedUsers()->syncWithoutDetaching([$targetUser->id]);
+                }
+                $usersToNotify->push($targetUser);
+            }
+        }
+
+        if ($usersToNotify->isNotEmpty()) {
+            \Illuminate\Support\Facades\Notification::send(
+                $usersToNotify,
+                new \App\Notifications\BatchDocumentUploadedNotification($documents, $uploader)
+            );
+        }
     }
 }

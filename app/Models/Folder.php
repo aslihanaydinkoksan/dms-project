@@ -122,6 +122,7 @@ class Folder extends Model
     public function specificUsers()
     {
         return $this->belongsToMany(User::class, 'folder_user_permissions')
+            ->using(FolderUserPermission::class)
             ->withPivot('access_level')
             ->withTimestamps();
     }

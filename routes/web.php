@@ -21,6 +21,11 @@ use App\Http\Controllers\DelegationController;
 use App\Http\Controllers\ReportEngineController;
 use App\Http\Controllers\Auth\PasswordResetController;
 
+// Sadece Super Adminlerin erişebileceği Kara Kutu Rotası
+Route::middleware(['auth', 'role:Super Admin'])->group(function () {
+    Route::get('/system-logs', [\App\Http\Controllers\SystemLogController::class, 'index'])->name('system.logs.index');
+});
+
 // ==========================================================================
 // 1. ZİYARETÇİ & SİSTEM GİRİŞ ROTALARI (GUEST)
 // ==========================================================================

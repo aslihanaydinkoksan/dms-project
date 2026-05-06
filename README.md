@@ -57,3 +57,12 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+## 📦 Kurumsal Toplu Yükleme (Batch Upload) Gereksinimleri
+DMS sistemimiz tek seferde (Batch) çoklu dosya yüklemeyi destekler. Frontend üzerinde JS tabanlı 40MB'lık bir kalkan bulunsa da, sunucu ayarlarının bu yüke uygun yapılandırılması zorunludur.
+
+**php.ini ayarları:**
+```ini
+post_max_size = 50M
+upload_max_filesize = 20M
+max_file_uploads = 20
