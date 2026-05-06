@@ -349,6 +349,7 @@ class DocumentController extends Controller
 
         return view('documents.edit', compact('document', 'flatFolders', 'privacyLevels', 'tags', 'departments', 'documentTypes'));
     }
+
     /**
      * Belge üst verilerini (Metadata) günceller ve klasör değiştiyse numarasını yeniden üretir.
      */
@@ -357,13 +358,12 @@ class DocumentController extends Controller
         // 1. ZIRH: İşlemi yapmadan önce yetkiyi tekrar doğrula
         Gate::authorize('update', $document);
 
-        // 2. Gelen verileri doğrula (Validation)
+        // 2. Gelen verileri doğrula (Validation) - related_department_id SİLİNDİ!
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'folder_id' => 'required|exists:folders,id',
             'document_type_id' => 'required|exists:document_types,id',
             'privacy_level' => 'required|string',
-            'related_department_id' => 'nullable|exists:departments,id',
             'department_retention_years' => 'nullable|integer|min:0',
             'archive_retention_years' => 'nullable|integer|min:0',
             'expire_at' => 'nullable|date',
@@ -386,8 +386,9 @@ class DocumentController extends Controller
                 // 4. ZEKİ NUMARA MOTORU: KLASÖR DEĞİŞTİ Mİ?
                 if ($oldFolderId != $validated['folder_id']) {
                     // Evet! O zaman yeni klasörün sıradaki numarasını üret (Örn: IK-005 -> HUKUK-012)
-                    $newDocumentNumber = $this->numberService->generateNextNumber($validated['folder_id']);
+                    $newDocumentNumber = app(DocumentNumberService::class)->generateNextNumber($validated['folder_id']);
                 }
+
                 $tagIds = [];
                 if (isset($validated['tags']) && is_array($validated['tags'])) {
                     foreach ($validated['tags'] as $tag) {
@@ -402,18 +403,17 @@ class DocumentController extends Controller
                     }
                 }
 
-                // 5. Belgeyi Güncelle
+                // 5. Belgeyi Güncelle (related_department_id BURADAN DA SİLİNDİ, ÇÜNKÜ OBSERVER HALLEDECEK)
                 $document->update([
                     'title' => $validated['title'],
                     'folder_id' => $validated['folder_id'],
-                    'document_number' => $newDocumentNumber, // Yeni Veya Eski Numara
+                    'document_number' => $newDocumentNumber,
                     'document_type_id' => $validated['document_type_id'],
-                    'category' => $categoryName, // Yeni kategori!
+                    'category' => $categoryName,
                     'privacy_level' => $validated['privacy_level'],
-                    'related_department_id' => $validated['related_department_id'],
-                    'department_retention_years' => $validated['department_retention_years'],
-                    'archive_retention_years' => $validated['archive_retention_years'],
-                    'expire_at' => $validated['expire_at'],
+                    'department_retention_years' => $validated['department_retention_years'] ?? null,
+                    'archive_retention_years' => $validated['archive_retention_years'] ?? null,
+                    'expire_at' => $validated['expire_at'] ?? null,
                 ]);
 
                 // 6. Etiketleri Güncelle (Sync: Eskileri siler, yenileri ekler)
@@ -423,7 +423,7 @@ class DocumentController extends Controller
                 if ($oldFolderId != $validated['folder_id']) {
                     AuditLog::create([
                         'user_id' => Auth::id(),
-                        'event' => 'document_moved_and_renumbered', // Özel Event Adı
+                        'event' => 'document_moved_and_renumbered',
                         'auditable_type' => Document::class,
                         'auditable_id' => $document->id,
                         'old_values' => [

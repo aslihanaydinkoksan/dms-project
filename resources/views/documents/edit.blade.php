@@ -75,12 +75,17 @@
                                 </option>
                             @endforeach
                         </select>
+                        <small style="display: block; margin-top: 5px; color: #64748b; font-size: 0.75rem;">
+                            <i data-lucide="corner-left-up"
+                                style="width:12px; vertical-align:middle; margin-right:3px;"></i>
+                            {{ __('Belgenin saklanacağı klasörü seçiniz.') }}
+                        </small>
                     </div>
 
                     <div class="form-group">
                         <label class="form-label" style="font-weight: 600;">{{ __('Gizlilik Seviyesi') }} <span
                                 class="text-danger">*</span></label>
-                        <select name="privacy_level" class="form-control" required
+                        <select name="privacy_level" id="privacyLevelSelect" class="form-control" required
                             style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px;">
                             @foreach ($privacyLevels as $key => $label)
                                 <option value="{{ $key }}"
@@ -88,11 +93,22 @@
                                     {{ __($label) }}</option>
                             @endforeach
                         </select>
+
+                        {{-- Dinamik Açıklama Kutusu --}}
+                        <div id="privacy-desc-box"
+                            style="display: none; margin-top: 8px; padding: 12px; border-radius: 6px; background-color: #f0fdf4; border-left: 4px solid #22c55e; font-size: 0.85rem; color: #166534;">
+                            <!-- JS ile dolacak -->
+                        </div>
+                        <small style="display: block; margin-top: 5px; color: #64748b; font-size: 0.75rem;">
+                            <i data-lucide="corner-left-up"
+                                style="width:12px; vertical-align:middle; margin-right:3px;"></i>
+                            {{ __('Belgenin gizlilik seviyesini seçiniz.') }}
+                        </small>
                     </div>
                 </div>
 
-                <div class="form-grid"
-                    style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px;">
+                {{-- İlgili Departman siliğinde grid'in bozulmaması için tek sütun yapıldı --}}
+                <div class="form-grid" style="display: grid; grid-template-columns: 1fr; gap: 20px; margin-bottom: 30px;">
                     <div class="form-group">
                         <label class="form-label" style="font-weight: 600;">{{ __('Doküman Tipi') }} <span
                                 class="text-danger">*</span></label>
@@ -103,20 +119,6 @@
                                 <option value="{{ $type->id }}"
                                     {{ old('document_type_id', $document->document_type_id) == $type->id ? 'selected' : '' }}>
                                     📄 {{ __($type->name) }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label"
-                            style="font-weight: 600;">{{ __('İlgili Departman (Opsiyonel)') }}</label>
-                        <select name="related_department_id" class="form-control"
-                            style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px;">
-                            <option value="">{{ __('-- Genel (Tüm Şirket) --') }}</option>
-                            @foreach ($departments as $dept)
-                                <option value="{{ $dept->id }}"
-                                    {{ old('related_department_id', $document->related_department_id) == $dept->id ? 'selected' : '' }}>
-                                    {{ $dept->name }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -220,6 +222,20 @@
             border-radius: 4px;
             padding: 4px 8px;
         }
+
+        .spin {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
     </style>
 
     <script>
@@ -236,7 +252,37 @@
                 });
             });
 
-            // Dinamik Alanlar Fetch Mekanizması (Create sayfasıyla aynı mantık)
+            // GİZLİLİK SEVİYESİ AÇIKLAMA MOTORU (Yeni Eklendi)
+            const privacySelect = document.getElementById('privacyLevelSelect');
+            const descBox = document.getElementById('privacy-desc-box');
+
+            const privacyDescriptions = {
+                'public': 'Şirketteki <strong>herkes</strong> görebilir. Belgenin hangi departman klasöründe olduğu fark etmez.',
+                'confidential': 'Sadece <strong>bu klasörün ait olduğu departmanda çalışanlar</strong> görebilir. Diğer departmanlara kapalıdır.',
+                'strictly_confidential': 'Kendi departmanınızın klasöründe olsa bile, sadece <strong>özel yetki verilmiş kişiler</strong> görebilir.',
+                'board_only': 'Sadece <strong>Yönetim Kurulu</strong> üyeleri görebilir. Şirketteki başka hiç kimse erişemez.'
+            };
+
+            if (privacySelect) {
+                function updatePrivacyDesc() {
+                    const selected = privacySelect.value;
+                    if (selected) {
+                        descBox.style.display = 'block';
+                        const explanation = privacyDescriptions[selected] ||
+                            'Bu gizlilik seviyesine atanan özel yetkilere sahip kişiler dışında kimse bu belgeyi göremez.';
+                        descBox.innerHTML =
+                            `<i data-lucide="shield-check" style="width:16px; vertical-align:middle; margin-right:4px;"></i> ${explanation}`;
+                        lucide.createIcons();
+                    } else {
+                        descBox.style.display = 'none';
+                    }
+                }
+
+                privacySelect.addEventListener('change', updatePrivacyDesc);
+                updatePrivacyDesc(); // Sayfa yüklendiğinde mevcut seçime göre kutuyu aç
+            }
+
+            // Dinamik Alanlar Fetch Mekanizması
             const typeSelect = document.getElementById('documentTypeSelect');
             const fieldsContainer = document.getElementById('dynamic-custom-fields-container');
             const existingMetadata = window.existingMetadata || {};
