@@ -55,7 +55,7 @@ class NewDelegationAssigned extends Notification implements ShouldQueue
             ->line("**Sebep / Açıklama:** {$reason}")
             ->line("Bu tarihler arasında, vekalet verenin onayında bekleyen tüm iş akışlarına ve belgelere kendi profiliniz (Dashboard) üzerinden erişebilir ve vekaleten işlem yapabilirsiniz.")
             ->action('Vekaletlerimi Görüntüle', route('profile.delegations'))
-            ->line('İyi çalışmalar dileriz.');
+            ->line('İyi çalışmalar.');
     }
 
     /**

@@ -48,7 +48,7 @@ class FolderPermissionChanged extends Notification implements ShouldQueue
             ->greeting('Merhaba ' . $notifiable->name . ',')
             ->line($message)
             ->action('Klasörü Görüntüle', route('folders.show', $this->folder->id))
-            ->line('İyi çalışmalar dileriz.');
+            ->line('İyi çalışmalar.');
     }
 
     public function toArray(mixed $notifiable): array

@@ -33,7 +33,7 @@
                     'bg' => '#fffbeb',
                     'subject_val' => __('Fiziksel Evrak Teslimat Bildirimi - {document_code}'),
                     'body_val' => __(
-                        "Merhaba {user_name},\n\nSistemimize eklenen {document_code} kayıt numaralı '{document_name}' isimli evrakın ıslak imzalı fiziksel kopyası size zimmetlenmiştir.\n\nLütfen evrakı fiziki olarak teslim aldığınızda aşağıdaki butona tıklayarak sistem üzerinden onaylayınız:\n\n{action_url}\n\nİyi çalışmalar dileriz.",
+                        "Merhaba {user_name},\n\nSistemimize eklenen {document_code} kayıt numaralı '{document_name}' isimli evrakın ıslak imzalı fiziksel kopyası size zimmetlenmiştir.\n\nLütfen evrakı fiziki olarak teslim aldığınızda aşağıdaki butona tıklayarak sistem üzerinden onaylayınız:\n\n{action_url}\n\nİyi çalışmalar.",
                     ),
                     'smart_tags' => [
                         '{user_name}' => ['label' => __('Personel Adı'), 'icon' => 'user', 'preview' => 'Ahmet Yılmaz'],
@@ -98,7 +98,7 @@
                     'body_val' =>
                         $settings['mail_template_folder_permission'] ??
                         __(
-                            "Sayın {user_name},\n\n{assigner_name} tarafından size '{folder_name}' klasörü için '{permission_level}' yetkisi tanımlanmıştır.\n\nİyi çalışmalar dileriz.",
+                            "Sayın {user_name},\n\n{assigner_name} tarafından size '{folder_name}' klasörü için '{permission_level}' yetkisi tanımlanmıştır.\n\nİyi çalışmalar.",
                         ),
                     'smart_tags' => [
                         '{user_name}' => ['label' => __('Personel Adı'), 'icon' => 'user', 'preview' => 'Ahmet Yılmaz'],

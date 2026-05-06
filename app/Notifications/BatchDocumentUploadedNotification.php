@@ -32,11 +32,11 @@ class BatchDocumentUploadedNotification extends Notification implements ShouldQu
         $firstDoc = $this->documents[0];
 
         return (new MailMessage)
-            ->subject('Yeni Toplu Belge Bilgilendirmesi: ' . $count . ' Adet Belge')
+            ->subject('Yeni Belge Bilgilendirmesi: ' . $count . ' Adet Belge')
             ->greeting('Sayın ' . $notifiable->name . ',')
             ->line($this->uploader->name . " tarafından sistemimize size bilgi amaçlı {$count} adet yeni belge yüklenmiştir.")
             ->action('Klasörü Görüntüle', route('folders.show', $firstDoc->folder_id))
-            ->line('İyi çalışmalar dileriz.');
+            ->line('İyi çalışmalar.');
     }
 
     public function toArray(mixed $notifiable): array

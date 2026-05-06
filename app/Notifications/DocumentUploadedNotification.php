@@ -34,7 +34,7 @@ class DocumentUploadedNotification extends Notification implements ShouldQueue
             ->greeting('Sayın ' . $notifiable->name . ',')
             ->line($this->uploader->name . " tarafından '{$this->document->title}' isimli yeni bir belge yüklendi ve bilgilerinize sunuldu.")
             ->action('Belgeyi İncele', route('documents.show', $this->document->id))
-            ->line('İyi çalışmalar dileriz.');
+            ->line('İyi çalışmalar.');
     }
 
     public function toArray(mixed $notifiable): array

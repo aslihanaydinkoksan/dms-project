@@ -445,7 +445,7 @@
     "Sistemin otomatik göndereceği e-postaların içeriklerini yönetin.": "Manage the contents of automated emails sent by the system.",
     "Fiziksel Evrak Teslimat (Zimmet) Bildirimi": "Physical Document Delivery (Assignment) Notification",
     "Fiziksel Evrak Teslimat Bildirimi - {document_code}": "Physical Document Delivery Notification - {document_code}",
-    "Merhaba {user_name},\n\nSistemimize eklenen {document_code} kayıt numaralı '{document_name}' isimli evrakın ıslak imzalı fiziksel kopyası size zimmetlenmiştir.\n\nLütfen evrakı fiziki olarak teslim aldığınızda aşağıdaki butona tıklayarak sistem üzerinden onaylayınız:\n\n{action_url}\n\nİyi çalışmalar dileriz.": "Hello {user_name},\n\nThe physically signed copy of the document named '{document_name}' with registration number {document_code} added to our system has been assigned to you.\n\nPlease confirm via the system by clicking the button below when you physically receive the document:\n\n{action_url}\n\nBest regards.",
+    "Merhaba {user_name},\n\nSistemimize eklenen {document_code} kayıt numaralı '{document_name}' isimli evrakın ıslak imzalı fiziksel kopyası size zimmetlenmiştir.\n\nLütfen evrakı fiziki olarak teslim aldığınızda aşağıdaki butona tıklayarak sistem üzerinden onaylayınız:\n\n{action_url}\n\nİyi çalışmalar.": "Hello {user_name},\n\nThe physically signed copy of the document named '{document_name}' with registration number {document_code} added to our system has been assigned to you.\n\nPlease confirm via the system by clicking the button below when you physically receive the document:\n\n{action_url}\n\nBest regards.",
     "Personel Adı": "Staff Name",
     "Evrak Kodu": "Document Code",
     "Belge Adı": "Document Name",

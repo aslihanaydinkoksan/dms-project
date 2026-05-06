@@ -54,7 +54,7 @@ class WorkflowActionRequired extends Notification implements ShouldQueue
         if ($this->actionType === 'pending_your_approval') {
             // SADECE ONAY BEKLEYENLERİ DİNAMİK YAPTIK
             $subjectTemplate = \App\Models\SystemSetting::getByKey('mail_subject_workflow', 'Eylem Gerekiyor: {document_name} Onayınızı Bekliyor');
-            $bodyTemplate = \App\Models\SystemSetting::getByKey('mail_body_workflow', "Sayın {user_name},\n\n{document_code} kodlu '{document_name}' isimli belge iş akışı kapsamında onayınızı beklemektedir.\n\nBelgeyi incelemek ve kararınızı iletmek için aşağıdaki bağlantıya tıklayabilirsiniz:\n{action_url}\n\nİyi çalışmalar dileriz.");
+            $bodyTemplate = \App\Models\SystemSetting::getByKey('mail_body_workflow', "Sayın {user_name},\n\n{document_code} kodlu '{document_name}' isimli belge iş akışı kapsamında onayınızı beklemektedir.\n\nBelgeyi incelemek ve kararınızı iletmek için aşağıdaki bağlantıya tıklayabilirsiniz:\n{action_url}\n\nİyi çalışmalar.");
 
             $search = ['{user_name}', '{document_name}', '{document_code}', '{action_url}'];
             $replace = [$notifiable->name, $this->document->title, $this->document->document_number, $actionUrl];
