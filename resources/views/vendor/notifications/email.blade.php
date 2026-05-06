@@ -39,13 +39,7 @@ $color = $level;
 @endforeach
 @endisset
 
-{{-- Salutation --}}
-@if (! empty($salutation))
-{{ $salutation }}
-@else
-İyi çalışmalar dileriz,<br>
-{{ config('app.name') }}
-@endif
+
 
 {{-- Subcopy --}}
 @isset($actionText)
