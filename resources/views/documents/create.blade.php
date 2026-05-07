@@ -147,7 +147,7 @@
                                 style="display: none; margin-top: 8px; padding: 12px; border-radius: 6px; background-color: #f0fdf4; border-left: 4px solid #22c55e; font-size: 0.85rem; color: #166534;">
                                 <!-- JS ile dolacak -->
                             </div>
-                             <small style="display: block; margin-top: 5px; color: #64748b; font-size: 0.75rem;">
+                            <small style="display: block; margin-top: 5px; color: #64748b; font-size: 0.75rem;">
                                 <i data-lucide="corner-left-up"
                                     style="width:12px; vertical-align:middle; margin-right:3px;"></i>
                                 {{ __('Belgenin gizlilik seviyesini seçiniz.') }}
@@ -165,15 +165,12 @@
                             @foreach ($notifiableSuperiors as $departmentName => $deptUsers)
                                 <optgroup label="{{ $departmentName }}">
                                     @foreach ($deptUsers as $superior)
-                                        <option value="{{ $superior->id }}">{{ $superior->name }}
-                                            ({{ $superior->roles->first()?->name ?? 'Yönetici' }})
-                                        </option>
+                                        <option value="{{ $superior->id }}">{{ $superior->name }}</option>
                                     @endforeach
                                 </optgroup>
                             @endforeach
                         </select>
                     </div>
-
 
                     <h3 class="section-title"
                         style="color: var(--primary-color); font-size: 1.1rem; margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
