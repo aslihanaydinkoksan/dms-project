@@ -91,7 +91,12 @@
                 <span class="badge badge-secondary"
                     style="background: var(--bg-color); color: var(--text-color); border: 1px solid var(--border-color);">{{ mb_strtoupper(__($document->status_text)) }}</span>
                 <span class="badge badge-warning"
-                    style="background: #fef3c7; color: #b45309;">{{ mb_strtoupper(__($document->privacy_level_text)) }}</span>
+                    style="background: #fef3c7; color: #b45309; display: flex; align-items: center; gap: 5px;">
+                    @if ($document->requires_vault)
+                        <i data-lucide="shield-alert" style="width: 14px;"></i>
+                    @endif
+                    {{ mb_strtoupper(__($document->privacy_level_text)) }}
+                </span>
                 @foreach ($document->tags as $tag)
                     <span class="badge badge-secondary"
                         style="background: #f1f5f9; color: #475569;">#{{ $tag->name }}</span>
@@ -179,7 +184,8 @@
 
             <a href="{{ route('documents.download', $document->id) }}?v={{ $document->currentVersion?->id ?? time() }}&download=1"
                 class="btn btn-primary" download>
-                <i data-lucide="download" style="width: 18px;"></i> {{ __('İndir') }}
+                <i data-lucide="{{ $document->requires_vault ? 'shield-lock' : 'download' }}" style="width: 18px;"></i>
+                {{ $document->requires_vault ? __('Kasadan İndir') : __('İndir') }}
             </a>
 
             @can('delete', $document)

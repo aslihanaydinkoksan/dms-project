@@ -340,6 +340,14 @@ class Document extends Model
         // Key eşleşiyorsa veritabanındaki adını al, eşleşmiyorsa Bilinmiyor de
         return $privacyLevels[$this->privacy_level] ?? 'Bilinmiyor (' . $this->privacy_level . ')';
     }
+    /**
+     * SANAL NİTELİK: Bu belge Kasa (Vault) şifresi gerektiriyor mu?
+     * SADECE 'Çok Gizli' ve 'Yönetim Kurulu' seviyeleri kasaya girer.
+     */
+    public function getRequiresVaultAttribute(): bool
+    {
+        return in_array($this->privacy_level, ['strictly_confidential', 'board_only']);
+    }
     public function relatedDepartment()
     {
         return $this->belongsTo(Department::class, 'related_department_id');

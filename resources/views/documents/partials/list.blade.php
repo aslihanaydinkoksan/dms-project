@@ -14,7 +14,15 @@
             @forelse($documents as $doc)
                 <tr style="border-bottom: 1px solid var(--border-color);">
                     <td style="padding: 15px;">
-                        <div style="font-weight: 700; color: var(--primary-color);">{{ $doc->document_number }}</div>
+                        <div
+                            style="font-weight: 700; color: var(--primary-color); display: flex; align-items: center; gap: 6px;">
+                            {{ $doc->document_number }}
+                            {{-- Sadece Kasa Gerektirenlerde İkon Göster --}}
+                            @if ($doc->requires_vault)
+                                <i data-lucide="shield-check" style="width: 14px; color: var(--warning-color);"
+                                    title="{{ __('Kasa Korumalı') }}"></i>
+                            @endif
+                        </div>
                         <div style="font-size: 0.9rem; font-weight: 500; margin-bottom: 4px;">{{ $doc->title }}</div>
                         <div
                             style="font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 4px;">
