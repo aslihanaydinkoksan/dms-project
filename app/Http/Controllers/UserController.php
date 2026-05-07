@@ -18,13 +18,28 @@ use Illuminate\Http\Request;
 class UserController extends Controller
 {
     /**
-     * Kullanıcı listesini getirir.
+     * Kullanıcı listesini getirir (/users).
      */
     public function index(): View
     {
-        // N+1 sorgu problemini önlemek için ilişkileri baştan yüklüyoruz
-        $users = User::with(['department', 'roles'])->latest()->paginate(15);
+        // N+1 sorgu problemini önlemek için ilişkileri baştan yüklüyoruz.
+        // Kullanıcıları son eklenene göre değil, İsim Sırasına (A-Z) göre diziyoruz
+        // ve tek sayfada 15 yerine 50 kişi göstererek listeyi genişletiyoruz.
+        $users = User::with(['department', 'roles'])
+            ->orderBy('name', 'asc')
+            ->paginate(50);
+
         return view('users.index', compact('users'));
+    }
+
+    /**
+     * Belirli bir kullanıcının detayını gösterir (/users/{id})
+     */
+    public function show(User $user): RedirectResponse
+    {
+        // Kullanıcı profili gösterme sayfası zaten ProfileController'da mevcut.
+        // Kod tekrarı yapmamak ve tasarımı bozmamak için tıklandığında direkt oraya yönlendiriyoruz.
+        return redirect()->route('profile.show', $user->id);
     }
 
     /**
