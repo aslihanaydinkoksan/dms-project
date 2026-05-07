@@ -85,7 +85,8 @@
                         <tbody>
                             @forelse($given as $del)
                                 <tr>
-                                    <td><strong>{{ $del->proxy->name }}</strong></td>
+                                    <td><strong>{{ $del->proxy?->name ?? __('Bilinmeyen / Silinmiş Personel') }}</strong>
+                                    </td>
                                     <td style="font-size: 0.85rem;">
                                         {{ $del->start_date->format('d.m.Y H:i') }} <br>
                                         <span class="text-muted">{{ __('İle') }}</span> <br>
@@ -146,7 +147,8 @@
                         <tbody>
                             @forelse($received as $rec)
                                 <tr>
-                                    <td><strong>{{ $rec->delegator->name }}</strong></td>
+                                    <td><strong>{{ $rec->delegator->name ?? __('Bilinmeyen / Silinmiş Personel') }}</strong>
+                                    </td>
                                     <td style="font-size: 0.85rem;">
                                         {{ $rec->start_date->format('d.m.Y H:i') }} <br>
                                         <span class="text-muted">{{ __('İle') }}</span> <br>
@@ -203,14 +205,14 @@
                 });
             });
             new TomSelect(
-            'select[name="proxy_id"]', { // name kısmı senin select'ine göre değişebilir (Örn: proxy_id, user_id)
-                create: false,
-                sortField: {
-                    field: "text",
-                    direction: "asc"
-                },
-                placeholder: "Kime vekalet vereceğinizi arayın...",
-            });
+                'select[name="proxy_id"]', { // name kısmı senin select'ine göre değişebilir (Örn: proxy_id, user_id)
+                    create: false,
+                    sortField: {
+                        field: "text",
+                        direction: "asc"
+                    },
+                    placeholder: "Kime vekalet vereceğinizi arayın...",
+                });
         });
     </script>
     <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
