@@ -134,14 +134,16 @@ class PermissionSettingsController extends Controller
     {
         // 1. Validasyon: Rol adı boş olamaz ve sistemde aynısı (unique) bulunamaz
         $request->validate([
-            'name' => 'required|string|max:255|unique:roles,name'
+            'name' => 'required|string|max:255|unique:roles,name',
+            'hierarchy_level' => 'required|integer|min:0'
         ], [
             'name.required' => 'Lütfen eklenecek rolün adını girin.',
-            'name.unique' => 'Bu rol sistemde zaten kayıtlı. Lütfen farklı bir isim deneyin.'
+            'name.unique' => 'Bu rol sistemde zaten kayıtlı. Lütfen farklı bir isim deneyin.',
+            'hierarchy_level' => $request->hierarchy_level < 0 ? 'Hiyerarşi seviyesi negatif olamaz.' : 'Hiyerarşi seviyesi gereklidir.'
         ]);
 
         // 2. Spatie ile rolü oluştur
-        Role::create(['name' => $request->name]);
+        Role::create(['name' => $request->name, 'hierarchy_level' => $request->hierarchy_level]);
 
         // 3. Başarı mesajıyla geri dön
         return back()->with('success', '🛡️ Yeni rol (' . $request->name . ') başarıyla oluşturuldu. Artık bu role yetki atayabilirsiniz.');
@@ -157,13 +159,14 @@ class PermissionSettingsController extends Controller
         }
 
         $request->validate([
-            'name' => 'required|string|max:255|unique:roles,name,' . $role->id
+            'name' => 'required|string|max:255|unique:roles,name,' . $role->id,
+            'hierarchy_level' => 'required|integer|min:0'
         ]);
 
         $oldName = $role->name;
-        $role->update(['name' => $request->name]);
+        $role->update(['name' => $request->name, 'hierarchy_level' => $request->hierarchy_level]);
 
-        return back()->with('success', "Rol ismi '$oldName' -> '{$request->name}' olarak güncellendi.");
+        return back()->with('success', "Rol başarıyla güncellendi.");
     }
 
     /**

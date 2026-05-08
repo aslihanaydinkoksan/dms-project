@@ -157,7 +157,7 @@
 
                     <div class="form-group" style="margin-bottom: 20px;">
                         <label class="form-label" style="font-weight: 600; display: flex; align-items: center; gap: 6px;">
-                            {{ __('Bilgi Verilecek Yöneticiler (Opsiyonel)') }}
+                            {{ __('Bilgi Verilecek Kullanıcılar') }}
                             <i data-lucide="bell-ring" style="width: 15px; color: var(--accent-color);"></i>
                         </label>
                         <select name="notified_user_ids[]" id="notifiableSuperiorsSelect" class="form-control"

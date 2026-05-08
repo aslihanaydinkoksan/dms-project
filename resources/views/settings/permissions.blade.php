@@ -220,16 +220,23 @@
                                     </td>
                                     <td style="padding: 12px 20px; font-weight: 500; vertical-align: middle;">
                                         {{ $dept->name }}</td>
-                                    <td style="padding: 12px 20px; text-align: right; vertical-align: middle;">
-                                        <form action="{{ route('settings.departments.destroy', $dept->id) }}"
-                                            method="POST" onsubmit="return confirm('{{ __('Emin misiniz?') }}')"
-                                            style="margin: 0;">
-                                            @csrf @method('DELETE')
-                                            <button type="submit" class="btn btn-sm btn-outline-danger action-btn"
-                                                title="{{ __('Sil') }}">
-                                                <i data-lucide="trash-2"></i>
+                                    <td style="padding: 12px 20px; vertical-align: middle;">
+                                        <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                                            <button type="button" class="btn btn-sm btn-outline-primary action-btn"
+                                                title="{{ __('Düzenle') }}"
+                                                onclick="openEditDeptModal('{{ route('settings.departments.update', $dept->id) }}', '{{ $dept->unit ?? '' }}', '{{ $dept->name }}')">
+                                                <i data-lucide="edit-2" style="width: 16px;"></i>
                                             </button>
-                                        </form>
+                                            <form action="{{ route('settings.departments.destroy', $dept->id) }}"
+                                                method="POST" onsubmit="return confirm('{{ __('Emin misiniz?') }}')"
+                                                style="margin: 0;">
+                                                @csrf @method('DELETE')
+                                                <button type="submit" class="btn btn-sm btn-outline-danger action-btn"
+                                                    title="{{ __('Sil') }}">
+                                                    <i data-lucide="trash-2"></i>
+                                                </button>
+                                            </form>
+                                        </div>
                                     </td>
                                 </tr>
                             @endforeach
@@ -258,6 +265,10 @@
                         <input type="text" name="name" class="form-control"
                             placeholder="{{ __('Yeni Rol Adı (Örn: Finans)') }}" required
                             style="flex: 1; border-radius: 6px;">
+                        <input type="number" name="hierarchy_level" class="form-control"
+                            placeholder="{{ __('Hiyerarşi Seviyesi (Örn: 10)') }}" min="0" required
+                            style="flex: 1; border-radius: 6px;"
+                            title="{{ __('Bu rolün onay ve bildirim zincirindeki gücünü belirler (Büyük sayı = Üst düzey)') }}">
                         <button type="submit" class="btn btn-success d-flex align-items-center justify-content-center"
                             style="padding: 0 20px; font-weight: 500;">{{ __('Rol Ekle') }}</button>
                     </form>
@@ -268,6 +279,8 @@
                             style="background: #fff; position: sticky; top: 0; z-index: 5; box-shadow: 0 1px 0 var(--border-color);">
                             <tr>
                                 <th style="padding: 12px 20px;">{{ __('Rol Adı') }}</th>
+                                {{-- YENİ EKLENEN SÜTUN BAŞLIĞI --}}
+                                <th style="padding: 12px 20px; text-align: center;">{{ __('Hiyerarşi') }}</th>
                                 <th class="text-right" style="padding: 12px 20px; width: 80px;">{{ __('İşlem') }}</th>
                             </tr>
                         </thead>
@@ -283,20 +296,39 @@
                                                 🔒</span>
                                         @endif
                                     </td>
-                                    <td style="padding: 12px 20px; text-align: right; vertical-align: middle;">
+
+                                    {{-- YENİ EKLENEN SÜTUN VERİSİ (Rozet tasarımıyla) --}}
+                                    <td style="padding: 12px 20px; text-align: center; vertical-align: middle;">
+                                        <span class="badge"
+                                            style="background: #e2e8f0; color: #475569; padding: 5px 10px; font-size: 0.85rem; border-radius: 6px; font-weight: 700;">
+                                            {{ $role->hierarchy_level ?? 0 }}
+                                        </span>
+                                    </td>
+
+                                    <td style="padding: 12px 20px; vertical-align: middle;">
                                         @if (!in_array($role->name, ['Super Admin', 'Admin']))
-                                            <form action="{{ route('settings.roles.destroy', $role->id) }}"
-                                                method="POST" onsubmit="return confirm('{{ __('Emin misiniz?') }}')"
-                                                style="margin: 0;">
-                                                @csrf @method('DELETE')
-                                                <button type="submit" class="btn btn-sm btn-outline-danger action-btn"
-                                                    title="{{ __('Sil') }}">
-                                                    <i data-lucide="trash-2"></i>
+                                            <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                                                <button type="button" class="btn btn-sm btn-outline-primary action-btn"
+                                                    title="{{ __('Düzenle') }}"
+                                                    onclick="openEditRoleModal('{{ route('settings.roles.update', $role->id) }}', '{{ $role->name }}', '{{ $role->hierarchy_level ?? 0 }}')">
+                                                    <i data-lucide="edit-2" style="width: 16px;"></i>
                                                 </button>
-                                            </form>
+                                                <form action="{{ route('settings.roles.destroy', $role->id) }}"
+                                                    method="POST" onsubmit="return confirm('{{ __('Emin misiniz?') }}')"
+                                                    style="margin: 0;">
+                                                    @csrf @method('DELETE')
+                                                    <button type="submit"
+                                                        class="btn btn-sm btn-outline-danger action-btn"
+                                                        title="{{ __('Sil') }}">
+                                                        <i data-lucide="trash-2"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
                                         @else
-                                            <span class="text-muted"
-                                                style="font-size: 0.8rem; font-style: italic;">{{ __('Silinemez') }}</span>
+                                            <div style="text-align: right;">
+                                                <span class="text-muted"
+                                                    style="font-size: 0.8rem; font-style: italic;">{{ __('Silinemez') }}</span>
+                                            </div>
                                         @endif
                                     </td>
                                 </tr>
@@ -359,18 +391,21 @@
                                         style="padding: 12px 20px; font-family: monospace; color: var(--text-muted); vertical-align: middle;">
                                         {{ $key }}
                                     </td>
-                                    <td style="padding: 12px 20px; text-align: right; vertical-align: middle;">
+                                    <td style="padding: 12px 20px; vertical-align: middle;">
                                         @if (!in_array($key, ['public', 'confidential', 'strictly_confidential']))
-                                            <form action="{{ route('settings.privacy-levels.destroy', $key) }}"
-                                                method="POST"
-                                                onsubmit="return confirm('{{ __('Bu gizlilik seviyesini silmek istediğinize emin misiniz?') }}')"
-                                                style="margin: 0;">
-                                                @csrf @method('DELETE')
-                                                <button type="submit" class="btn btn-sm btn-outline-danger action-btn"
-                                                    title="{{ __('Sil') }}">
-                                                    <i data-lucide="trash-2"></i>
-                                                </button>
-                                            </form>
+                                            <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                                                <form action="{{ route('settings.privacy-levels.destroy', $key) }}"
+                                                    method="POST"
+                                                    onsubmit="return confirm('{{ __('Bu gizlilik seviyesini silmek istediğinize emin misiniz?') }}')"
+                                                    style="margin: 0;">
+                                                    @csrf @method('DELETE')
+                                                    <button type="submit"
+                                                        class="btn btn-sm btn-outline-danger action-btn"
+                                                        title="{{ __('Sil') }}">
+                                                        <i data-lucide="trash-2"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
                                         @endif
                                     </td>
                                 </tr>
@@ -758,6 +793,65 @@
                 </div>
             </div>
         </div>
+        {{-- DEPARTMAN DÜZENLEME MODALI --}}
+        <div id="editDeptModal" class="modal-overlay"
+            style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+            <div class="modal-content"
+                style="background: #fff; padding: 30px; border-radius: 12px; width: 100%; max-width: 450px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                    <h3 style="margin:0; font-size: 1.2rem;">{{ __('Departman Düzenle') }}</h3>
+                    <button type="button" onclick="closeSettingsModal('editDeptModal')"
+                        style="background:none; border:none; font-size:1.5rem; cursor:pointer;">&times;</button>
+                </div>
+                <form id="editDeptForm" method="POST">
+                    @csrf @method('PUT')
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label
+                            style="font-weight: 500; font-size: 0.9rem; margin-bottom: 5px; display:block;">{{ __('Tesis Adı') }}</label>
+                        <input type="text" name="unit" id="editDeptUnit" class="form-control" list="unit-list"
+                            required style="border-radius: 6px; padding: 10px; width: 100%;">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 25px;">
+                        <label
+                            style="font-weight: 500; font-size: 0.9rem; margin-bottom: 5px; display:block;">{{ __('Departman Adı') }}</label>
+                        <input type="text" name="name" id="editDeptName" class="form-control" required
+                            style="border-radius: 6px; padding: 10px; width: 100%;">
+                    </div>
+                    <button type="submit" class="btn btn-primary"
+                        style="width: 100%; padding: 12px;">{{ __('Değişiklikleri Kaydet') }}</button>
+                </form>
+            </div>
+        </div>
+
+        {{-- ROL DÜZENLEME MODALI --}}
+        <div id="editRoleModal" class="modal-overlay"
+            style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+            <div class="modal-content"
+                style="background: #fff; padding: 30px; border-radius: 12px; width: 100%; max-width: 450px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                    <h3 style="margin:0; font-size: 1.2rem;">{{ __('Rol Düzenle') }}</h3>
+                    <button type="button" onclick="closeSettingsModal('editRoleModal')"
+                        style="background:none; border:none; font-size:1.5rem; cursor:pointer;">&times;</button>
+                </div>
+                <form id="editRoleForm" method="POST">
+                    @csrf @method('PUT')
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label
+                            style="font-weight: 500; font-size: 0.9rem; margin-bottom: 5px; display:block;">{{ __('Rol Adı') }}</label>
+                        <input type="text" name="name" id="editRoleName" class="form-control" required
+                            style="border-radius: 6px; padding: 10px; width: 100%;">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 25px;">
+                        <label
+                            style="font-weight: 500; font-size: 0.9rem; margin-bottom: 5px; display:block;">{{ __('Hiyerarşi Seviyesi') }}</label>
+                        <input type="number" name="hierarchy_level" id="editRoleLevel" class="form-control" required
+                            min="0" style="border-radius: 6px; padding: 10px; width: 100%;">
+                    </div>
+                    <button type="submit" class="btn btn-success"
+                        style="width: 100%; padding: 12px;">{{ __('Değişiklikleri Kaydet') }}</button>
+                </form>
+            </div>
+        </div>
     </form>
 @endsection
 
@@ -934,6 +1028,26 @@
                         });
                 });
             }
+            // Departman Modalı Açıcı (Global Scope'a taşındı)
+            window.openEditDeptModal = function(actionUrl, unit, name) {
+                document.getElementById('editDeptForm').action = actionUrl;
+                document.getElementById('editDeptUnit').value = unit;
+                document.getElementById('editDeptName').value = name;
+                document.getElementById('editDeptModal').style.display = 'flex';
+            };
+
+            // Rol Modalı Açıcı (Global Scope'a taşındı)
+            window.openEditRoleModal = function(actionUrl, name, level) {
+                document.getElementById('editRoleForm').action = actionUrl;
+                document.getElementById('editRoleName').value = name;
+                document.getElementById('editRoleLevel').value = level;
+                document.getElementById('editRoleModal').style.display = 'flex';
+            };
+
+            // Modalları Kapatıcı (Global Scope'a taşındı)
+            window.closeSettingsModal = function(modalId) {
+                document.getElementById(modalId).style.display = 'none';
+            };
         });
     </script>
     <style>
