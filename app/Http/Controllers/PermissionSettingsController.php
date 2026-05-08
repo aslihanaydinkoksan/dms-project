@@ -40,12 +40,12 @@ class PermissionSettingsController extends Controller
         }
 
         // 3. Özel/Global Yetkiler (Spatie)
-        $specialPermissions = Permission::whereIn('name', array_merge([
-            'document.view_all',
-            'document.manage_all',
-            'document.force_unlock',
-            'notify.global'
-        ], $dynamicPrivacyPermissions))->get();
+        $corePermissions = config('dms.core_permissions', []);
+
+        $specialPermissions = Permission::whereIn(
+            'name',
+            array_merge($corePermissions, $dynamicPrivacyPermissions)
+        )->get();
 
         $menuPermissions = Permission::where('name', 'like', 'menu.%')->get();
 
@@ -154,7 +154,7 @@ class PermissionSettingsController extends Controller
     public function updateRole(Request $request, Role $role)
     {
         // Güvenlik: Kök rollerin adı değiştirilemez
-        if (in_array($role->name, ['Super Admin', 'Admin'])) {
+        if (in_array($role->name, config('dms.security.protected_roles', ['Super Admin', 'Admin']))) {
             return back()->with('error', 'Sistem için kritik olan kök rollerin adı değiştirilemez.');
         }
 
@@ -175,7 +175,7 @@ class PermissionSettingsController extends Controller
     public function destroyRole(Role $role)
     {
         // Güvenlik: Kök roller silinemez
-        if (in_array($role->name, ['Super Admin', 'Admin'])) {
+        if (in_array($role->name, config('dms.security.protected_roles', ['Super Admin', 'Admin']))) {
             return back()->with('error', 'Sistem için kritik olan kök roller silinemez.');
         }
 
@@ -216,7 +216,7 @@ class PermissionSettingsController extends Controller
         // Model Observer'ımız (created olayı) Spatie yetkilerini otomatik üretecek!
         DocumentType::create([
             'name' => $request->name,
-            'custom_fields' => empty($fields) ? null : $fields ,
+            'custom_fields' => empty($fields) ? null : $fields,
             'requires_expiration_date' => $request->has('requires_expiration_date')
         ]);
 
@@ -367,7 +367,7 @@ class PermissionSettingsController extends Controller
     public function destroyPrivacyLevel($key)
     {
         // Güvenlik: Çekirdek (Sistem) gizlilik seviyeleri silinemez
-        if (in_array($key, ['public', 'confidential', 'strictly_confidential'])) {
+        if (in_array($key, config('dms.security.core_privacy_levels', ['public', 'confidential', 'strictly_confidential']))) {
             return back()->with('error', 'Sistemin çekirdek gizlilik seviyeleri silinemez.');
         }
 
