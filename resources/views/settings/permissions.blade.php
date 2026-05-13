@@ -735,124 +735,122 @@
                     </div>
                 @endforeach
             </div>
-
-            {{-- NAVBAR VE MENÜ MATRİSİ --}}
-            <div class="card glass-card mt-30" style="border-top: 4px solid var(--primary-color);">
-                <div class="card-header"
-                    style="background: #f8fafc; padding: 20px 25px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: 10px;">
-                    <i data-lucide="compass" style="color: var(--primary-color);"></i>
-                    <h2 style="margin: 0; font-size: 1.1rem; font-weight: 600; color: var(--text-color);">Navbar ve Menü
-                        Erişim Matrisi</h2>
-                </div>
-
-                <div class="card-body" style="padding: 0; overflow-x: auto;">
-                    <table class="table modern-table"
-                        style="width: 100%; min-width: 800px; margin: 0; border-collapse: collapse;">
-                        <thead
-                            style="background: var(--bg-color); color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; border-bottom: 2px solid var(--border-color);">
-                            <tr>
-                                <th
-                                    style="padding: 15px 25px; text-align: left; position: sticky; left: 0; background: var(--bg-color); z-index: 10;">
-                                    Roller</th>
-                                @foreach ($menuPermissions as $menuPerm)
-                                    <th style="padding: 15px; text-align: center;">
-                                        {{ ucfirst(str_replace('menu.', '', $menuPerm->name)) }}
-                                    </th>
-                                @endforeach
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($roles as $role)
-                                @if ($role->name === 'Super Admin')
-                                    @continue
-                                @endif
-                                <tr style="border-bottom: 1px solid var(--border-color); transition: background 0.2s;">
-                                    <td
-                                        style="padding: 15px 25px; font-weight: 600; color: var(--text-color); position: sticky; left: 0; background: #fff; z-index: 10; border-right: 1px solid var(--border-color);">
-                                        {{ $role->name }}
-                                    </td>
-                                    @foreach ($menuPermissions as $menuPerm)
-                                        <td style="padding: 15px; text-align: center;">
-                                            <input type="checkbox" name="menu_permissions[{{ $role->id }}][]"
-                                                value="{{ $menuPerm->name }}"
-                                                {{ $role->hasPermissionTo($menuPerm->name) ? 'checked' : '' }}
-                                                style="width: 18px; height: 18px; accent-color: var(--primary-color); cursor: pointer;">
-                                        </td>
-                                    @endforeach
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                    <div
-                        style="padding: 15px 25px; background: #f8fafc; border-top: 1px solid var(--border-color); font-size: 0.85rem; color: var(--text-muted);">
-                        <i data-lucide="info"
-                            style="width: 16px; display: inline-block; vertical-align: text-bottom;"></i>
-                        <strong>Super Admin</strong> rolü Gate kuralları gereği tüm menülere sınırsız erişime sahip olduğu
-                        için bu matriste gizlenmiştir.
-                    </div>
-                </div>
-            </div>
-        </div>
-        {{-- DEPARTMAN DÜZENLEME MODALI --}}
-        <div id="editDeptModal" class="modal-overlay"
-            style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
-            <div class="modal-content"
-                style="background: #fff; padding: 30px; border-radius: 12px; width: 100%; max-width: 450px;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
-                    <h3 style="margin:0; font-size: 1.2rem;">{{ __('Departman Düzenle') }}</h3>
-                    <button type="button" onclick="closeSettingsModal('editDeptModal')"
-                        style="background:none; border:none; font-size:1.5rem; cursor:pointer;">&times;</button>
-                </div>
-                <form id="editDeptForm" method="POST">
-                    @csrf @method('PUT')
-                    <div class="form-group" style="margin-bottom: 15px;">
-                        <label
-                            style="font-weight: 500; font-size: 0.9rem; margin-bottom: 5px; display:block;">{{ __('Tesis Adı') }}</label>
-                        <input type="text" name="unit" id="editDeptUnit" class="form-control" list="unit-list"
-                            required style="border-radius: 6px; padding: 10px; width: 100%;">
-                    </div>
-                    <div class="form-group" style="margin-bottom: 25px;">
-                        <label
-                            style="font-weight: 500; font-size: 0.9rem; margin-bottom: 5px; display:block;">{{ __('Departman Adı') }}</label>
-                        <input type="text" name="name" id="editDeptName" class="form-control" required
-                            style="border-radius: 6px; padding: 10px; width: 100%;">
-                    </div>
-                    <button type="submit" class="btn btn-primary"
-                        style="width: 100%; padding: 12px;">{{ __('Değişiklikleri Kaydet') }}</button>
-                </form>
-            </div>
-        </div>
-
-        {{-- ROL DÜZENLEME MODALI --}}
-        <div id="editRoleModal" class="modal-overlay"
-            style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
-            <div class="modal-content"
-                style="background: #fff; padding: 30px; border-radius: 12px; width: 100%; max-width: 450px;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
-                    <h3 style="margin:0; font-size: 1.2rem;">{{ __('Rol Düzenle') }}</h3>
-                    <button type="button" onclick="closeSettingsModal('editRoleModal')"
-                        style="background:none; border:none; font-size:1.5rem; cursor:pointer;">&times;</button>
-                </div>
-                <form id="editRoleForm" method="POST">
-                    @csrf @method('PUT')
-                    <div class="form-group" style="margin-bottom: 15px;">
-                        <label
-                            style="font-weight: 500; font-size: 0.9rem; margin-bottom: 5px; display:block;">{{ __('Rol Adı') }}</label>
-                        <input type="text" name="name" id="editRoleName" class="form-control" required
-                            style="border-radius: 6px; padding: 10px; width: 100%;">
-                    </div>
-                    <div class="form-group" style="margin-bottom: 25px;">
-                        <label
-                            style="font-weight: 500; font-size: 0.9rem; margin-bottom: 5px; display:block;">{{ __('Hiyerarşi Seviyesi') }}</label>
-                        <input type="number" name="hierarchy_level" id="editRoleLevel" class="form-control" required
-                            min="0" style="border-radius: 6px; padding: 10px; width: 100%;">
-                    </div>
-                    <button type="submit" class="btn btn-success"
-                        style="width: 100%; padding: 12px;">{{ __('Değişiklikleri Kaydet') }}</button>
-                </form>
-            </div>
-        </div>
     </form>
+    {{-- NAVBAR VE MENÜ MATRİSİ --}}
+    <div class="card glass-card mt-30" style="border-top: 4px solid var(--primary-color);">
+        <div class="card-header"
+            style="background: #f8fafc; padding: 20px 25px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: 10px;">
+            <i data-lucide="compass" style="color: var(--primary-color);"></i>
+            <h2 style="margin: 0; font-size: 1.1rem; font-weight: 600; color: var(--text-color);">Navbar ve Menü
+                Erişim Matrisi</h2>
+        </div>
+
+        <div class="card-body" style="padding: 0; overflow-x: auto;">
+            <table class="table modern-table"
+                style="width: 100%; min-width: 800px; margin: 0; border-collapse: collapse;">
+                <thead
+                    style="background: var(--bg-color); color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; border-bottom: 2px solid var(--border-color);">
+                    <tr>
+                        <th
+                            style="padding: 15px 25px; text-align: left; position: sticky; left: 0; background: var(--bg-color); z-index: 10;">
+                            Roller</th>
+                        @foreach ($menuPermissions as $menuPerm)
+                            <th style="padding: 15px; text-align: center;">
+                                {{ ucfirst(str_replace('menu.', '', $menuPerm->name)) }}
+                            </th>
+                        @endforeach
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($roles as $role)
+                        @if ($role->name === 'Super Admin')
+                            @continue
+                        @endif
+                        <tr style="border-bottom: 1px solid var(--border-color); transition: background 0.2s;">
+                            <td
+                                style="padding: 15px 25px; font-weight: 600; color: var(--text-color); position: sticky; left: 0; background: #fff; z-index: 10; border-right: 1px solid var(--border-color);">
+                                {{ $role->name }}
+                            </td>
+                            @foreach ($menuPermissions as $menuPerm)
+                                <td style="padding: 15px; text-align: center;">
+                                    <input type="checkbox" name="menu_permissions[{{ $role->id }}][]"
+                                        value="{{ $menuPerm->name }}"
+                                        {{ $role->hasPermissionTo($menuPerm->name) ? 'checked' : '' }}
+                                        style="width: 18px; height: 18px; accent-color: var(--primary-color); cursor: pointer;">
+                                </td>
+                            @endforeach
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+            <div
+                style="padding: 15px 25px; background: #f8fafc; border-top: 1px solid var(--border-color); font-size: 0.85rem; color: var(--text-muted);">
+                <i data-lucide="info" style="width: 16px; display: inline-block; vertical-align: text-bottom;"></i>
+                <strong>Super Admin</strong> rolü Gate kuralları gereği tüm menülere sınırsız erişime sahip olduğu
+                için bu matriste gizlenmiştir.
+            </div>
+        </div>
+    </div>
+    </div>
+    {{-- DEPARTMAN DÜZENLEME MODALI --}}
+    <div id="editDeptModal" class="modal-overlay"
+        style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+        <div class="modal-content"
+            style="background: #fff; padding: 30px; border-radius: 12px; width: 100%; max-width: 450px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                <h3 style="margin:0; font-size: 1.2rem;">{{ __('Departman Düzenle') }}</h3>
+                <button type="button" onclick="closeSettingsModal('editDeptModal')"
+                    style="background:none; border:none; font-size:1.5rem; cursor:pointer;">&times;</button>
+            </div>
+            <form id="editDeptForm" method="POST">
+                @csrf @method('PUT')
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label
+                        style="font-weight: 500; font-size: 0.9rem; margin-bottom: 5px; display:block;">{{ __('Tesis Adı') }}</label>
+                    <input type="text" name="unit" id="editDeptUnit" class="form-control" list="unit-list"
+                        required style="border-radius: 6px; padding: 10px; width: 100%;">
+                </div>
+                <div class="form-group" style="margin-bottom: 25px;">
+                    <label
+                        style="font-weight: 500; font-size: 0.9rem; margin-bottom: 5px; display:block;">{{ __('Departman Adı') }}</label>
+                    <input type="text" name="name" id="editDeptName" class="form-control" required
+                        style="border-radius: 6px; padding: 10px; width: 100%;">
+                </div>
+                <button type="submit" class="btn btn-primary"
+                    style="width: 100%; padding: 12px;">{{ __('Değişiklikleri Kaydet') }}</button>
+            </form>
+        </div>
+    </div>
+
+    {{-- ROL DÜZENLEME MODALI --}}
+    <div id="editRoleModal" class="modal-overlay"
+        style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+        <div class="modal-content"
+            style="background: #fff; padding: 30px; border-radius: 12px; width: 100%; max-width: 450px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                <h3 style="margin:0; font-size: 1.2rem;">{{ __('Rol Düzenle') }}</h3>
+                <button type="button" onclick="closeSettingsModal('editRoleModal')"
+                    style="background:none; border:none; font-size:1.5rem; cursor:pointer;">&times;</button>
+            </div>
+            <form id="editRoleForm" method="POST">
+                @csrf @method('PUT')
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label
+                        style="font-weight: 500; font-size: 0.9rem; margin-bottom: 5px; display:block;">{{ __('Rol Adı') }}</label>
+                    <input type="text" name="name" id="editRoleName" class="form-control" required
+                        style="border-radius: 6px; padding: 10px; width: 100%;">
+                </div>
+                <div class="form-group" style="margin-bottom: 25px;">
+                    <label
+                        style="font-weight: 500; font-size: 0.9rem; margin-bottom: 5px; display:block;">{{ __('Hiyerarşi Seviyesi') }}</label>
+                    <input type="number" name="hierarchy_level" id="editRoleLevel" class="form-control" required
+                        min="0" style="border-radius: 6px; padding: 10px; width: 100%;">
+                </div>
+                <button type="submit" class="btn btn-success"
+                    style="width: 100%; padding: 12px;">{{ __('Değişiklikleri Kaydet') }}</button>
+            </form>
+        </div>
+    </div>
 @endsection
 
 @push('scripts')
