@@ -73,15 +73,22 @@ class FolderController extends Controller
         $canAccess = false;
 
         if ($isAdmin || $hasViewAll) {
-            $canAccess = true; // Yöneticiler her yere girer
+            $canAccess = true; // Yöneticiler ve Süper Okuyucular her yere girer
         } elseif ($hasGranularAccess) {
-            $canAccess = true; // VIP biletliler her yere girer
-        } elseif ($hasRoleRestrictions) {
-            // EĞER MATRİSTE BİR ŞEY İŞARETLİ İSE, DEPARTMANA BAKMA, SADECE MATRİSE BAK! (Katı Mod B)
-            $canAccess = $hasMatrixAccess;
+            $canAccess = true; // VIP (Özel yetkili) biletliler her yere girer
         } else {
-            // EĞER MATRİS BOŞSA, DEPARTMANI İLE UYUŞUYOR MU DİYE BAK (Rahat Mod A)
-            $canAccess = $isGlobalFolder || $isMyDepartment;
+            // DEPARTMAN İZOLASYONU (Ana Kapı)
+            if ($isGlobalFolder || $isMyDepartment) {
+                // Departman engeli aşıldı! Şimdi iç kilit olan Matrise bak.
+                if ($hasRoleRestrictions) {
+                    $canAccess = $hasMatrixAccess; // Matris varsa ona uy
+                } else {
+                    $canAccess = true; // Matris yoksa serbest
+                }
+            } else {
+                // Departman uymuyor, granular izin de yok. KESİN RET! Matrise bakmaya gerek bile yok.
+                $canAccess = false;
+            }
         }
 
         if (!$canAccess) {

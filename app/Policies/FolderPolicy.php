@@ -10,9 +10,6 @@ class FolderPolicy
 {
     use HandlesAuthorization;
 
-    /**
-     * Mutlak Güç: Super Admin ve Admin her türlü engeli aşar.
-     */
     public function before(User $user, $ability)
     {
         if ($user->hasAnyRole(['Super Admin', 'Admin'])) {
@@ -21,37 +18,48 @@ class FolderPolicy
     }
 
     /**
-     * Özel Yardımcı Metot: Kullanıcının rollerini Folder Role matrisinde arar.
+     * Özel Yardımcı Metot: Kullanıcının departman izolasyonunu ve rol matrisini arar.
      */
     private function checkMatrix(User $user, Folder $folder, string $permissionColumn): bool
     {
-        $userRoleIds = $user->roles->pluck('id')->toArray();
+        // 0. VEKALET KİMLİK KARTLARI
+        $delegatorIds = $user->getActiveDelegatorIds();
+        $delegators = User::with('roles')->whereIn('id', $delegatorIds)->get();
 
-        // 1. ZIRH: Bu klasöre tanımlanmış herhangi bir "Rol Kısıtlaması" var mı?
+        $allDeptIds = array_filter(array_merge([$user->department_id], $delegators->pluck('department_id')->toArray()));
+        $userRoleIds = array_merge($user->roles->pluck('id')->toArray(), $delegators->flatMap->roles->pluck('id')->toArray());
+
+        // 1. MUTLAK İZOLASYON (DEPARTMAN KONTROLÜ)
+        $isGlobalFolder = $folder->departments()->count() === 0;
+        $isMyDepartment = $folder->departments()->whereIn('departments.id', $allDeptIds)->exists();
+
+        // Eğer klasör ne Global ne de kullanıcının departmanına ait değilse anında RET!
+        if (!$isGlobalFolder && !$isMyDepartment) {
+            return false;
+        }
+
+        // 2. ZIRH: Bu klasöre tanımlanmış herhangi bir "Rol Kısıtlaması" var mı?
         $hasRoleRestrictions = $folder->rolePermissions()->exists();
 
         if ($hasRoleRestrictions) {
-            // Eğer klasörde özel bir kısıtlama (matris) varsa, kullanıcının rolü bu kısıtlamadan geçmek ZORUNDADIR!
+            // Departman doğru olsa bile Matris'ten geçmek ZORUNDADIR!
             return $folder->rolePermissions()
                 ->whereIn('role_id', $userRoleIds)
                 ->where($permissionColumn, true)
                 ->exists();
         }
 
-        // 2. MANTIKLI KALITIM (Sorunu Çözen Kısım):
-        // Klasörün özel bir kısıtlaması (matrisi) YOKSA (Örn: yeni açılmış düz bir departman klasörüyse),
-        // Klasörü görebilen herkes (zaten kendi departmanıdır) "Görüntüleyebilir" ve "Belge Yükleyebilir".
+        // 3. MANTIKLI KALITIM
+        // Matris yoksa ve departman uyuyorsa "Görüntüle" ve "Yükle" serbest.
         if (in_array($permissionColumn, ['can_view', 'can_upload'])) {
             return true;
         }
 
-        // Ancak "Klasör Silme/Düzenleme (manage)" ve "Alt Klasör Açma" gibi KRİTİK işlemlere otomatik izin VERME.
         return false;
     }
 
     public function view(User $user, Folder $folder): bool
     {
-        // GOD-MODE READ-ONLY: Eğer tüm belgeleri görme yetkisi varsa, tüm klasörleri de görebilsin.
         try {
             if ($user->hasPermissionTo('document.view_all')) {
                 return true;
@@ -64,19 +72,16 @@ class FolderPolicy
 
     public function uploadDocument(User $user, Folder $folder): bool
     {
-        // 1. YENİ İSTİSNA SİSTEMİ: Kullanıcıya özel "upload" veya "manage" yetkisi atanmışsa her şeyi ezer!
         $specificPermission = $folder->specificUsers()->where('user_id', $user->id)->first();
         if ($specificPermission && in_array($specificPermission->pivot->access_level, ['upload', 'manage'])) {
             return true;
         }
 
-        // 2. Eski Sistem: Rol matrisine veya Varsayılan İzinlere bak
         return $this->checkMatrix($user, $folder, 'can_upload');
     }
 
     public function createSubfolder(User $user, Folder $folder): bool
     {
-        // Özel yetki (manage) varsa delebilir
         $specificPermission = $folder->specificUsers()->where('user_id', $user->id)->first();
         if ($specificPermission && $specificPermission->pivot->access_level === 'manage') {
             return true;
@@ -87,7 +92,6 @@ class FolderPolicy
 
     public function update(User $user, Folder $folder): bool
     {
-        // Özel yetki "manage" ise izin ver
         $specificPermission = $folder->specificUsers()->where('user_id', $user->id)->first();
         if ($specificPermission && $specificPermission->pivot->access_level === 'manage') {
             return true;
@@ -98,7 +102,6 @@ class FolderPolicy
 
     public function delete(User $user, Folder $folder): bool
     {
-        // Özel yetki "manage" ise izin ver
         $specificPermission = $folder->specificUsers()->where('user_id', $user->id)->first();
         if ($specificPermission && $specificPermission->pivot->access_level === 'manage') {
             return true;

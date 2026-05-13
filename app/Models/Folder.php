@@ -28,18 +28,17 @@ class Folder extends Model
     {
         return $this->hasMany(Document::class);
     }
+
     public function departments()
     {
         return $this->belongsToMany(Department::class, 'department_folder');
     }
-    /**
-     * N-Derinlikte tüm alt klasörleri getiren Recursive (Özyinelemeli) İlişki.
-     * Bu yapı Frontend'deki TreeView bileşenleri için kusursuz bir JSON üretir.
-     */
+
     public function childrenRecursive(): HasMany
     {
         return $this->children()->with('childrenRecursive');
     }
+
     // --- GÜVENLİK ZIRHI (İZOLASYON VE VEKALET ENTEGRELİ) ---
     public function scopeVisibleTo(Builder $query, User $user)
     {
@@ -51,7 +50,7 @@ class Folder extends Model
         // Vekillerin departmanlarını da listeye ekle
         $allDeptIds = array_filter(array_merge([$user->department_id], $delegators->pluck('department_id')->toArray()));
 
-        // 2. MUTLAK GÜÇ (Kullanıcı veya Vekalet Edenlerden Biri Admin mi?)
+        // 2. MUTLAK GÜÇ
         $isAdmin = $user->id === 1 || $user->hasAnyRole(['Super Admin', 'Admin']) ||
             $delegators->contains(function (\App\Models\User $d) {
                 return $d->id === 1 || $d->hasAnyRole(['Super Admin', 'Admin']);
@@ -61,7 +60,7 @@ class Folder extends Model
             return $query;
         }
 
-        // 3. "Tüm Belgeleri Gör" yetkisi (Kullanıcı veya Vekillerinde var mı?)
+        // 3. "Tüm Belgeleri Gör" yetkisi
         $hasViewAll = $user->hasPermissionTo('document.view_all') ||
             $delegators->contains(function (\App\Models\User $d) {
                 return $d->hasPermissionTo('document.view_all');
@@ -71,10 +70,9 @@ class Folder extends Model
             return $query;
         }
 
-        // Matris kontrolleri için Vekilleri de kapsayan Rol ID'lerini topla
         $allRoleIds = array_merge($user->roles->pluck('id')->toArray(), $delegators->flatMap->roles->pluck('id')->toArray());
 
-        // 4. KUSURSUZ İZOLASYON KURALI (Granular > Matris > Departman)
+        // 4. KUSURSUZ İZOLASYON KURALI (Granular VEYA (Departman VE Matris))
         return $query->where(function (Builder $q) use ($allUserIds, $allDeptIds, $allRoleIds) {
 
             // KURAL A: Kullanıcıya VEYA Vekiline ÖZEL (Granular) İzin Verilmişse her zaman göster
@@ -82,28 +80,28 @@ class Folder extends Model
                 $sq->whereIn('users.id', $allUserIds);
             })
 
-                // KURAL B: Klasörde Matris (Özel Kilit) VARSA -> Sadece Matristeki "Görüntüle" İzni Olanları Al!
-                ->orWhere(function (Builder $subQ) use ($allRoleIds) {
-                    $subQ->has('rolePermissions') // Matris boş DEĞİL
-                        ->whereHas('rolePermissions', function (Builder $roleQ) use ($allRoleIds) {
-                            $roleQ->whereIn('role_id', $allRoleIds)->where('can_view', true);
-                        });
-                })
+                // KURAL B: DEPARTMAN VE MATRİS KESİŞİMİ (AND)
+                ->orWhere(function (Builder $subQ) use ($allDeptIds, $allRoleIds) {
 
-                // KURAL C: Klasörde Matris YOKSA (Açık Kapı) -> Global Sınıfındaysa VEYA Kendi Departmanıysa Al
-                ->orWhere(function (Builder $subQ) use ($allDeptIds) {
-                    $subQ->doesntHave('rolePermissions') // Matris BOŞ
-                        ->where(function ($deptQ) use ($allDeptIds) {
-                            $deptQ->doesntHave('departments') // Global klasör
-                                ->orWhereHas('departments', function (Builder $dq) use ($allDeptIds) {
-                                    $dq->whereIn('departments.id', $allDeptIds); // Kendi departmanı
+                    // ŞART 1: Departman İzolasyonu (ZORUNLU)
+                    $subQ->where(function ($deptQ) use ($allDeptIds) {
+                        $deptQ->doesntHave('departments') // Global klasör
+                            ->orWhereHas('departments', function (Builder $dq) use ($allDeptIds) {
+                                $dq->whereIn('departments.id', $allDeptIds); // Kendi departmanı
+                            });
+                    })
+
+                        // ŞART 2: Matris Kontrolü (ZORUNLU KESİŞİM)
+                        ->where(function ($matrixQ) use ($allRoleIds) {
+                            $matrixQ->doesntHave('rolePermissions') // Matris boşsa geç
+                                ->orWhereHas('rolePermissions', function (Builder $roleQ) use ($allRoleIds) {
+                                    $roleQ->whereIn('role_id', $allRoleIds)->where('can_view', true); // Matris varsa rolden geçmeli
                                 });
                         });
                 });
         });
     }
 
-    // --- BREADCRUMB (YOL İZİ) ÜRETİCİ ---
     public function getBreadcrumbs()
     {
         $breadcrumbs = collect([]);
@@ -112,13 +110,14 @@ class Folder extends Model
             $breadcrumbs->prepend($current);
             $current = $current->parent;
         }
-        return $breadcrumbs; // Örn: [Ana Dizin, İK, 2026 Raporları]
+        return $breadcrumbs;
     }
+
     public function rolePermissions()
     {
         return $this->hasMany(FolderRolePermission::class);
     }
-    // Klasöre özel tanımlanmış istisna kullanıcılar
+
     public function specificUsers()
     {
         return $this->belongsToMany(User::class, 'folder_user_permissions')
