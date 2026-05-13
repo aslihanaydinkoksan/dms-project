@@ -373,6 +373,13 @@
                                         <span>Kanıt ve Log Merkezi</span>
                                     </a>
                                 </li>
+                                <li class="menu-item">
+                                    <a href="{{ route('settings.permissions.explorer') }}"
+                                        class="menu-link {{ request()->routeIs('system.logs.index') ? 'active' : '' }}">
+                                        <i data-lucide="book-user"></i>
+                                        <span>{{ __('Kullanıcı Yetki Röntgeni') }}</span>
+                                    </a>
+                                </li>
                             @endif
                         @endcan
                     @endcanany
