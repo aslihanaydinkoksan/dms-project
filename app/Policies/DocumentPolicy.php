@@ -65,13 +65,10 @@ class DocumentPolicy
         // =========================================================
         // 1. İSTİSNALAR VE GLOBAL BYPASS (MUTLAK GÜÇLER)
         // =========================================================
-
-        // A. Sistem Yöneticisi Zırhı
         if ($user->hasAnyRole(['Super Admin', 'Admin'])) {
             return true;
         }
 
-        // B. GOD-MODE READ-ONLY (Yönetim Kurulu Asistanı / Denetçi Kalkanı)
         try {
             if ($user->hasPermissionTo('document.view_all')) {
                 return true;
@@ -79,7 +76,6 @@ class DocumentPolicy
         } catch (PermissionDoesNotExist $e) {
         }
 
-        // C. Vekalet verenler arasında Admin veya God Mode var mı? 
         if (!empty($delegatorIds)) {
             $delegators = User::with('roles', 'permissions')->whereIn('id', $delegatorIds)->get();
             $hasAdminOrGod = $delegators->contains(function (User $d) {
@@ -95,10 +91,10 @@ class DocumentPolicy
         }
 
         // =========================================================
-        // 2. SÜREÇ KATILIMI (Sahiplik, Granular, Onaycı)
+        // 2. DİREKT İLİŞKİ KATILIMI (Zırh Delici Özellikler)
         // =========================================================
 
-        // Sahiplik Kontrolü (Kendisinin veya vekilinin yüklediği belge)
+        // Sahiplik Kontrolü (Taslak olsa bile görür)
         $isOwner = $document->versions()->whereIn('created_by', $allUserIds)->exists();
         if ($isOwner) return true;
 
@@ -109,21 +105,50 @@ class DocumentPolicy
         if ($document->approvals()->whereIn('user_id', $allUserIds)->exists()) return true;
 
         // =========================================================
-        // 3. KURUMSAL GİZLİLİK VE KALITIM MANTIĞI (Yayınlanmış Belgeler)
+        // 3. KESİN DEPARTMAN İZOLASYONU (En Önemli Katman)
         // =========================================================
 
-        // Eğer belge "Yayında, Onaylanmış veya Arşivlenmiş" DEĞİLSE, 
-        // ve kullanıcı da belgenin sahibi/onaycısı/admini değilse taslakları göremez!
+        // Taslak ve Bekleyen belgeleri yukarıdaki direkt ilişkilere takılmayan HİÇ KİMSE göremez
         if (!in_array($document->status, ['published', 'approved', 'archived'])) {
             return false;
         }
 
-        // A) HERKESE AÇIK (PUBLIC) DUVAR DELİCİ
+        $folder = $document->folder;
+        // RAM dostu Departman dizisi oluşturma (SQL N+1 olmadan)
+        $userDeptIds = array_filter(array_merge([$user->department_id], User::whereIn('id', $delegatorIds)->pluck('department_id')->toArray()));
+        $passesIsolation = false;
+
+        if ($folder) {
+            // Klasörün hiç departmanı yoksa (Global)
+            if ($folder->departments->isEmpty()) {
+                $passesIsolation = true;
+            }
+            // Klasörün departmanlarından biri kullanıcının departmanı ise
+            elseif ($folder->departments->whereIn('id', $userDeptIds)->isNotEmpty()) {
+                $passesIsolation = true;
+            }
+        } else {
+            // Klasörsüz belgeler için (Global veya Kendi departmanı)
+            if (!$document->related_department_id || in_array($document->related_department_id, $userDeptIds)) {
+                $passesIsolation = true;
+            }
+        }
+
+        // Kural İhlali: Eğer departman izolesini geçemiyorsa MATRİSE BAKMADAN reddet!
+        if (!$passesIsolation) {
+            return false;
+        }
+
+        // =========================================================
+        // 4. KURUMSAL GİZLİLİK VE MATRİS MANTIĞI
+        // =========================================================
+
+        // Herkese Açık (Public) ise geç (Zaten departman duvarını çoktan geçtiği için güvenli)
         if ($document->privacy_level === 'public') {
             return true;
         }
 
-        // B) ÇOK GİZLİ (STRICTLY CONFIDENTIAL) KALKANI
+        // Çok Gizli Kalkanı
         if ($document->privacy_level === 'strictly_confidential') {
             $hasStrictClearance = false;
             try {
@@ -131,9 +156,9 @@ class DocumentPolicy
             } catch (\Exception $e) {
             }
 
-            // Vekillerinde bu yetki var mı?
             if (!$hasStrictClearance && !empty($delegatorIds)) {
-                $hasStrictClearance = $delegators->contains(function (User $d) {
+                $delegatorsList = User::whereIn('id', $delegatorIds)->get();
+                $hasStrictClearance = $delegatorsList->contains(function (User $d) {
                     try {
                         return $d->hasPermissionTo('document.view_strictly_confidential');
                     } catch (\Exception $e) {
@@ -142,41 +167,18 @@ class DocumentPolicy
                 });
             }
 
-            // Çok Gizli belgede yetkisi yoksa anında reddet!
             if (!$hasStrictClearance) return false;
         }
 
-        // C) İZOLASYON DUVARI (Departman/Klasör Uyumu VEYA Matris Yetkisi)
-
-        // 1. LEGAL DMS 3D MATRİS KONTROLÜ
+        // Son Kapı: 3D Matris Kontrolü
         if ($document->document_type_id && $document->documentType) {
             if ($this->hasMatrixPermission($user, $document->documentType->name, 'can_view')) {
                 return true;
             }
+        } elseif (!$document->document_type_id) {
+            return true; // Belge tipi yoksa matris işlemi uygulanmaz
         }
 
-        // 2. KLASÖR VE DEPARTMAN UYUMU (Listeleme Scope'u ile Aynı Kural)
-        $folder = $document->folder;
-        $userDeptIds = array_filter(array_merge([$user->department_id], User::whereIn('id', $delegatorIds)->pluck('department_id')->toArray()));
-
-        if ($folder) {
-            // Klasörün hiç departmanı yoksa (Departmansız Ana Klasör), Departmana Özel olsa dahi herkese açıktır.
-            if ($folder->departments->isEmpty()) {
-                return true;
-            }
-
-            // Klasörün departmanlarından biri, kullanıcının (veya vekilinin) departmanı mı?
-            if ($folder->departments->whereIn('id', $userDeptIds)->isNotEmpty()) {
-                return true;
-            }
-        } else {
-            // Klasörsüz (kök dizin) yüklenmişse belgenin departmanına bakılır
-            if (!$document->related_department_id || in_array($document->related_department_id, $userDeptIds)) {
-                return true;
-            }
-        }
-
-        // Hiçbir şartı sağlayamayan Aslıhanları kapıda durdur :)
         return false;
     }
 

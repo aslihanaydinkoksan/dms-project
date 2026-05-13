@@ -102,6 +102,9 @@ class Document extends Model
         $allUserIds = array_merge([$user->id], $delegatorIds);
         $delegators = User::with('roles')->whereIn('id', $delegatorIds)->get();
 
+        // Kullanıcı ve vekillerinin dahil olduğu tüm departmanlar
+        $allDeptIds = array_filter(array_merge([$user->department_id], $delegators->pluck('department_id')->toArray()));
+
         // 1. ADMİN VEYA GOD-MODE Mİ? (Hiçbir kurala takılmadan her şeyi görür)
         $isAdmin = $user->id === 1 || $user->hasAnyRole(['Super Admin', 'Admin']) ||
             $delegators->contains(function (User $d) {
@@ -131,64 +134,63 @@ class Document extends Model
                 return $d->hasPermissionTo('document.view_strictly_confidential');
             });
 
-        return $query->where(function ($q) use ($allUserIds, $allowedDocumentTypeNames, $hasStrictlyConfidential, $user) {
+        return $query->where(function ($q) use ($allUserIds, $allDeptIds, $allowedDocumentTypeNames, $hasStrictlyConfidential) {
 
-            // KURAL A: Kendisinin veya Vekilinin Yüklediği Belgeler (Taslak dahil her şeyi görür)
+            // KURAL A: DİREKT ERİŞİM HAKLARI (Taslak dahil her şeyi görür)
             $q->whereHas('versions', function ($versionQuery) use ($allUserIds) {
-                $versionQuery->whereIn('created_by', $allUserIds);
+                $versionQuery->whereIn('created_by', $allUserIds); // Yükleyen
             })
-                // KURAL B: Kendisinin veya Vekilinin Onay/Zimmet Zincirinde Olduğu Belgeler
                 ->orWhereHas('approvals', function ($approvalQuery) use ($allUserIds) {
-                    $approvalQuery->whereIn('user_id', $allUserIds);
+                    $approvalQuery->whereIn('user_id', $allUserIds); // Onaycı
                 })
                 ->orWhereHas('specificUsers', function ($s) use ($allUserIds) {
-                    $s->whereIn('users.id', $allUserIds);
+                    $s->whereIn('users.id', $allUserIds); // Granular (VIP)
                 })
 
-                // KURAL C: YAYINLANMIŞ BELGELER İÇİN YENİ KURUMSAL GİZLİLİK MANTIKLARI
-                ->orWhere(function ($subQ) use ($allowedDocumentTypeNames, $hasStrictlyConfidential, $user) {
+                // KURAL B: YAYINLANMIŞ BELGELER İÇİN "DEPARTMAN İZOLASYONU" VE "MATRİS" KESİŞİMİ (AND)
+                ->orWhere(function ($subQ) use ($allDeptIds, $allowedDocumentTypeNames, $hasStrictlyConfidential) {
 
                     // Sadece onaylanmış/yayınlanmış/arşivlenmiş belgeler bu genel kurala girer
                     $subQ->whereIn('status', ['published', 'approved', 'archived'])
-                        ->where(function ($accessQ) use ($allowedDocumentTypeNames, $hasStrictlyConfidential, $user) {
 
-                            // DURUM 1: PUBLIC (HERKESE AÇIK)
-                            // Mantık: Departman veya klasör duvarlarını DELER GEÇER! Tüm şirket görebilir.
-                            $accessQ->where('privacy_level', 'public')
+                        // 1. ŞART: KESİN DEPARTMAN İZOLASYONU
+                        ->where(function ($deptQ) use ($allDeptIds) {
 
-                                // DURUM 2: CONFIDENTIAL (Departmana Özel) & STRICTLY CONFIDENTIAL (Çok Gizli)
-                                ->orWhere(function ($restrictedQ) use ($allowedDocumentTypeNames, $hasStrictlyConfidential, $user) {
-                                    $restrictedQ->whereIn('privacy_level', ['confidential', 'strictly_confidential']);
-
-                                    // Eğer belge Çok Gizli ise, kullanıcının mutlaka "Çok Gizli" yetkisi (Clearance) olmalı!
-                                    if (!$hasStrictlyConfidential) {
-                                        $restrictedQ->where('privacy_level', '!=', 'strictly_confidential');
-                                    }
-
-                                    // Klasör ve Departman Duvarı: Bu kısıtlı belgeleri görmek için duvardan geçmesi gerekir
-                                    $restrictedQ->where(function ($logicQ) use ($allowedDocumentTypeNames, $user) {
-
-                                        // A) Ya kullanıcının Rol Matrisinde bu Doküman Tipine (Kategori) özel izni vardır
-                                        $logicQ->whereHas('documentType', function ($typeQ) use ($allowedDocumentTypeNames) {
-                                            $typeQ->whereIn('name', $allowedDocumentTypeNames);
-                                        })
-
-                                            // B) Ya da Klasörün Departmanı, kullanıcının departmanıyla eşleşiyordur (veya klasör departmansızdır)
-                                            ->orWhereHas('folder', function ($folderQ) use ($user) {
-                                                $folderQ->where(function ($q) use ($user) {
-                                                    // Klasörün HİÇ departmanı yoksa (Departmansız Ana Klasör) -> Herkese Açıktır
-                                                    $q->doesntHave('departments');
-
-                                                    // Klasörün departmanı varsa -> Kullanıcının kendi departmanı klasöre atanmış mı bak
-                                                    if ($user->department_id) {
-                                                        $q->orWhereHas('departments', function ($depQ) use ($user) {
-                                                            $depQ->where('departments.id', $user->department_id);
-                                                        });
-                                                    }
-                                                });
-                                            });
-                                    });
+                            // Klasörü varsa Klasörün Departmanına Bak
+                            $deptQ->whereHas('folder', function ($folderQ) use ($allDeptIds) {
+                                $folderQ->where(function ($fq) use ($allDeptIds) {
+                                    $fq->doesntHave('departments') // Global Klasör
+                                        ->orWhereHas('departments', function ($dq) use ($allDeptIds) {
+                                            $dq->whereIn('departments.id', $allDeptIds); // Kullanıcının Departmanı
+                                        });
                                 });
+                            })
+                                // Klasörü yoksa Belgenin Kendi Departmanına Bak
+                                ->orWhere(function ($noFolderQ) use ($allDeptIds) {
+                                    $noFolderQ->whereNull('folder_id')
+                                        ->where(function ($rq) use ($allDeptIds) {
+                                            $rq->whereNull('related_department_id') // Global Belge
+                                                ->orWhereIn('related_department_id', $allDeptIds); // Kullanıcının Departmanı
+                                        });
+                                });
+                        })
+
+                        // 2. ŞART: GİZLİLİK VE MATRİS (Departmandan geçtikten sonra bu da eşleşmeli)
+                        ->where(function ($privacyQ) use ($allowedDocumentTypeNames, $hasStrictlyConfidential) {
+
+                            // Çok Gizli Kontrolü
+                            if (!$hasStrictlyConfidential) {
+                                $privacyQ->where('privacy_level', '!=', 'strictly_confidential');
+                            }
+
+                            // Public veya Matris Kesişimi
+                            $privacyQ->where(function ($matrixQ) use ($allowedDocumentTypeNames) {
+                                $matrixQ->where('privacy_level', 'public') // Public ise matrise bakma
+                                    ->orWhereHas('documentType', function ($typeQ) use ($allowedDocumentTypeNames) {
+                                        $typeQ->whereIn('name', $allowedDocumentTypeNames); // Matristen yetkisi olan tipler
+                                    })
+                                    ->orWhereNull('document_type_id'); // Belge tipi yoksa matris işlemez
+                            });
                         });
                 });
         });
