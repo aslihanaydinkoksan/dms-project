@@ -237,8 +237,10 @@
                     dataState.style.display = 'none';
                     loaderState.style.display = 'flex';
 
-                    // Veriyi Çek
-                    fetch(`/api/users/${userId}/permission-details`, {
+                    // Veriyi Çek (Hard-coded URL yerine Laravel URL Helper )
+                    const targetUrl = `{{ url('/settings/users') }}/${userId}/permission-details`;
+
+                    fetch(targetUrl, {
                             headers: {
                                 'X-Requested-With': 'XMLHttpRequest',
                                 'Accept': 'application/json'
@@ -273,7 +275,7 @@
                             const delHtml = data.delegators.length > 0 ?
                                 data.delegators.map(d =>
                                     `<div style="padding:8px; background:#fff; border-radius:6px; margin-bottom:5px; border:1px solid #fde047;"><strong>${d.name}</strong> (${d.department})<br><small class="text-muted">Roller: ${d.roles}</small></div>`
-                                    ).join('') :
+                                ).join('') :
                                 '<span class="text-muted" style="font-size:0.85rem;">Şu an aktif devralınan bir yetki yok.</span>';
                             document.getElementById('rDelegators').innerHTML = delHtml;
 

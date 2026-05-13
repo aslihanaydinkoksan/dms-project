@@ -24,8 +24,13 @@ use App\Http\Controllers\Auth\PasswordResetController;
 // Sadece Super Adminlerin erişebileceği Kara Kutu Rotası
 Route::middleware(['auth', 'role:Super Admin'])->group(function () {
     Route::get('/system-logs', [\App\Http\Controllers\SystemLogController::class, 'index'])->name('system.logs.index');
-    Route::get('/settings/user-permissions-explorer', [\App\Http\Controllers\Settings\UserPermissionExplorerController::class, 'index'])->name('settings.permissions.explorer');
-    Route::get('/api/users/{user}/permission-details', [\App\Http\Controllers\Settings\UserPermissionExplorerController::class, 'getUserDetails']);
+    // Ana Ekran Rotası
+    Route::get('/settings/user-permissions-explorer', [\App\Http\Controllers\Settings\UserPermissionExplorerController::class, 'index'])
+        ->name('settings.permissions.explorer');
+
+    // AJAX Veri Çekme Rotası
+    Route::get('/settings/users/{user}/permission-details', [\App\Http\Controllers\Settings\UserPermissionExplorerController::class, 'getUserDetails'])
+        ->name('settings.users.permission_details');
 });
 
 // ==========================================================================
