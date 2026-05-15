@@ -623,4 +623,40 @@ class DocumentController extends Controller
             return back()->with('error', 'Belge silinirken kritik bir hata oluştu.');
         }
     }
+    /**
+     * AJAX (Fetch) Sürükle-Bırak Belge Taşıma İşlemi
+     */
+    public function move(\App\Http\Requests\MoveDocumentRequest $request, Document $document): JsonResponse
+    {
+        try {
+            // 1. ZIRH: Kullanıcının mevcut belgeyi düzenleme yetkisi var mı?
+            Gate::authorize('update', $document);
+
+            // 2. Hedef Klasörü Bul ve ZIRH-2: Kullanıcının bu klasöre yükleme yetkisi var mı?
+            $targetFolder = \App\Models\Folder::findOrFail($request->validated('target_folder_id'));
+            Gate::authorize('uploadDocument', $targetFolder);
+
+            // 3. İş Mantığını Servise Devret (Transaction, Loglama, Numara Üretimi)
+            $this->documentService->moveDocument(
+                $document,
+                $targetFolder,
+                Auth::id(),
+                $request->ip(),
+                $request->userAgent()
+            );
+
+            // 4. Başarılı JSON Yanıtı (Sayfa yenilenmeyeceği için DOM manipülasyonunda kullanılacak)
+            return response()->json([
+                'success' => true,
+                'message' => "Belge başarıyla '{$targetFolder->name}' klasörüne taşındı."
+            ]);
+
+        } catch (Exception $e) {
+            Log::error('DMS Drag&Drop Taşıma Hatası: ' . $e->getMessage(), ['doc_id' => $document->id]);
+            return response()->json([
+                'success' => false, 
+                'message' => $e->getMessage()
+            ], 400); // 400 Bad Request
+        }
+    }
 }

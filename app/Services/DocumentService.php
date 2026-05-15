@@ -417,6 +417,7 @@ class DocumentService
             $allowedDocs = collect();
 
             foreach ($documents as $doc) {
+                /** @var \App\Models\User|\Spatie\Permission\Traits\HasRoles $targetUser */
                 if ($doc->privacy_level === 'strictly_confidential') {
                     try {
                         if ($targetUser->hasPermissionTo('document.view_strictly_confidential')) {
@@ -453,5 +454,54 @@ class DocumentService
             \Illuminate\Support\Facades\Log::warning('4. İPTAL: Güvenlik duvarından (Clearance) geçebilen hiçbir yönetici kalmadı.');
         }
         \Illuminate\Support\Facades\Log::info('--- BİLDİRİM TESTİ BİTTİ ---');
+    }
+    /**
+     * Sürükle-Bırak Belge Taşıma İş Mantığı
+     */
+    public function moveDocument(Document $document, \App\Models\Folder $targetFolder, int $userId, string $ip, string $userAgent): void
+    {
+        // Kural: Zaten aynı klasördeyse işlem yapma
+        if ($document->folder_id === $targetFolder->id) {
+            throw new Exception("Belge zaten hedef klasörde bulunuyor.");
+        }
+
+        // Kural: Kilitli belgeler (Check-out) başkası tarafından taşınamaz
+        if ($document->is_locked && $document->locked_by !== $userId) {
+            throw new Exception("Bu belge kilitli olduğu için taşınamaz.");
+        }
+
+        DB::transaction(function () use ($document, $targetFolder, $userId, $ip, $userAgent) {
+            $oldFolderId = $document->folder_id;
+            $oldDocumentNumber = $document->document_number;
+
+            // 1. Zeki Numara Motoru: Yeni klasörün sıradaki numarasını al
+            $newDocumentNumber = app(\App\Services\DocumentNumberService::class)->generateNextNumber($targetFolder->id);
+
+            // 2. Belgeyi Güncelle (Kalıtım Kuralı: Yeni klasörün departmanını belgenin verisine senkronize et)
+            $document->updateQuietly([
+                'folder_id' => $targetFolder->id,
+                'document_number' => $newDocumentNumber,
+                'related_department_id' => $targetFolder->department_id ?? $document->related_department_id
+            ]);
+
+            // 3. İzlenebilirlik (Audit Log)
+            AuditLog::create([
+                'user_id' => $userId,
+                'event' => 'document_moved',
+                'auditable_type' => Document::class,
+                'auditable_id' => $document->id,
+                'old_values' => [
+                    'folder_id' => $oldFolderId,
+                    'document_number' => $oldDocumentNumber
+                ],
+                'new_values' => [
+                    'folder_id' => $targetFolder->id,
+                    'document_number' => $newDocumentNumber,
+                    'department_id' => $targetFolder->department_id
+                ],
+                'ip_address' => $ip,
+                'user_agent' => $userAgent,
+            ]);
+        });
     }
 }

@@ -76,6 +76,7 @@
                 style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; margin-bottom: 30px;">
                 @foreach ($subfolders as $sub)
                     <a href="{{ route('folders.show', $sub->id) }}" class="explorer-item folder-item"
+                        data-folder-id="{{ $sub->id }}"
                         style="background: var(--surface-color); border: 1px solid var(--border-color); border-radius: 10px; padding: 15px; display: flex; align-items: center; text-decoration: none; transition: all 0.2s ease;">
                         <div class="item-icon"
                             style="background: #f1f5f9; padding: 12px; border-radius: 8px; color: var(--text-muted); margin-right: 15px;">
@@ -100,12 +101,28 @@
             <h3 class="explorer-section-title" style="margin: 0; font-size: 1.1rem; color: var(--secondary-color);">
                 {{ __('Belgeler') }}</h3>
         </div>
+        {{-- UX İyileştirmesi: Sürükle Bırak İpucu (Sadece hem alt klasör hem belge varsa gösterilir) --}}
+        @if ($subfolders->count() > 0 && $documents->count() > 0)
+            <div class="alert alert-secondary flex mb-15 drag-drop-hint"
+                style="align-items: center; gap: 10px; background: #f8fafc; border: 1px dashed #94a3b8; color: #475569; padding: 12px 15px; border-radius: 8px; font-size: 0.9rem; transition: all 0.3s ease;">
+                <i data-lucide="mouse-pointer-click" style="width: 20px; color: var(--primary-color); flex-shrink: 0;"></i>
+                <span style="flex: 1;">
+                    <strong>{{ __('İpucu:') }}</strong> 
+                    {{ __('Bir belgeyi farenizle tutup yukarıdaki alt klasörlerin üzerine sürükleyerek hızlıca taşıyabilirsiniz.') }}
+                </span>
+                <button type="button" onclick="this.parentElement.style.display='none';" 
+                    style="background: transparent; border: none; cursor: pointer; color: #94a3b8; padding: 0;">
+                    <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+                </button>
+            </div>
+        @endif
 
         @if ($documents->count() > 0)
             <div class="explorer-grid"
                 style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 15px;">
                 @foreach ($documents as $doc)
-                    <a href="{{ route('documents.show', $doc->id) }}" class="explorer-item document-item"
+                    <a href="{{ route('documents.show', $doc->id) }}" class="explorer-item document-item" draggable="true"
+                        data-document-id="{{ $doc->id }}"
                         style="background: var(--surface-color); border: 1px solid var(--border-color); border-radius: 10px; padding: 15px; display: flex; align-items: center; text-decoration: none; position: relative; transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
                         <div class="item-icon"
                             style="background: #eef2ff; padding: 12px; border-radius: 8px; color: var(--accent-color); margin-right: 15px;">
@@ -325,10 +342,115 @@
 @endsection
 
 @push('scripts')
+    <style>
+        /* Sürükleme anında hedef klasörlerin parlaması için şık CSS kuralımız */
+        .folder-item.drag-over {
+            border-color: var(--primary-color) !important;
+            background-color: #f0fdfa !important;
+            /* Tailwind Teal-50 */
+            transform: scale(1.02);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            z-index: 10;
+        }
+
+        .document-item.dragging {
+            opacity: 0.5;
+            border: 2px dashed var(--text-muted) !important;
+        }
+    </style>
+
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             lucide.createIcons();
 
+            // 1. DOM Elemanlarını Seç
+            const documents = document.querySelectorAll('.document-item[draggable="true"]');
+            const folders = document.querySelectorAll('.folder-item');
+
+            // 2. Belge Sürükleme (Drag) Olayları
+            documents.forEach(doc => {
+                doc.addEventListener('dragstart', function(e) {
+                    // Sürüklenen belgenin ID'sini hafızaya al
+                    e.dataTransfer.setData('text/plain', this.dataset.documentId);
+                    e.dataTransfer.effectAllowed = 'move';
+                    setTimeout(() => this.classList.add('dragging'), 0);
+                });
+
+                doc.addEventListener('dragend', function() {
+                    this.classList.remove('dragging');
+                });
+            });
+
+            // 3. Klasör Bırakma (Drop) Olayları
+            folders.forEach(folder => {
+                // Sürüklenen nesne klasörün üzerine gelince
+                folder.addEventListener('dragover', function(e) {
+                    e.preventDefault(); // Varsayılan drop kısıtlamasını kaldır
+                    e.dataTransfer.dropEffect = 'move';
+                    this.classList.add('drag-over'); // Parlat (Highlighter)
+                });
+
+                // Nesne klasörün üzerinden çıkınca
+                folder.addEventListener('dragleave', function() {
+                    this.classList.remove('drag-over');
+                });
+
+                // 4. Belge Klasöre Bırakıldığında (Drop)
+                folder.addEventListener('drop', async function(e) {
+                    e.preventDefault();
+                    this.classList.remove('drag-over');
+
+                    const documentId = e.dataTransfer.getData('text/plain');
+                    const targetFolderId = this.dataset.folderId;
+
+                    // Kendine bırakılma durumu kontrolü veya boş id koruması
+                    if (!documentId || !targetFolderId) return;
+
+                    // DOM'daki belge elementini bul (başarılı olursa sileceğiz)
+                    const docElement = document.querySelector(
+                        `.document-item[data-document-id="${documentId}"]`);
+
+                    try {
+                        // Sayfayı yenilemeden arka planda API isteği atıyoruz
+                        const response = await fetch(`/documents/${documentId}/move`, {
+                            method: 'PATCH',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector(
+                                    'meta[name="csrf-token"]').content,
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                target_folder_id: targetFolderId
+                            })
+                        });
+
+                        const data = await response.json();
+
+                        if (response.ok && data.success) {
+                            // İşlem başarılı: Belgeyi ekrandan şık bir animasyonla uçur
+                            docElement.style.transition = 'all 0.3s ease';
+                            docElement.style.opacity = '0';
+                            docElement.style.transform = 'scale(0.9)';
+
+                            setTimeout(() => {
+                                docElement.remove();
+                                // Toast bildirimi göster (Sisteminde SweetAlert, Toastr vb. varsa buna entegre et)
+                                alert('✅ ' + data.message);
+                            }, 300);
+
+                        } else {
+                            throw new Error(data.message || 'Taşıma reddedildi.');
+                        }
+                    } catch (error) {
+                        console.error(error);
+                        // Hata durumunda kırmızı bir uyarı göster (Bunu da projedeki toast kütüphanen ile değiştirirsen harika olur)
+                        alert('❌ Yetki Reddi veya Hata:\n' + error.message);
+                    }
+                });
+            });
+
+            // Modal Kapatma vs...
             const subModal = document.getElementById('newFolderModal');
             window.addEventListener('click', function(e) {
                 if (e.target === subModal) subModal.style.display = 'none';

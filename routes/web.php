@@ -119,6 +119,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{document}/edit', [DocumentController::class, 'edit'])->name('edit');
         Route::put('/{document}', [DocumentController::class, 'update'])->name('update');
         Route::delete('/{document}', [DocumentController::class, 'destroy'])->name('destroy');
+        Route::patch('/{document}/move', [DocumentController::class, 'move'])->name('move');
 
         // Çok Gizli Kasa (Vault)
         Route::get('/{document}/vault', [SudoController::class, 'showVault'])->name('vault');
