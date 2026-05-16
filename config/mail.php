@@ -55,6 +55,12 @@ return [
                 ],
             ],
         ],
+        'microsoft-graph' => [
+            'transport' => 'microsoft-graph',
+            'client_id' => env('MICROSOFT_CLIENT_ID'),
+            'client_secret' => env('MICROSOFT_CLIENT_SECRET'),
+            'tenant_id' => env('MICROSOFT_TENANT_ID'),
+        ],
 
         'ses' => [
             'transport' => 'ses',

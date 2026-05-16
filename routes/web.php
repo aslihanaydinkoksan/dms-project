@@ -20,6 +20,7 @@ use App\Http\Controllers\DocumentPermissionController;
 use App\Http\Controllers\DelegationController;
 use App\Http\Controllers\ReportEngineController;
 use App\Http\Controllers\Auth\PasswordResetController;
+use Illuminate\Support\Facades\Http;
 
 // Sadece Super Adminlerin erişebileceği Kara Kutu Rotası
 Route::middleware(['auth', 'role:Super Admin'])->group(function () {

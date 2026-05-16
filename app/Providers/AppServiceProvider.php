@@ -9,6 +9,8 @@ use App\Models\DocumentPhysicalMovement;
 use App\Observers\DocumentPhysicalMovementObserver;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\Transports\MicrosoftGraphTransport;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -39,5 +41,13 @@ class AppServiceProvider extends ServiceProvider
 
         // Pivot tablo için özel event tanımları
         \App\Models\FolderUserPermission::observe(\App\Observers\FolderPermissionObserver::class);
+        Mail::extend('microsoft-graph', function (array $config) {
+            return new MicrosoftGraphTransport(
+                $config['tenant_id'],
+                $config['client_id'],
+                $config['client_secret'],
+                env('MICROSOFT_FROM_ADDRESS')
+            );
+        });
     }
 }
