@@ -31,6 +31,7 @@ class DocumentService
             // YENİ PARÇA: Formdan gelen ID'ye göre Doküman Tipini bul ve Kategorisini al
             $documentType = \App\Models\DocumentType::find($data['document_type_id']);
             $categoryName = $documentType ? $documentType->category : 'Genel';
+            $expireAt = !empty($data['is_indefinite']) ? null : ($data['expire_at'] ?? null);
             
             // 1. Ana Dokümanı Oluştur (Değişmeyen üst veri - Metadata)
             /** @var \App\Models\Document $document */
@@ -43,7 +44,7 @@ class DocumentService
                 'related_department_id' => $data['related_department_id'] ?? null,
                 'metadata' => $data['metadata'] ?? null,
                 'privacy_level' => $data['privacy_level'],
-                'expire_at' => $data['expire_at'] ?? null, // YENİ: Bitiş Tarihi
+                'expire_at' => $expireAt,
                 'is_locked' => false,
                 'status' => 'draft', // YENİ: Başlangıç statüsü
             ]);

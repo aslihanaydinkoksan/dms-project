@@ -398,7 +398,7 @@
                             style="font-size: 1rem; color: var(--danger-color); margin-bottom: 15px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px;">
                             {{ __('Saklama ve İmha Politikası') }}</h3>
                         <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px;">
-                            <div
+                            {{-- <div
                                 style="background: #fff; padding: 15px; border-radius: 6px; border: 1px solid #e5e7eb; border-left: 3px solid var(--primary-color);">
                                 <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 5px;">
                                     {{ __('Bölümde Saklama') }}</div>
@@ -411,12 +411,20 @@
                                     {{ __('Arşivde Saklama') }}</div>
                                 <div style="font-size: 1.1rem; font-weight: bold; color: var(--text-color);">
                                     {{ $document->archive_retention_years }} {{ __('Yıl') }}</div>
-                            </div>
+                            </div> --}}
                             <div style="background: #fff; padding: 15px; border-radius: 6px; border: 1px solid #e5e7eb;">
                                 <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 5px;">
-                                    {{ __('Geçerlilik Bitiş') }}</div>
+                                    {{ __('Geçerlilik Bitiş') }}
+                                </div>
                                 <div style="font-size: 1.1rem; font-weight: bold; color: var(--text-color);">
-                                    {{ $document->expire_at ? \Carbon\Carbon::parse($document->expire_at)->format('d.m.Y') : __('Süresiz') }}
+                                    @if ($document->expire_at)
+                                        {{ \Carbon\Carbon::parse($document->expire_at)->format('d.m.Y') }}
+                                    @else
+                                        <span
+                                            style="color: var(--success-color); display: inline-flex; align-items: center; gap: 4px;">
+                                            <i data-lucide="infinity" style="width: 18px;"></i> {{ __('Süresiz') }}
+                                        </span>
+                                    @endif
                                 </div>
                             </div>
                             <div style="background: #fff; padding: 15px; border-radius: 6px; border: 1px solid #e5e7eb;">

@@ -24,8 +24,8 @@ class StoreDocumentRequest extends FormRequest
             // --- KURUMSAL METADATA VE İMHA POLİTİKASI ---
             'related_department_id' => ['nullable', 'integer', 'exists:departments,id'],
             'system_article_no' => ['nullable', 'string', 'max:255'],
-            'department_retention_years' => ['nullable', 'integer', 'min:0'],
-            'archive_retention_years' => ['nullable', 'integer', 'min:0'],
+            // 'department_retention_years' => ['nullable', 'integer', 'min:0'],
+            // 'archive_retention_years' => ['nullable', 'integer', 'min:0'],
 
             // --- ETİKETLER ---
             'tags' => ['nullable', 'array'],
@@ -55,7 +55,26 @@ class StoreDocumentRequest extends FormRequest
             'documents' => ['required', 'array'],
             'documents.*.title' => ['required', 'string', 'max:255'],
             'documents.*.document_type_id' => ['required', 'exists:document_types,id'],
-            'documents.*.expire_at' => ['nullable', 'date'],
+            'documents.*.is_indefinite' => ['nullable'], // Checkbox değeri
+            'documents.*.expire_at' => [
+                'nullable', // Checkbox seçiliyse null gelebilir
+                'date',
+                function ($attribute, $value, $fail) {
+                    // $attribute = 'documents.0.expire_at' şeklinde gelir. İndeksi yakalıyoruz:
+                    $index = explode('.', $attribute)[1];
+
+                    $docTypeId = $this->input("documents.{$index}.document_type_id");
+                    $isIndefinite = $this->boolean("documents.{$index}.is_indefinite");
+
+                    if ($docTypeId && !$isIndefinite && empty($value)) {
+                        $docType = \App\Models\DocumentType::find($docTypeId);
+                        // Eğer belge tipi tarih gerektiriyorsa ve Süresiz seçilmemişse, tarih boş olamaz
+                        if ($docType && $docType->requires_expiration_date) {
+                            $fail('Belge tipi süreli olduğu için geçerlilik tarihi girmeli VEYA "Süresiz" seçeneğini işaretlemelisiniz.');
+                        }
+                    }
+                }
+            ],
             'documents.*.metadata' => ['nullable', 'array'],
         ];
     }
@@ -73,8 +92,8 @@ class StoreDocumentRequest extends FormRequest
             'documents.*.document_type_id.required' => 'Lütfen eklediğiniz tüm belgelerin tipini (Prosedür, Talimat vb.) seçiniz.',
             'documents.*.title.required' => 'Eklediğiniz tüm belgeler için bir başlık girmek zorunludur.',
 
-            'department_retention_years.min' => 'Bölümde saklama süresi 0\'dan küçük olamaz.',
-            'archive_retention_years.min' => 'Arşivde saklama süresi 0\'dan küçük olamaz.',
+            // 'department_retention_years.min' => 'Bölümde saklama süresi 0\'dan küçük olamaz.',
+            // 'archive_retention_years.min' => 'Arşivde saklama süresi 0\'dan küçük olamaz.',
         ];
     }
 }

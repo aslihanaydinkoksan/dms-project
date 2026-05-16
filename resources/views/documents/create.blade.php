@@ -172,7 +172,7 @@
                         </select>
                     </div>
 
-                    <h3 class="section-title"
+                    {{-- <h3 class="section-title"
                         style="color: var(--primary-color); font-size: 1.1rem; margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
                         <i data-lucide="archive" style="color: var(--text-muted);"></i>
                         {{ __('Saklama ve İmha Politikası') }}
@@ -191,7 +191,7 @@
                                 placeholder="5"
                                 style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px;">
                         </div>
-                    </div>
+                    </div> --}}
 
                     <div class="form-group">
                         <label class="form-label"
@@ -409,9 +409,15 @@
                                 </div>
                                 <div id="custom-fields-${index}" style="margin-top:15px; display:none; padding:15px; border:1px dashed #cbd5e1; border-radius:8px; background:#f8fafc;"></div>
                                 <div style="margin-top: 15px;">
-                                    <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:5px;">Bitiş Tarihi</label>
-                                    <input type="date" name="documents[${index}][expire_at]" id="expire-${index}" class="form-control" style="width:100%; max-width:200px; padding:10px; border:1px solid var(--border-color); border-radius:6px;">
-                                </div>
+                                    <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:5px;">Geçerlilik Bitiş Tarihi</label>
+                                    <div style="display: flex; align-items: center; gap: 15px;">
+                                        <input type="date" name="documents[${index}][expire_at]" id="expire-${index}" class="form-control expire-input" style="width:100%; max-width:200px; padding:10px; border:1px solid var(--border-color); border-radius:6px; transition: all 0.3s;">
+                                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.85rem; color: var(--text-muted); font-weight: 500; user-select: none;">
+                                            <input type="checkbox" name="documents[${index}][is_indefinite]" value="1" class="is-indefinite-checkbox" data-index="${index}" style="width: 16px; height: 16px; accent-color: var(--primary-color);">
+                                            <i data-lucide="infinity" style="width: 16px; color: var(--primary-color);"></i> Süresiz (Tarih Yok)
+                                        </label>
+                                    </div>
+                                </div> 
                             </div>`;
                             cardsContainer.insertAdjacentHTML('beforeend', card);
                         });
@@ -427,9 +433,16 @@
                                 const reqExp = this.options[this.selectedIndex].dataset
                                     .req - exp === 'true';
 
-                                exp.required = reqExp;
-                                exp.style.borderColor = reqExp ? '#ef4444' :
-                                    'var(--border-color)';
+                                const indefiniteCheckbox = document.querySelector(
+                                    `.is-indefinite-checkbox[data-index="${idx}"]`);
+                                if (!indefiniteCheckbox.checked) {
+                                    exp.required = reqExp;
+                                    exp.style.borderColor = reqExp ? '#ef4444' :
+                                        'var(--border-color)';
+                                } else {
+                                    exp.required = false;
+                                    exp.style.borderColor = 'var(--border-color)';
+                                }
 
                                 if (!this.value) {
                                     cont.style.display = 'none';
@@ -523,6 +536,31 @@
                         descBox.style.display = 'none';
                     }
                 });
+            }
+        });
+        document.addEventListener('change', function(e) {
+            if (e.target && e.target.classList.contains('is-indefinite-checkbox')) {
+                const idx = e.target.getAttribute('data-index');
+                const dateInput = document.getElementById(`expire-${idx}`);
+
+                if (e.target.checked) {
+                    dateInput.disabled = true; // Gönderimi engeller
+                    dateInput.value = ''; // İçini temizle
+                    dateInput.style.backgroundColor = '#f1f5f9';
+                    dateInput.style.opacity = '0.6';
+                    dateInput.required = false; // HTML5 zorunluluğunu kaldır
+                } else {
+                    dateInput.disabled = false;
+                    dateInput.style.backgroundColor = '#fff';
+                    dateInput.style.opacity = '1';
+
+                    // Eğer DocType zorunlu kılıyorsa required attr tekrar ekle
+                    const typeSelect = document.querySelector(`.doc-type-selector[data-index="${idx}"]`);
+                    if (typeSelect && typeSelect.value) {
+                        const reqExp = typeSelect.options[typeSelect.selectedIndex].dataset.req === 'true';
+                        dateInput.required = reqExp;
+                    }
+                }
             }
         });
     </script>
