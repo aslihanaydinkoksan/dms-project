@@ -160,4 +160,67 @@ class UserController extends Controller
             return back()->with('error', 'Kullanıcı silinemedi: ' . $e->getMessage());
         }
     }
+
+
+
+
+/**
+     * ONAY BEKLEYENLER SAYFASI (YENİ)
+     */
+    public function onayBekleyenler()
+    {
+        // Sadece is_active = false olan (Onay bekleyen) kullanıcıları getir
+        $bekleyenler = User::with('department')->where('is_active', false)->latest()->get();
+        
+        $departments = Department::orderBy('name')->get();
+        // Super Admin rolünü gizleyerek diğer atanabilir rolleri getiriyoruz
+        $roles = Role::where('name', '!=', 'Super Admin')->get();
+
+        return view('users.bekleyen_basvurular', compact('bekleyenler', 'departments', 'roles'));
+
+    }
+
+    /**
+     * BAŞVURUYU ONAYLA VE MERKEZE BİLDİR
+     */
+    public function basvuruOnayla(Request $request, $id)
+    {
+        $request->validate([
+            'role' => 'required',
+            'department_id' => 'required|exists:departments,id'
+        ]);
+
+        $user = User::findOrFail($id);
+        
+        // Kullanıcıyı aktif et ve departmanını (değiştirildiyse) güncelle
+        $user->is_active = true;
+        $user->department_id = $request->department_id;
+        $user->save();
+
+        // Rol atamasını yap
+        $user->syncRoles([$request->role]);
+
+    // 🔥 MERKEZİ API'YI BİLGİLENDİR (Webhook)
+        $apiKey = env('CENTRAL_SSO_API_KEY'); 
+        $centralUrl = rtrim(env('CENTRAL_SSO_URL'), '/');
+
+        $response = \Illuminate\Support\Facades\Http::timeout(5)->withHeaders([
+            'X-App-Key' => $apiKey,
+            'Accept' => 'application/json'
+        ])->post($centralUrl . '/api/internal/uygulama-basvuru-durum', [
+            'email' => $user->email,
+            'status' => 'approved' 
+        ]);
+
+        if ($response->failed()) {
+            // Bağlantı oldu ama Merkez API işlemi reddetti (404, 401, 500 vb.)
+            $hataDetayi = $response->json('message') ?? $response->body();
+            return redirect()->route('users.onay_bekleyenler')->with('error', 'Kullanıcı DMS\'te onaylandı FAKAT Merkez API güncellenemedi! Sebep: ' . $hataDetayi);
+        }
+
+        return redirect()->route('users.onay_bekleyenler')->with('success', $user->name . ' başarıyla onaylandı ve Merkez ile eşitlendi!');
+    }
+
+
+
 }

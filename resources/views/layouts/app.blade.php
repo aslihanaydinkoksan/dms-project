@@ -338,6 +338,13 @@
                                     <i data-lucide="users" class="nav-icon"></i> {{ __('Kullanıcı Yönetimi') }}
                                 </a>
                             </li>
+                             <li>
+                                <a href="{{ route('users.onay_bekleyenler') }}" style="display: flex; align-items: center;">
+                                    <i data-lucide="user-clock" class="nav-icon" style="color: var(--warning-color);"></i> 
+                                    <span>{{ __('Onay Bekleyenler') }}</span>
+                                    <span style="background: var(--warning-color); color: #fff; font-size: 0.65rem; font-weight: bold; padding: 2px 6px; border-radius: 12px; margin-left: auto; box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);">YENİ</span>
+                                </a>
+                            </li>
                         @endcan
 
                         @can('menu.settings')

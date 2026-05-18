@@ -21,6 +21,7 @@ use App\Http\Controllers\DelegationController;
 use App\Http\Controllers\ReportEngineController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use Illuminate\Support\Facades\Http;
+use App\Http\Controllers\SsoController; 
 
 // Sadece Super Adminlerin erişebileceği Kara Kutu Rotası
 Route::middleware(['auth', 'role:Super Admin'])->group(function () {
@@ -33,21 +34,57 @@ Route::middleware(['auth', 'role:Super Admin'])->group(function () {
     Route::get('/settings/users/{user}/permission-details', [\App\Http\Controllers\Settings\UserPermissionExplorerController::class, 'getUserDetails'])
         ->name('settings.users.permission_details');
 });
+//   {{--
+// ==========================================================================
+// 1. ZİYARETÇİ & SİSTEM GİRİŞ ROTALARI (GUEST)
+// ==========================================================================
+//Route::get('/', fn() => redirect()->route(Auth::check() ? 'dashboard' : 'login'));
+//Route::get('/language/{locale}', [LanguageController::class, 'switch'])->name('language.switch');
 
+//Route::middleware('guest')->group(function () {
+ //   Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
+ //Route::post('/login', [AuthController::class, 'login'])->name('login.post');
+ //Route::get('forgot-password', [PasswordResetController::class, 'showLinkRequestForm'])->name('password.request');
+ /// Route::post('forgot-password', [PasswordResetController::class, 'sendResetLinkEmail'])->name('password.email');
+ //   Route::get('reset-password/{token}', [PasswordResetController::class, 'showResetForm'])->name('password.reset');
+  //  Route::post('reset-password', [PasswordResetController::class, 'reset'])->name('password.update');
+//});
+ //  --}}
+
+
+
+
+
+
+// ==========================================================================
 // ==========================================================================
 // 1. ZİYARETÇİ & SİSTEM GİRİŞ ROTALARI (GUEST)
 // ==========================================================================
 Route::get('/', fn() => redirect()->route(Auth::check() ? 'dashboard' : 'login'));
 Route::get('/language/{locale}', [LanguageController::class, 'switch'])->name('language.switch');
 
-Route::middleware('guest')->group(function () {
-    Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
-    Route::post('/login', [AuthController::class, 'login'])->name('login.post');
-    Route::get('forgot-password', [PasswordResetController::class, 'showLinkRequestForm'])->name('password.request');
-    Route::post('forgot-password', [PasswordResetController::class, 'sendResetLinkEmail'])->name('password.email');
-    Route::get('reset-password/{token}', [PasswordResetController::class, 'showResetForm'])->name('password.reset');
-    Route::post('reset-password', [PasswordResetController::class, 'reset'])->name('password.update');
+// ESKİ GİRİŞ ROTALARINI MERKEZE BAĞLADIK
+Route::get('/login', function () {
+    return redirect('https://kys.koksan.com/merkezi_yonetim_sistemi');
+})->name('login');
+
+Route::post('/logout', function () {
+    Auth::logout();
+    return redirect('https://kys.koksan.com/merkezi_yonetim_sistemi');
+})->name('logout');
+
+// DMS SSO İÇİN YENİ ROTALAR (Bunu ekle)
+Route::controller(\App\Http\Controllers\Auth\SsoController::class)->prefix('sso')->name('sso.')->group(function () {
+    Route::get('/login', 'login')->name('login');
+    Route::get('/basvuru', 'basvuruFormu')->name('basvuru_formu');
+    Route::post('/basvuru', 'basvuruKaydet')->name('basvuru_kaydet');
+    Route::get('/onay-bekliyor', 'onayBekliyor')->name('onay_bekliyor');
 });
+// ==========================================================================
+
+
+
+
 
 // ==========================================================================
 // 2. OTURUM AÇMIŞ KULLANICI ROTALARI (AUTH)
@@ -160,13 +197,25 @@ Route::middleware(['auth'])->group(function () {
     // 3. SİSTEM YÖNETİCİSİ ROTALARI (Sadece Özel Yetki veya Süper Admin/Admin)
     // ==========================================================================
 
+
+
+    // YENİ ROTALAR BURAYA (Resource'dan ÖNCE olmalı!)
+    Route::get('/users/onay-bekleyenler', [\App\Http\Controllers\UserController::class, 'onayBekleyenler'])
+        ->name('users.onay_bekleyenler')
+        ->middleware('can:user.manage');
+        
+    Route::post('/users/{id}/onayla', [\App\Http\Controllers\UserController::class, 'basvuruOnayla'])
+        ->name('r_yonetim_basvuru_onayla')
+        ->middleware('can:user.manage');
     // Sadece "user.manage" yetkisi olanlar girebilir (Daha önce yaptığımız VIP kalkanı)
     Route::resource('users', UserController::class)->middleware('can:user.manage');
 
     // Sadece Rolü Super Admin veya Admin Olanlar
     Route::middleware(['role:Super Admin|Admin'])->prefix('settings')->name('settings.')->group(function () {
 
-        // İzinler, Roller ve Gizlilik
+    
+
+       // İzinler, Roller ve Gizlilik
         Route::get('/permissions', [PermissionSettingsController::class, 'index'])->name('permissions');
         Route::post('/permissions', [PermissionSettingsController::class, 'update'])->name('permissions.update');
         Route::post('/roles', [PermissionSettingsController::class, 'storeRole'])->name('roles.store');
