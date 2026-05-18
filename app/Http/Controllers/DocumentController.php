@@ -88,16 +88,12 @@ class DocumentController extends Controller
         $keyword = $request->query('q');
         $status = $request->query('status');
         $privacy = $request->query('privacy');
-        $startDate = $request->query('start_date'); // YENİ: Başlangıç Tarihi
-        $endDate = $request->query('end_date');     // YENİ: Bitiş Tarihi
+        $startDate = $request->query('start_date');
+        $endDate = $request->query('end_date');
 
-        // --- YENİ: HIZLI DURUM KARTLARI (WIDGETS) İÇİN İSTATİSTİKLER ---
-        // Kullanıcının sadece görebilmeye yetkisi olduğu belgeleri (authorizedForUser) filtrelerden bağımsız alıyoruz.
-        $baseQuery = Document::where(function ($q) use ($user) {
-            $q->authorizedForUser($user);
-        });
+        // 1. İSTATİSTİKLER (N+1'siz, sadece count alır)
+        $baseQuery = Document::authorizedForUser($user);
 
-        // Query'i 'clone' ile çoğaltıyoruz ki bir sonraki hesaplamayı etkilemesin (Memory Leak koruması)
         $stats = (object) [
             'approved' => (clone $baseQuery)->whereIn('status', ['published', 'approved'])->count(),
             'rejected' => (clone $baseQuery)->where('status', 'rejected')->count(),
@@ -105,29 +101,34 @@ class DocumentController extends Controller
             'secret'   => (clone $baseQuery)->whereIn('privacy_level', ['confidential', 'strictly_confidential'])->count(),
         ];
 
-        // --- SERVİS ARAMASI ---
-        $documents = $this->searchService->searchDocuments(
-            $keyword,
-            $user,
-            15,
-            $status,
-            $privacy,
-            $startDate,
-            $endDate
-        );
+        // 2. GELİŞMİŞ ARAMA VE EAGER LOADING (N+1 Kalkanı)
+        // Burada with() metoduna 'folder.parent' vererek, tek sorguda belgenin klasörünü VE klasörün bir üst klasörünü çekiyoruz.
+        $documents = Document::with([
+            'folder.parent',
+            'currentVersion.createdBy',
+            'documentType',
+            'tags'
+        ])
+            ->authorizedForUser($user) // MUTLAK GÜVENLİK ZIRHI
+            ->advancedSearch($keyword)
+            ->when($status, fn($q) => $q->where('status', $status))
+            ->when($privacy, fn($q) => $q->where('privacy_level', $privacy))
+            ->when($startDate, fn($q) => $q->whereDate('created_at', '>=', $startDate))
+            ->when($endDate, fn($q) => $q->whereDate('created_at', '<=', $endDate))
+            ->latest()
+            ->paginate(15)
+            ->withQueryString(); // Sayfalamada mevcut filtreleri URL'de korur
+
         $privacyLevels = SystemSetting::getByKey('privacy_levels', [
             'public' => 'Herkese Açık',
             'confidential' => 'Departmana Özel',
             'strictly_confidential' => 'Çok Gizli'
         ]);
 
-        // KESİN KONTROL: Eğer istek AJAX ise SADECE tabloyu (partial) gönder
         if ($request->ajax() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
             return view('documents.partials.list', compact('documents', 'keyword'))->render();
         }
 
-
-        // Normal ziyaret ise tüm sayfayı ve istatistikleri gönder
         return view('documents.index', compact('documents', 'keyword', 'status', 'privacy', 'startDate', 'endDate', 'stats', 'privacyLevels'));
     }
     public function show(Document $document): View
@@ -650,11 +651,10 @@ class DocumentController extends Controller
                 'success' => true,
                 'message' => "Belge başarıyla '{$targetFolder->name}' klasörüne taşındı."
             ]);
-
         } catch (Exception $e) {
             Log::error('DMS Drag&Drop Taşıma Hatası: ' . $e->getMessage(), ['doc_id' => $document->id]);
             return response()->json([
-                'success' => false, 
+                'success' => false,
                 'message' => $e->getMessage()
             ], 400); // 400 Bad Request
         }

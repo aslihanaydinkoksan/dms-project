@@ -57,23 +57,39 @@ Route::middleware(['auth', 'role:Super Admin'])->group(function () {
 
 
 // ==========================================================================
-// ==========================================================================
 // 1. ZİYARETÇİ & SİSTEM GİRİŞ ROTALARI (GUEST)
 // ==========================================================================
 Route::get('/', fn() => redirect()->route(Auth::check() ? 'dashboard' : 'login'));
 Route::get('/language/{locale}', [LanguageController::class, 'switch'])->name('language.switch');
 
-// ESKİ GİRİŞ ROTALARINI MERKEZE BAĞLADIK
-Route::get('/login', function () {
-    return redirect('https://kys.koksan.com/merkezi_yonetim_sistemi');
-})->name('login');
+if (app()->environment('local')) {
+    // LOKAL ORTAM: Eski klasik login yapısını açıyoruz.
+    Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
+    Route::post('/login', [AuthController::class, 'login'])->name('login.post');
+
+    // login.blade.php'nin hata vermemesi için şifre sıfırlama rotalarını da ekliyoruz:
+    Route::get('forgot-password', [PasswordResetController::class, 'showLinkRequestForm'])->name('password.request');
+    Route::post('forgot-password', [PasswordResetController::class, 'sendResetLinkEmail'])->name('password.email');
+    Route::get('reset-password/{token}', [PasswordResetController::class, 'showResetForm'])->name('password.reset');
+    Route::post('reset-password', [PasswordResetController::class, 'reset'])->name('password.update');
+} else {
+    // CANLI ORTAM (Production): KÖKSAN Merkezi Sistemine yönlendiriyoruz
+    Route::get('/login', function () {
+        return redirect('https://kys.koksan.com/merkezi_yonetim_sistemi');
+    })->name('login');
+}
 
 Route::post('/logout', function () {
     Auth::logout();
+    
+    if (app()->environment('local')) {
+        return redirect()->route('login');
+    }
+    
     return redirect('https://kys.koksan.com/merkezi_yonetim_sistemi');
 })->name('logout');
 
-// DMS SSO İÇİN YENİ ROTALAR (Bunu ekle)
+// DMS SSO İÇİN YENİ ROTALAR (İş arkadaşının eklediği kısımlar dokunmadan kalıyor)
 Route::controller(\App\Http\Controllers\Auth\SsoController::class)->prefix('sso')->name('sso.')->group(function () {
     Route::get('/login', 'login')->name('login');
     Route::get('/basvuru', 'basvuruFormu')->name('basvuru_formu');
@@ -200,11 +216,11 @@ Route::middleware(['auth'])->group(function () {
 
 
     // YENİ ROTALAR BURAYA (Resource'dan ÖNCE olmalı!)
-    Route::get('/users/onay-bekleyenler', [\App\Http\Controllers\UserController::class, 'onayBekleyenler'])
+    Route::get('/users/onay-bekleyenler', [UserController::class, 'onayBekleyenler'])
         ->name('users.onay_bekleyenler')
         ->middleware('can:user.manage');
         
-    Route::post('/users/{id}/onayla', [\App\Http\Controllers\UserController::class, 'basvuruOnayla'])
+    Route::post('/users/{id}/onayla', [UserController::class, 'basvuruOnayla'])
         ->name('r_yonetim_basvuru_onayla')
         ->middleware('can:user.manage');
     // Sadece "user.manage" yetkisi olanlar girebilir (Daha önce yaptığımız VIP kalkanı)
