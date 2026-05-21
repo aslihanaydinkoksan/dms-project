@@ -118,7 +118,9 @@
                                         $indent =
                                             $depth > 0 ? str_repeat('&nbsp;&nbsp;&nbsp;&nbsp;', $depth) . '└─ ' : '';
                                     @endphp
-                                    <option value="{{ $id }}">{!! $indent !!}{{ $folderName }}
+                                    <option value="{{ $id }}"
+                                        {{ old('folder_id', request('folder_id')) == $id ? 'selected' : '' }}>
+                                        {!! $indent !!}{{ $folderName }}
                                     </option>
                                 @endforeach
                             </select>
