@@ -11,26 +11,53 @@ class CustomResetPasswordNotification extends Notification implements ShouldQueu
 {
     use Queueable;
 
-    public $token;
+    /**
+     * Şifre sıfırlama token'ı
+     * DİKKAT: P1132 hatasını çözmek için 'string' tip belirtimi eklendi.
+     */
+    public string $token;
 
-    public function __construct($token)
+    /**
+     * Bağımlılık Enjeksiyonu
+     */
+    public function __construct(string $token)
     {
         $this->token = $token;
     }
 
-    public function via($notifiable)
+    /**
+     * Bildirimin hangi kanallardan gönderileceğini belirler.
+     * DİKKAT: Laravel standartlarına uygun olarak 'mixed' tipi eklendi.
+     */
+    public function via(mixed $notifiable): array
     {
         return ['mail'];
     }
 
-    public function toMail($notifiable)
+    /**
+     * E-posta şablonunu ve içeriğini oluşturur.
+     */
+    public function toMail(mixed $notifiable): MailMessage
     {
+        // =========================================================
+        // MİMARİ DOKUNUŞ: TİP KORUMASI (Type Guard / DocBlock)
+        // =========================================================
+        // IDE'ye $notifiable nesnesinin bir User modeli olduğunu bildiriyoruz.
+        // Bu sayede ->name ve ->getEmailForPasswordReset() metotlarında hata vermeyecek.
+        /** @var \App\Models\User $notifiable */
+
         // Şifre sıfırlama linkini dinamik olarak oluşturuyoruz
         $url = url(route('password.reset', [
             'token' => $this->token,
             'email' => $notifiable->getEmailForPasswordReset(),
         ], false));
 
+        // Enterprise Mimari Notu: 
+        // Şimdilik metinler Türkçe olarak burada durabilir ancak ileride
+        // LanguageController ile entegre çoklu dil desteği (Localization) 
+        // sağlamak istersek bu metinleri __('dms.reset_password_subject') 
+        // şeklinde dil dosyalarından (lang/tr/...) çekecek şekilde kurgulamalıyız.
+        
         return (new MailMessage)
             ->subject('KÖKSAN DMS - Şifre Sıfırlama Talebi')
             ->greeting("Merhaba {$notifiable->name},")

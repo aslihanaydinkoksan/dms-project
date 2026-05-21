@@ -121,4 +121,43 @@ class DocumentPhysicalService
             ]);
         });
     }
+    /**
+     * Fiziksel evrak devri başlatma iş mantığını (Business Logic) yönetir
+     */
+    public function handleInitiation(Document $document, int $senderId, array $data): string
+    {
+        if ($data['action'] !== 'initiate') {
+            throw new Exception('Geçersiz işlem türü.');
+        }
+
+        $receivers = $data['receiver_ids'];
+
+        // İş Kuralı: Seçilen kişi sayısı 1'den fazlaysa Rota (Routing Slip) başlat
+        if (count($receivers) > 1) {
+            $this->startRoutingSlip($document, $senderId, $receivers, $data['location_details'] ?? null, $data['comment'] ?? '');
+            return 'Sıralı Posta Rotası (Routing Slip) başarıyla başlatıldı. Evrak ilk sıradaki kişiye yönlendirildi.';
+        }
+
+        // İş Kuralı: Tek kişi seçildiyse normal devir başlat
+        $this->initiateTransfer($document, $senderId, $receivers[0], $data['location_details'] ?? null, $data['comment'] ?? '');
+        return 'Fiziksel evrak devri başlatıldı. Karşı tarafın onayı bekleniyor.';
+    }
+
+    /**
+     * Gelen fiziksel evrak yanıtını işler
+     */
+    public function handleResponse(DocumentPhysicalMovement $movement, array $data): string
+    {
+        if ($data['action'] === 'accept') {
+            $this->acceptTransfer($movement, $data['comment'] ?? '', $data['location_details'] ?? null);
+            return 'Evrak başarıyla teslim alındı.';
+        } 
+        
+        if ($data['action'] === 'reject') {
+            $this->rejectTransfer($movement, $data['comment'] ?? '');
+            return 'Evrak teslimi reddedildi ve göndericiye iade edildi.';
+        }
+
+        throw new Exception('Bilinmeyen yanıt türü.');
+    }
 }

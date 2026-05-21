@@ -14,7 +14,11 @@ class PhysicalDocumentAssigned extends Notification implements ShouldQueue
 {
     use Queueable;
 
-    public $document;
+    /**
+     * MİMARİ DOKUNUŞ: Tip Güvenliği (Type Safety)
+     * P1132 hatasını çözmek için 'Document' tipini açıkça (explicitly) belirtiyoruz.
+     */
+    public Document $document;
 
     public function __construct(Document $document)
     {
@@ -23,18 +27,22 @@ class PhysicalDocumentAssigned extends Notification implements ShouldQueue
 
     /**
      * 2. KURAL: Kullanıcının tercihine göre kanal (Mail/DB) belirle
+     * Not: Laravel Notification yapısına tam uyum için parametre tipi 'mixed' olarak güncellendi.
      */
-    public function via(object $notifiable): array
+    public function via(mixed $notifiable): array
     {
+        // IDE'ye bu değişkenin bir User modeli olduğunu bildirerek olası hataları önlüyoruz
+        /** @var \App\Models\User $notifiable */
+
         $prefs = $notifiable->notification_preferences ?? [];
         $channels = ['database']; // Sistem içi (Zil) her zaman aktiftir
 
-        // SENİN YAZDIĞIN HARİKA HELPER METODU KULLANIYORUZ!
+        // Dinamik ayarları çekiyoruz (Hard-coded yasağına tam uyum)
         $globalSettings = \App\Models\SystemSetting::getByKey('global_notifications', []);
-        
+
         // 1. Sistem şalteri AÇIK MI? (Yoksa varsayılan olarak açık kabul et)
         $isGlobalMailEnabled = $globalSettings['mail_enabled'] ?? true;
-        
+
         // 2. Kullanıcının Bireysel Tercihi AÇIK MI? (Yoksa varsayılan açık kabul et)
         $isUserMailEnabled = $prefs['workflow_action']['mail'] ?? true;
 
@@ -46,10 +54,12 @@ class PhysicalDocumentAssigned extends Notification implements ShouldQueue
         return $channels;
     }
 
-    public function toMail(object $notifiable): MailMessage
+    public function toMail(mixed $notifiable): MailMessage
     {
+        /** @var \App\Models\User $notifiable */
+
         $actionUrl = route('documents.show', $this->document->id);
-        
+
         // Dinamik Şablonları Çek
         $subjectTemplate = \App\Models\SystemSetting::getByKey('mail_subject_physical', 'Fiziksel Evrak Teslimatı: {document_name}');
         $bodyTemplate = \App\Models\SystemSetting::getByKey('mail_body_physical', "Sayın {user_name},\n\n{document_code} kodlu '{document_name}' isimli belgenin ıslak imzalı orijinal kopyası size zimmetlenmiştir.\n\nLütfen evrakı fiziksel olarak teslim aldığınızda sisteme girerek arşiv konumunu belirterek onaylayınız.\n\n{action_url}\n\nİyi çalışmalar.");
@@ -68,7 +78,7 @@ class PhysicalDocumentAssigned extends Notification implements ShouldQueue
             ->action('Evrakı Teslim Al', $actionUrl);
     }
 
-    public function toArray(object $notifiable): array
+    public function toArray(mixed $notifiable): array
     {
         return [
             'document_id' => $this->document->id,

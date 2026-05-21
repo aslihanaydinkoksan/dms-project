@@ -2,29 +2,29 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\App;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Session;
+use App\Services\LanguageService;
+use Exception;
 
 class LanguageController extends Controller
 {
-    public function switch($locale)
+    /**
+     * Bağımlılık Enjeksiyonu (Dependency Injection)
+     */
+    public function __construct(protected LanguageService $languageService) {}
+
+    /**
+     * Dil değiştirme isteğini karşılar
+     * DİKKAT: P1132 Hatası için "string $locale" tip belirtimi eklendi.
+     */
+    public function switch(string $locale)
     {
-        // Güvenlik: Sadece desteklenen dillere izin ver
-        if (!in_array($locale, ['tr', 'en'])) {
-            abort(400, 'Unsupported Language');
+        try {
+            // İş mantığı tamamen Servise devredildi
+            $this->languageService->switchLanguage($locale);
+
+            return back();
+        } catch (Exception $e) {
+            abort(400, $e->getMessage());
         }
-
-        // Kullanıcı giriş yapmışsa kalıcı olarak DB'ye kaydet
-        if (Auth::check()) {
-            Auth::user()->update(['locale' => $locale]);
-        }
-
-        // Session'ı güncelle ve anlık dili ayarla
-        Session::put('locale', $locale);
-        App::setLocale($locale);
-
-        return back();
     }
 }

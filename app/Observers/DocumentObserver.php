@@ -4,13 +4,27 @@ namespace App\Observers;
 
 use App\Models\Document;
 use App\Models\Folder;
-use Illuminate\Support\Facades\Request;
 use App\Models\AuditLog;
 use Illuminate\Support\Facades\Auth;
-
+use Illuminate\Http\Request;
 
 class DocumentObserver
 {
+    /**
+     * @var Request
+     */
+    protected Request $request;
+
+    /**
+     * Bağımlılık Enjeksiyonu (Dependency Injection)
+     * Laravel'in IoC Container'ı Request nesnesini otomatik çözümleyerek buraya enjekte eder.
+     * Bu sayede Cron, Job veya CLI üzerinden tetiklenmelerde sistem çökmez.
+     */
+    public function __construct(Request $request)
+    {
+        $this->request = $request;
+    }
+
     /**
      * Belge veritabanına KAYDEDİLMEDEN HEMEN ÖNCE çalışır.
      * Klasörden Departman Kalıtımını (Inheritance) Pivot tablodan çekerek zorunlu kılar.
@@ -31,6 +45,7 @@ class DocumentObserver
             }
         }
     }
+
     /**
      * Handle the Document "created" event.
      */
@@ -62,7 +77,8 @@ class DocumentObserver
                     'auditable_id'   => $document->id,
                     'user_id' => Auth::id() ?? null,
                     'event' => 'document_updated',
-                    'ip_address' => request()->ip() ?? '127.0.0.1',
+                    // Global helper yerine DI ile alınan Request nesnesini kullanıyoruz
+                    'ip_address' => $this->request->ip() ?? '127.0.0.1',
                     'old_values' => json_encode($original, JSON_UNESCAPED_UNICODE),
                     'new_values' => json_encode($changed, JSON_UNESCAPED_UNICODE),
                 ]);

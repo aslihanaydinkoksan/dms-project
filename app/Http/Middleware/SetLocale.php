@@ -4,28 +4,28 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
-use Carbon\Carbon;
+use App\Services\LanguageService;
 
 class SetLocale
 {
+    /**
+     * Bağımlılık Enjeksiyonu (Dependency Injection)
+     */
+    public function __construct(protected LanguageService $languageService) {}
+
+    /**
+     * Gelen her isteği yakalar ve dili ayarlar.
+     */
     public function handle(Request $request, Closure $next)
     {
-        $locale = config('app.locale'); // Varsayılan sistem dili ('tr')
+        // 1. Verileri topla (Karar verme, sadece topla)
+        $userLocale = Auth::check() ? Auth::user()->locale : null;
+        $sessionLocale = Session::get('locale');
 
-        if (Auth::check()) {
-            // Kullanıcı giriş yaptıysa veritabanındaki dili önceliklendir
-            $locale = Auth::user()->locale ?? Session::get('locale', $locale);
-        } else {
-            // Ziyaretçi ise Session'a bak
-            $locale = Session::get('locale', $locale);
-        }
-
-        App::setLocale($locale);
-        Carbon::setLocale($locale);
-        Session::put('locale', $locale); // Session'ı her ihtimale karşı senkronize tut
+        // 2. İşi Servise (Uzmana) devret
+        $this->languageService->resolveAndApplyLocale($userLocale, $sessionLocale);
 
         return $next($request);
     }

@@ -5,26 +5,23 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\Department;
 use Spatie\Permission\Models\Role;
-use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\DB;
+use App\Services\UserService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
 use Exception;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
     /**
-     * Kullanıcı listesini getirir (/users).
+     * Bağımlılık Enjeksiyonu
      */
+    public function __construct(protected UserService $userService) {}
+
     public function index(): View
     {
-        // N+1 sorgu problemini önlemek için ilişkileri baştan yüklüyoruz.
-        // Kullanıcıları son eklenene göre değil, İsim Sırasına (A-Z) göre diziyoruz
-        // ve tek sayfada 15 yerine 50 kişi göstererek listeyi genişletiyoruz.
         $users = User::with(['department', 'roles'])
             ->orderBy('name', 'asc')
             ->paginate(50);
@@ -32,36 +29,25 @@ class UserController extends Controller
         return view('users.index', compact('users'));
     }
 
-    /**
-     * Belirli bir kullanıcının detayını gösterir (/users/{id})
-     */
     public function show(User $user): RedirectResponse
     {
-        // Kullanıcı profili gösterme sayfası zaten ProfileController'da mevcut.
-        // Kod tekrarı yapmamak ve tasarımı bozmamak için tıklandığında direkt oraya yönlendiriyoruz.
         return redirect()->route('profile.show', $user->id);
     }
 
-    /**
-     * Yeni kullanıcı ekleme formunu gösterir.
-     */
-    public function create()
+    public function create(): View
     {
-        // Super Admin rolünü standart adminlerin listesinden gizle
-        $roles = Role::where('name', '!=', 'Super Admin')->get();
-        if (Auth::user()->hasRole('Super Admin')) {
-            $roles = Role::all(); // Sadece Super Admin diğer Super Adminleri görebilir/atayabilir
-        }
+        $roles = Auth::user()->hasRole('Super Admin')
+            ? Role::all()
+            : Role::where('name', '!=', 'Super Admin')->get();
+
         $departments = Department::orderBy('unit')->orderBy('name')->get()->groupBy('unit');
+
         return view('users.create', compact('roles', 'departments'));
     }
 
-    /**
-     * Yeni kullanıcıyı veritabanına kaydeder.
-     */
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse
     {
-        $request->validate([
+        $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users',
             'password' => 'required|min:6',
@@ -70,85 +56,47 @@ class UserController extends Controller
             'roles.*' => 'exists:roles,name'
         ]);
 
-        // Güvenlik Kalkanı
-        if (in_array('Super Admin', $request->roles) && !Auth::user()->hasRole('Super Admin')) {
+        if (in_array('Super Admin', $validated['roles']) && !Auth::user()->hasRole('Super Admin')) {
             abort(403, 'Bu rolü atama yetkiniz yok.');
         }
 
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'department_id' => $request->department_id,
-            'is_active' => true
-        ]);
-
-        // Spatie Sync Roles (Önceki rolleri silip yenisini atar)
-        $user->syncRoles($request->roles);
+        $this->userService->createUser($validated, $validated['roles']);
 
         return redirect()->route('users.index')->with('success', 'Kullanıcı başarıyla oluşturuldu.');
     }
 
-    /**
-     * Kullanıcı düzenleme formunu gösterir.
-     */
     public function edit(User $user): View
     {
         $departments = Department::orderBy('unit')->orderBy('name')->get()->groupBy('unit');
-        $roles = Role::where('name', '!=', 'Super Admin')->get();
-        if (Auth::user()->hasRole('Super Admin')) {
-            $roles = Role::all();
-        }
-        // Kullanıcının mevcut rollerini array olarak alıyoruz (Checkbox'ları işaretlemek için)
+
+        $roles = Auth::user()->hasRole('Super Admin')
+            ? Role::all()
+            : Role::where('name', '!=', 'Super Admin')->get();
+
         $userRoles = $user->roles->pluck('name')->toArray();
+
         return view('users.edit', compact('user', 'departments', 'roles', 'userRoles'));
     }
 
-    /**
-     * Kullanıcı bilgilerini günceller.
-     */
     public function update(UpdateUserRequest $request, User $user): RedirectResponse
     {
         try {
-            DB::transaction(function () use ($request, $user) {
-                $data = $request->validated();
+            $data = $request->validated();
+            $data['is_active'] = $request->has('is_active');
+            $data['can_manage_acl'] = $request->has('can_manage_acl');
 
-                // Eğer şifre alanı doluysa yeni şifreyi hashle, boşsa eski şifreyi koru
-                if (!empty($data['password'])) {
-                    $data['password'] = Hash::make($data['password']);
-                } else {
-                    unset($data['password']);
-                }
+            $hasAclPermission = Auth::user()->hasAnyRole(['Super Admin', 'Admin']);
 
-                // Checkbox'lar işaretlenmemişse formdan false/null gelir.
-                // Manuel olarak boolean'a çeviriyoruz ki veritabanına 0 veya 1 olarak yazılsın.
-                $data['is_active'] = $request->has('is_active');
-
-                // YENİ ACL KONTROLÜ: Sadece Super Admin veya Adminler birine bu yetkiyi verebilir!
-                if (Auth::user()->hasAnyRole(['Super Admin', 'Admin'])) {
-                    $data['can_manage_acl'] = $request->has('can_manage_acl');
-                } else {
-                    // Admin değilse, kullanıcının mevcut ACL yetkisini koru (değiştirmesine izin verme)
-                    unset($data['can_manage_acl']);
-                }
-
-                $user->update($data);
-
-                // Spatie Rollerini Senkronize Et (Eskileri siler, yenileri ekler)
-                $user->syncRoles($request->roles ?? []);
-            });
+            $this->userService->updateUser($user, $data, $request->input('roles', []), $hasAclPermission);
 
             return redirect()->route('users.index')->with('success', 'Kullanıcı başarıyla güncellendi.');
         } catch (Exception $e) {
             return back()->withInput()->with('error', 'Kullanıcı güncellenemedi: ' . $e->getMessage());
         }
     }
-    /**
-     * Kullanıcıyı sistemden siler (Soft Delete).
-     */
+
     public function destroy(User $user): RedirectResponse
     {
-        // Güvenlik: Kullanıcı kendini silemez!
         if ($user->id === Auth::id()) {
             return back()->with('error', 'Kendi hesabınızı silemezsiniz.');
         }
@@ -161,66 +109,38 @@ class UserController extends Controller
         }
     }
 
-
-
-
-/**
-     * ONAY BEKLEYENLER SAYFASI (YENİ)
+    /**
+     * ONAY BEKLEYENLER SAYFASI
      */
-    public function onayBekleyenler()
+    public function onayBekleyenler(): View
     {
-        // Sadece is_active = false olan (Onay bekleyen) kullanıcıları getir
         $bekleyenler = User::with('department')->where('is_active', false)->latest()->get();
-        
         $departments = Department::orderBy('name')->get();
-        // Super Admin rolünü gizleyerek diğer atanabilir rolleri getiriyoruz
         $roles = Role::where('name', '!=', 'Super Admin')->get();
 
         return view('users.bekleyen_basvurular', compact('bekleyenler', 'departments', 'roles'));
-
     }
 
     /**
      * BAŞVURUYU ONAYLA VE MERKEZE BİLDİR
+     * DİKKAT: P1132 Hatası çözümü için 'int $id' tip belirtimi eklendi!
      */
-    public function basvuruOnayla(Request $request, $id)
+    public function basvuruOnayla(Request $request, int $id): RedirectResponse
     {
-        $request->validate([
+        $validated = $request->validate([
             'role' => 'required',
             'department_id' => 'required|exists:departments,id'
         ]);
 
-        $user = User::findOrFail($id);
-        
-        // Kullanıcıyı aktif et ve departmanını (değiştirildiyse) güncelle
-        $user->is_active = true;
-        $user->department_id = $request->department_id;
-        $user->save();
+        try {
+            // İş mantığı ve Dış API çağrısı tamamen Servise devredildi.
+            $user = $this->userService->approveApplication($id, $validated);
 
-        // Rol atamasını yap
-        $user->syncRoles([$request->role]);
-
-    // 🔥 MERKEZİ API'YI BİLGİLENDİR (Webhook)
-        $apiKey = env('CENTRAL_SSO_API_KEY'); 
-        $centralUrl = rtrim(env('CENTRAL_SSO_URL'), '/');
-
-        $response = \Illuminate\Support\Facades\Http::timeout(5)->withHeaders([
-            'X-App-Key' => $apiKey,
-            'Accept' => 'application/json'
-        ])->post($centralUrl . '/api/internal/uygulama-basvuru-durum', [
-            'email' => $user->email,
-            'status' => 'approved' 
-        ]);
-
-        if ($response->failed()) {
-            // Bağlantı oldu ama Merkez API işlemi reddetti (404, 401, 500 vb.)
-            $hataDetayi = $response->json('message') ?? $response->body();
-            return redirect()->route('users.onay_bekleyenler')->with('error', 'Kullanıcı DMS\'te onaylandı FAKAT Merkez API güncellenemedi! Sebep: ' . $hataDetayi);
+            return redirect()->route('users.onay_bekleyenler')
+                ->with('success', $user->name . ' başarıyla onaylandı ve Merkez ile eşitlendi!');
+        } catch (Exception $e) {
+            return redirect()->route('users.onay_bekleyenler')
+                ->with('error', "Kullanıcı DMS'te onaylandı FAKAT Merkez API güncellenemedi! Sebep: " . $e->getMessage());
         }
-
-        return redirect()->route('users.onay_bekleyenler')->with('success', $user->name . ' başarıyla onaylandı ve Merkez ile eşitlendi!');
     }
-
-
-
 }

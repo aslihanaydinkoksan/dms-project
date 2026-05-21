@@ -48,10 +48,17 @@ class DocumentController extends Controller
      * @var FolderService
      */
     protected FolderService $folderService;
+
+    /**
+     * @var DocumentApprovalService
+     */
+    protected DocumentApprovalService $approvalService;
+
     /**
      * @var DocumentNumberService
      */
     protected DocumentNumberService $numberService;
+
     /**
      * @var DocumentStamperService
      */
@@ -69,7 +76,6 @@ class DocumentController extends Controller
         DocumentApprovalService $approvalService,
         DocumentNumberService $numberService,
         DocumentStamperService $stamperService
-
     ) {
         $this->documentService = $documentService;
         $this->searchService = $searchService;
@@ -78,6 +84,7 @@ class DocumentController extends Controller
         $this->numberService = $numberService;
         $this->stamperService = $stamperService;
     }
+
     /**
      * Tüm belgeleri listeler, Full-Text Search araması yapar ve İstatistik Kartlarını dondürür.
      */
@@ -131,6 +138,7 @@ class DocumentController extends Controller
 
         return view('documents.index', compact('documents', 'keyword', 'status', 'privacy', 'startDate', 'endDate', 'stats', 'privacyLevels'));
     }
+
     public function show(Document $document): View
     {
         // 1. Güvenlik Duvarı: Bu belgeyi görmeye yetkisi var mı?
@@ -175,6 +183,7 @@ class DocumentController extends Controller
 
         return view('documents.show', compact('document', 'breadcrumb', 'auditLogs', 'readLogs', 'isOwner'));
     }
+
     /**
      * Dinamik belge yükleme formunu gösterir.
      */
@@ -206,6 +215,7 @@ class DocumentController extends Controller
 
         return view('documents.create', compact('flatFolders', 'privacyLevels', 'tags', 'users', 'departments', 'documentTypes', 'notifiableSuperiors'));
     }
+
     /**
      * AJAX İsteği: Seçilen Doküman Tipinin Dinamik Form Alanlarını (JSON) döner
      */
@@ -214,11 +224,6 @@ class DocumentController extends Controller
         $documentType = DocumentType::findOrFail($id);
         return response()->json($documentType->custom_fields ?? []);
     }
-
-    /**
-     * @var \App\Services\DocumentApprovalService
-     */
-    protected $approvalService;
 
     /**
      * Formdan gelen devasa veriyi işler, belgeleri topluca kaydeder ve akışları başlatır.
@@ -277,12 +282,12 @@ class DocumentController extends Controller
      * Belgeyi tarayıcıda önizletir (Inline) veya indirir.
      * PDF'leri Damgalayarak (Stamping) servis eder.
      */
-    public function download(Document $document)
+    public function download(Request $request, Document $document)
     {
         Gate::authorize('view', $document);
 
         // 1. ZEKİ VERSİYON SEÇİCİ: URL'de 'v' parametresi varsa o versiyonu, yoksa currentVersion'u al!
-        $requestedVersionId = request()->query('v');
+        $requestedVersionId = $request->query('v');
 
         if ($requestedVersionId) {
             $version = $document->versions()->find($requestedVersionId);
@@ -299,7 +304,7 @@ class DocumentController extends Controller
         $cleanFilename = $document->document_number . '_v' . $version->version_number . '_' . Str::slug($document->title) . '.' . $extension;
         $mimeType = Storage::disk('local')->mimeType($version->file_path);
 
-        $isDownload = request()->has('download');
+        $isDownload = $request->has('download');
 
         // SADECE PDF İSE VE SADECE İNDİR BUTONUNA BASILDIYSA DAMGALA!
         if ($mimeType === 'application/pdf' && $isDownload) {
@@ -328,6 +333,7 @@ class DocumentController extends Controller
             'Content-Disposition' => 'inline; filename="' . $cleanFilename . '"'
         ]);
     }
+
     /**
      * Belge üst verilerini (Metadata) düzenleme formunu gösterir.
      */
@@ -448,10 +454,11 @@ class DocumentController extends Controller
             return back()->withInput()->with('error', 'Güncelleme sırasında bir hata oluştu: ' . $e->getMessage());
         }
     }
+
     /**
      * Belgeyi revizyon için kilitler (Check-out)
      */
-    public function checkout(Document $document): RedirectResponse
+    public function checkout(Request $request, Document $document): RedirectResponse
     {
         // Yetki: Bu kullanıcı belgeyi düzenleme (create/edit) yetkisine sahip mi?
         Gate::authorize('update', $document);
@@ -460,8 +467,8 @@ class DocumentController extends Controller
             $this->documentService->checkoutDocument(
                 $document,
                 Auth::id(),
-                request()->ip() ?? '0.0.0.0',
-                request()->userAgent() ?? 'Unknown'
+                $request->ip() ?? '0.0.0.0',
+                $request->userAgent() ?? 'Unknown'
             );
 
             return back()->with('success', 'Belge sizin adınıza kilitlendi. Artık yeni versiyon yükleyebilirsiniz.');
@@ -507,7 +514,7 @@ class DocumentController extends Controller
     /**
      * Yönetici müdahalesi (Force Unlock)
      */
-    public function forceUnlock(Document $document): RedirectResponse
+    public function forceUnlock(Request $request, Document $document): RedirectResponse
     {
         // Sadece 'document.force_unlock' yetkisine sahip olanlar (Super Admin vb.) bu işlemi yapabilir.
         Gate::authorize('forceUnlock', $document);
@@ -516,8 +523,8 @@ class DocumentController extends Controller
             $this->documentService->forceUnlock(
                 $document,
                 Auth::id(),
-                request()->ip() ?? '0.0.0.0',
-                request()->userAgent() ?? 'Unknown'
+                $request->ip() ?? '0.0.0.0',
+                $request->userAgent() ?? 'Unknown'
             );
 
             return back()->with('success', 'Yönetici yetkisiyle belge kilidi zorla açıldı.');
@@ -526,6 +533,7 @@ class DocumentController extends Controller
             return back()->with('error', $e->getMessage());
         }
     }
+
     /**
      * JS Beacon tarafından tetiklenen okuma süresi loglayıcısı.
      */
@@ -544,6 +552,7 @@ class DocumentController extends Controller
 
         return response()->json(['status' => 'logged']);
     }
+
     /**
      * Hukuk Yöneticisi: Fiziksel belgeyi bir personele zimmetler (Teslim sürecini başlatır)
      */
@@ -593,10 +602,11 @@ class DocumentController extends Controller
 
         return back()->with('success', 'Fiziksel evrakı teslim aldınız ve arşiv konumu başarıyla kaydedildi.');
     }
+
     /**
      * Belgeyi güvenli bir şekilde siler (Soft Delete) ve loglar.
      */
-    public function destroy(Document $document)
+    public function destroy(Request $request, Document $document)
     {
         // 1. Yetki Kontrolü (Policy)
         Gate::authorize('delete', $document);
@@ -611,8 +621,8 @@ class DocumentController extends Controller
                 'auditable_type' => Document::class,
                 'auditable_id' => $document->id,
                 'old_values' => ['status' => $document->status_text],
-                'ip_address' => request()->ip(),
-                'user_agent' => request()->userAgent(),
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
             ]);
 
             // 3. Soft Delete İşlemi
@@ -624,6 +634,7 @@ class DocumentController extends Controller
             return back()->with('error', 'Belge silinirken kritik bir hata oluştu.');
         }
     }
+
     /**
      * AJAX (Fetch) Sürükle-Bırak Belge Taşıma İşlemi
      */

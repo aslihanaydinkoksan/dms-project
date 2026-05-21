@@ -4,22 +4,35 @@ namespace App\Services;
 
 use App\Models\Document;
 use App\Models\User;
-use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator; // Somut sınıf yerine Interface (Contract) kullanıyoruz
+use Illuminate\Database\Eloquent\Builder;
 
 class DocumentSearchService
 {
     /**
      * Zeki Eloquent Motoru ile yetkilendirilmiş belge araması yapar.
+     * 
+     * MİMARİ DOKUNUŞ: %100 Tip Güvenliği (Strict Types) sağlandı.
+     * Parametrelerin alabileceği değerler (string, int, null) açıkça belirtildi.
      */
-    public function searchDocuments($keyword, $user, $perPage = 15, $status = null, $privacy = null, $startDate = null, $endDate = null)
-    {
+    public function searchDocuments(
+        ?string $keyword,
+        User $user,
+        int $perPage = 15,
+        ?string $status = null,
+        ?string $privacy = null,
+        ?string $startDate = null,
+        ?string $endDate = null
+    ): LengthAwarePaginator {
+
         // 1. ZIRH: authorizedForUser sorgusunu function($q) içine hapsediyoruz.
-        $query = Document::where(function ($q) use ($user) {
+        // Closure içine tip garantisi (Builder) ekliyoruz.
+        $query = Document::where(function (Builder $q) use ($user) {
             $q->authorizedForUser($user);
         })->with(['folder', 'currentVersion.createdBy']);
 
         // 2. Metin Araması
-        if (isset($keyword) && trim($keyword) !== '') {
+        if (!empty($keyword) && trim($keyword) !== '') {
             $query->advancedSearch($keyword);
         }
 
@@ -31,7 +44,7 @@ class DocumentSearchService
 
         // 4. Gizlilik Filtresi
         if (!empty($privacy)) {
-            // YENİ: Hızlı karttan 'secret' gelirse iki gizli durumu da kapsayacak şekilde filtrele
+            // Hızlı karttan 'secret' gelirse iki gizli durumu da kapsayacak şekilde filtrele
             if ($privacy === 'secret') {
                 $query->whereIn('privacy_level', ['confidential', 'strictly_confidential']);
             } else {
@@ -39,12 +52,12 @@ class DocumentSearchService
             }
         }
 
-        // 5. YENİ: Başlangıç Tarihi Filtresi
+        // 5. Başlangıç Tarihi Filtresi
         if (!empty($startDate)) {
             $query->whereDate('created_at', '>=', $startDate);
         }
 
-        // 6. YENİ: Bitiş Tarihi Filtresi
+        // 6. Bitiş Tarihi Filtresi
         if (!empty($endDate)) {
             $query->whereDate('created_at', '<=', $endDate);
         }
