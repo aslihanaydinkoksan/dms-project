@@ -95,7 +95,7 @@
                     style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color); font-size: 0.95rem; color: var(--text-color);">
             </div>
 
-            <div style="position: relative;">
+            {{-- <div style="position: relative;">
                 <label
                     style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 6px; display: block;">{{ __('Statü Durumu') }}</label>
                 <i data-lucide="activity"
@@ -118,7 +118,7 @@
                         {{ __('Arşivlenenler') }}
                     </option>
                 </select>
-            </div>
+            </div> --}}
 
             <div style="position: relative;">
                 <label
