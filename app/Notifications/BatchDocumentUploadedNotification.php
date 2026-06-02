@@ -35,7 +35,8 @@ class BatchDocumentUploadedNotification extends Notification implements ShouldQu
         return (new MailMessage)
             ->subject('Yeni Belge Bilgilendirmesi: ' . $count . ' Adet Belge')
             ->greeting('Sayın ' . $notifiable->name . ',')
-            ->line($this->uploader->name . " tarafından '{$folderName}' klasörüne size bilgi amaçlı {$count} adet yeni belge yüklenmiştir.")->action('Klasörü Görüntüle', route('folders.show', $firstDoc->folder_id))
+            ->line($this->uploader->name . " tarafından '{$folderName}' klasörüne size bilgi amaçlı {$count} adet yeni belge yüklenmiştir.")
+            ->action('Belgeyi Görüntüle', route('documents.show', $firstDoc->id))
             ->line('İyi çalışmalar.');
     }
 
@@ -49,7 +50,7 @@ class BatchDocumentUploadedNotification extends Notification implements ShouldQu
             'document_id' => $firstDoc->id,
             'title' => "{$count} Adet Yeni Belge",
             'message' => "{$this->uploader->name} tarafından '{$folderName}' klasörüne {$count} adet yeni belge yüklendi.",
-            'url' => route('folders.show', $firstDoc->folder_id),
+            'url' => route('documents.show', $firstDoc->id),
             'type' => 'batch_document_info_alert'
         ];
     }
