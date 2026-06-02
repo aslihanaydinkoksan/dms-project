@@ -118,6 +118,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/intents', [\App\Http\Controllers\BotIntentController::class, 'store'])->name('intents.store');
         Route::delete('/intents/{intent}', [\App\Http\Controllers\BotIntentController::class, 'destroy'])->name('intents.destroy');
     });
+    Route::get('/analytics', [\App\Http\Controllers\AnalyticsController::class, 'index'])->name('analytics.index');
 
     // --- KULLANICI & PROFİL YÖNETİMİ ---
     Route::prefix('profile')->name('profile.')->group(function () {

@@ -99,4 +99,11 @@ class User extends Authenticatable
     {
         return $this->morphMany(\App\Models\Notification::class, 'notifiable')->latest();
     }
+    /**
+     * Kullanıcının yüklediği belge versiyonları (Analitik ve Liderlik Tablosu için)
+     */
+    public function documentVersions()
+    {
+        return $this->hasMany(DocumentVersion::class, 'created_by');
+    }
 }

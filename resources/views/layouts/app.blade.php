@@ -331,7 +331,16 @@
 
                     @canany(['menu.settings', 'menu.users', 'menu.reports'])
                         <li class="nav-section">{{ __('SİSTEM YÖNETİMİ') }}</li>
-
+                        @can('menu.analytics')
+                            <li>
+                                <a href="{{ route('analytics.index') }}"
+                                    class="{{ request()->routeIs('analytics.*') ? 'active' : '' }}"
+                                    style="{{ request()->routeIs('analytics.*') ? 'background: linear-gradient(90deg, var(--primary-color) 0%, var(--accent-color) 100%); color: #fff;' : '' }}">
+                                    <i data-lucide="pie-chart" class="nav-icon" style="{{ request()->routeIs('analytics.*') ? 'color: #fff;' : 'color: var(--accent-color);' }}"></i> 
+                                    <span style="{{ request()->routeIs('analytics.*') ? 'font-weight: 700;' : 'font-weight: 600;' }}">{{ __('Sistem Analitiği') }}</span>
+                                </a>
+                            </li>
+                        @endcan
                         @can('menu.users')
                             <li>
                                 <a href="{{ route('users.index') }}"
@@ -343,7 +352,7 @@
                                 <a href="{{ route('users.onay_bekleyenler') }}"
                                     class="{{ request()->routeIs('users.onay_bekleyenler') ? 'active' : '' }}"
                                     style="display: flex; align-items: center;">
-                                    <i data-lucide="webhook" class="nav-icon" ></i>
+                                    <i data-lucide="webhook" class="nav-icon"></i>
                                     <span>{{ __('Onay Bekleyenler') }}</span>
                                 </a>
                             </li>

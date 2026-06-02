@@ -45,6 +45,10 @@ class PermissionSettingsService
         $corePermissions = (array) config('dms.core_permissions', []);
 
         $specialPermissions = Permission::whereIn('name', array_merge($corePermissions, $dynamicPrivacyPermissions))->get();
+        $expectedMenus = ['menu.dashboard', 'menu.documents', 'menu.folders', 'menu.reports', 'menu.settings', 'menu.users', 'menu.analytics'];
+        foreach ($expectedMenus as $menuName) {
+            Permission::firstOrCreate(['name' => $menuName, 'guard_name' => 'web']);
+        }
         $menuPermissions = Permission::where('name', 'like', 'menu.%')->get();
 
         return compact('roles', 'categories', 'existingPermissions', 'specialPermissions', 'menuPermissions', 'departments', 'documentTypes', 'folders', 'privacyLevels');
@@ -85,8 +89,7 @@ class PermissionSettingsService
             $roles = Role::where('name', '!=', 'Super Admin')->get();
 
             foreach ($roles as $role) {
-                // DÜZELTME 2: IDE'ye $role değişkeninin bir Spatie Role modeli olduğunu söylüyoruz
-                /** @var \Spatie\Permission\Models\Role $role */
+                /** @var Role $role */
 
                 $roleSpecial = $specialPermInput[$role->id] ?? [];
                 $roleMenu = $menuPermissionsInput[$role->id] ?? [];
