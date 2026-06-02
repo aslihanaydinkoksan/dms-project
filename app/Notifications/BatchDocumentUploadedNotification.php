@@ -49,7 +49,7 @@ class BatchDocumentUploadedNotification extends Notification implements ShouldQu
             'document_id' => $firstDoc->id,
             'title' => "{$count} Adet Yeni Belge",
             'message' => "{$this->uploader->name} tarafından '{$folderName}' klasörüne {$count} adet yeni belge yüklendi.",
-            'action_url' => route('folders.show', $firstDoc->folder_id),
+            'url' => route('folders.show', $firstDoc->folder_id),
             'type' => 'batch_document_info_alert'
         ];
     }
