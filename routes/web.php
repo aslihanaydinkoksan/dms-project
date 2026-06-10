@@ -38,22 +38,46 @@ Route::middleware(['auth', 'role:Super Admin'])->group(function () {
 // ==========================================================================
 // 1. ZİYARETÇİ & SİSTEM GİRİŞ ROTALARI (GUEST)
 // ==========================================================================
-Route::get('/', fn() => redirect()->route(Auth::check() ? 'dashboard' : 'login'));
+
+// KYS'nin atacağı her türlü (GET/POST/OPTIONS) isteği yakalayan "Sünger" Rota
+Route::any('/', function (\Illuminate\Http\Request $request) {
+    if (Auth::check()) {
+        return redirect()->route('dashboard');
+    }
+
+    // KYS ekibi buraya POST ile token/veri gönderiyorsa, 
+    // bu verileri alıp sso.login rotasına GET parametresi olarak fırlatıyoruz!
+    if ($request->isMethod('post') || $request->all()) {
+        return redirect()->route('sso.login', $request->all());
+    }
+
+    // Normal gelenleri login'e yolla
+    return redirect()->route('login');
+});
+
 Route::get('/language/{locale}', [LanguageController::class, 'switch'])->name('language.switch');
 
 if (app()->environment('local')) {
-    // LOKAL ORTAM: Eski klasik login yapısını açıyoruz.
+    // LOKAL ORTAM
     Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
     Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 
-    // login.blade.php'nin hata vermemesi için şifre sıfırlama rotalarını da ekliyoruz:
     Route::get('forgot-password', [PasswordResetController::class, 'showLinkRequestForm'])->name('password.request');
     Route::post('forgot-password', [PasswordResetController::class, 'sendResetLinkEmail'])->name('password.email');
     Route::get('reset-password/{token}', [PasswordResetController::class, 'showResetForm'])->name('password.reset');
     Route::post('reset-password', [PasswordResetController::class, 'reset'])->name('password.update');
 } else {
-    // CANLI ORTAM (Production): KÖKSAN Merkezi Sistemine yönlendiriyoruz
-    Route::get('/login', function () {
+    // CANLI ORTAM (Production)
+    Route::any('/login', function (\Illuminate\Http\Request $request) {
+        if (Auth::check()) {
+            return redirect()->route('dashboard');
+        }
+
+        // KYS /login adresine POST atarsa, yine veriyi alıp SSO'ya yönlendir
+        if ($request->isMethod('post')) {
+            return redirect()->route('sso.login', $request->all());
+        }
+
         return redirect('https://kys.koksan.com/merkezi_yonetim_sistemi');
     })->name('login');
 }
@@ -68,7 +92,7 @@ Route::post('/logout', function () {
     return redirect('https://kys.koksan.com/merkezi_yonetim_sistemi');
 })->name('logout');
 
-// DMS SSO İÇİN YENİ ROTALAR (İş arkadaşının eklediği kısımlar dokunmadan kalıyor)
+// DMS SSO İÇİN YENİ ROTALAR (Dokunmadık)
 Route::controller(\App\Http\Controllers\Auth\SsoController::class)->prefix('sso')->name('sso.')->group(function () {
     Route::get('/login', 'login')->name('login');
     Route::get('/basvuru', 'basvuruFormu')->name('basvuru_formu');
