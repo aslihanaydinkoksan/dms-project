@@ -11,6 +11,11 @@ use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\Transports\MicrosoftGraphTransport;
+use App\Models\Task;
+use App\Observers\TaskObserver;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Notifications\Events\NotificationSent;
+use App\Listeners\NotificationSentListener;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -49,5 +54,7 @@ class AppServiceProvider extends ServiceProvider
                 env('MICROSOFT_FROM_ADDRESS')
             );
         });
+        Task::observe(TaskObserver::class);
+        Event::listen(NotificationSent::class, NotificationSentListener::class);
     }
 }

@@ -22,3 +22,5 @@ Schedule::command('reports:send weekly')->weeklyOn(1, '8:00');
 Schedule::command('reports:send monthly')->monthlyOn(1, '8:00');
 // Rapor motorumuzu her sabah saat 08:00'da çalışacak şekilde kurduk
 Schedule::command('reports:process')->dailyAt('08:00');
+
+Schedule::command('bpm:check-deadlines')->dailyAt('08:30');

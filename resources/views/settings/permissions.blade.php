@@ -755,8 +755,19 @@
                             style="padding: 15px 25px; text-align: left; position: sticky; left: 0; background: var(--bg-color); z-index: 10;">
                             Roller</th>
                         @foreach ($menuPermissions as $menuPerm)
+                            @php
+                                // 1. 'menu.avans_talepleri' -> 'avans_talepleri'
+                                $rawName = str_replace('menu.', '', $menuPerm->name);
+
+                                // 2. Alt çizgileri boşluk yap ve Baş Harflerini büyüt (Fallback)
+                                $fallbackName = \Illuminate\Support\Str::title(str_replace('_', ' ', $rawName));
+
+                                // 3. Laravel dil dosyasında özel bir çevirisi var mı bak, yoksa fallback kullan
+                                $translated = __('menus.' . $rawName);
+                                $displayName = $translated === 'menus.' . $rawName ? $fallbackName : $translated;
+                            @endphp
                             <th style="padding: 15px; text-align: center;">
-                                {{ ucfirst(str_replace('menu.', '', $menuPerm->name)) }}
+                                {{ $displayName }}
                             </th>
                         @endforeach
                     </tr>

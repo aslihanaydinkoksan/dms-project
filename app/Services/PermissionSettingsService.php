@@ -45,7 +45,22 @@ class PermissionSettingsService
         $corePermissions = (array) config('dms.core_permissions', []);
 
         $specialPermissions = Permission::whereIn('name', array_merge($corePermissions, $dynamicPrivacyPermissions))->get();
-        $expectedMenus = ['menu.dashboard', 'menu.documents', 'menu.folders', 'menu.reports', 'menu.settings', 'menu.users', 'menu.analytics'];
+        $expectedMenus = [];
+        $routes = \Illuminate\Support\Facades\Route::getRoutes()->getRoutes();
+
+        // Sistemdeki tüm rotaları ve kalkanları (middleware) tara
+        foreach ($routes as $route) {
+            $middlewares = $route->gatherMiddleware();
+            foreach ($middlewares as $mw) {
+                // Eğer kalkan 'can:menu.' ile başlıyorsa, bunu bir menü yetkisi olarak algıla
+                if (is_string($mw) && str_starts_with($mw, 'can:menu.')) {
+                    $permissionName = str_replace('can:', '', $mw);
+                    if (!in_array($permissionName, $expectedMenus)) {
+                        $expectedMenus[] = $permissionName;
+                    }
+                }
+            }
+        }
         foreach ($expectedMenus as $menuName) {
             Permission::firstOrCreate(['name' => $menuName, 'guard_name' => 'web']);
         }

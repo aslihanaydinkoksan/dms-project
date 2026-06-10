@@ -280,6 +280,146 @@
                 /* Mobilde sadece ikon kalsın */
             }
         }
+
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            gap: 0 !important;
+            /* Flex'ten gelebilecek aralıkları ezer */
+        }
+
+        /* Sidebar Ana Kapsayıcı */
+        .modern-sidebar {
+            width: 260px;
+            background-color: #111827;
+            border-right: 1px solid #374151;
+            padding: 1.5rem 1rem;
+            height: 100vh;
+            overflow-y: auto;
+            font-family: 'Inter', system-ui, sans-serif;
+            position: sticky;
+            /* Sayfa aşağı kaydıkça ekranda sabit kalmasını sağlar */
+            top: 0;
+            /* En üstten hizalar */
+            flex-shrink: 0;
+            /* Flex yapısında sıkışıp bozulmasını önler */
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .main-content {
+            flex: 1;
+            min-width: 0;
+            margin-left: 0 !important;
+            padding: 0;
+            /* Eğer gereksiz bir iç boşluk varsa diye */
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* 4. Kapalı (Collapsed) Durum - JS tetiklendiğinde sidebar'ı gizler */
+        html.sidebar-collapsed .modern-sidebar {
+            width: 0 !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+            border-right: none;
+            overflow: hidden;
+        }
+
+        .sidebar-nav {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            /* Linkler arası yumuşak boşluk */
+        }
+
+        /* Bölüm Başlıkları (DOKÜMANLAR, SİSTEM YÖNETİMİ vb.) */
+        .nav-section {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #9ca3af;
+            letter-spacing: 0.05em;
+            margin-top: 1.5rem;
+            margin-bottom: 0.5rem;
+            padding-left: 0.75rem;
+        }
+
+        /* Standart Link Yapısı */
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.65rem 0.75rem;
+            color: #e5e7eb;
+            text-decoration: none;
+            border-radius: 0.5rem;
+            /* Modern yuvarlak hatlar */
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s ease-in-out;
+        }
+
+        /* İkon Hizalaması */
+        .nav-icon {
+            width: 1.25rem;
+            height: 1.25rem;
+            color: #9ca3af;
+            transition: color 0.2s;
+        }
+
+        /* Hover (Üzerine Gelme) Efekti */
+        .nav-link:hover {
+            background-color: #1f2937;
+            color: #ffffff;
+            transform: translateX(3px);
+            /* Şık bir detay: hafif sağa kayma */
+        }
+
+        .nav-link:hover .nav-icon {
+            color: #ffffff;
+        }
+
+        /* Aktif (Seçili) Durum Efekti */
+        .nav-link.active {
+            background-color: #374151;
+            /* Seçili menü arka planı */
+            color: #60a5fa;
+            /* Açık, parlak mavi yazı */
+            font-weight: 600;
+        }
+
+        .nav-link.active .nav-icon {
+            color: #60a5fa;
+            /* Açık mavi ikon */
+        }
+
+        /* Analitik İçin Özel Gradient Buton (Eski inline stili CSS'e taşıdık) */
+        .nav-link-special {
+            background: rgba(243, 244, 246, 0.5);
+            border: 1px solid #e5e7eb;
+        }
+
+        .nav-link-special .nav-icon {
+            color: #8b5cf6;
+            /* Vurgu rengi */
+        }
+
+        .nav-link-special.active {
+            background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 100%);
+            color: #ffffff;
+            border: none;
+            box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.4);
+        }
+
+        .nav-link-special.active .nav-icon {
+            color: #ffffff;
+        }
     </style>
 
 </head>
@@ -288,118 +428,169 @@
 
     <div class="app-container">
         @auth
-            <aside class="sidebar">
+            <aside class="modern-sidebar">
                 <ul class="sidebar-nav">
                     @can('menu.dashboard')
-                        <li>
-                            <a href="{{ route('dashboard') }}" class="{{ request()->routeIs('dashboard') ? 'active' : '' }}">
-                                <i data-lucide="layout-dashboard" class="nav-icon"></i> {{ __('Gösterge Paneli') }}
+                        <li class="nav-item">
+                            <a href="{{ route('dashboard') }}"
+                                class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
+                                <i data-lucide="layout-dashboard" class="nav-icon"></i>
+                                <span class="nav-text">{{ __('Gösterge Paneli') }}</span>
                             </a>
                         </li>
                     @endcan
 
-                    @canany(['menu.documents', 'menu.folders'])
-                        <li class="nav-section">{{ __('DOKÜMANLAR') }}</li>
+                    {{-- DOKÜMANLAR VE SÜREÇLER BAŞLIĞI (İçindeki tüm yetkiler buraya yazıldı) --}}
+                    @canany(['menu.documents', 'menu.folders', 'menu.tasks', 'menu.tasks_archive'])
+                        <li class="nav-section">{{ __('DOKÜMANLAR & SÜREÇLER') }}</li>
                     @endcanany
 
                     @can('menu.documents')
-                        <li>
+                        <li class="nav-item">
                             <a href="{{ route('documents.index') }}"
-                                class="{{ request()->routeIs('documents.index', 'documents.show') ? 'active' : '' }}">
-                                <i data-lucide="folder-search" class="nav-icon"></i> {{ __('Tüm Belgeler') }}
+                                class="nav-link {{ request()->routeIs('documents.index', 'documents.show') ? 'active' : '' }}">
+                                <i data-lucide="folder-search" class="nav-icon"></i>
+                                <span class="nav-text">{{ __('Tüm Belgeler') }}</span>
                             </a>
                         </li>
                     @endcan
 
                     @can('menu.folders')
-                        <li>
+                        <li class="nav-item">
                             <a href="{{ route('folders.index') }}"
-                                class="{{ request()->routeIs('folders.*') ? 'active' : '' }}">
-                                <i data-lucide="folder-tree" class="nav-icon"></i> {{ __('Klasörler') }}
+                                class="nav-link {{ request()->routeIs('folders.*') ? 'active' : '' }}">
+                                <i data-lucide="folder-tree" class="nav-icon"></i>
+                                <span class="nav-text">{{ __('Klasörler') }}</span>
                             </a>
                         </li>
                     @endcan
 
                     @can('menu.documents')
-                        <li>
+                        <li class="nav-item">
                             <a href="{{ route('documents.create') }}"
-                                class="{{ request()->routeIs('documents.create') ? 'active' : '' }}">
-                                <i data-lucide="upload-cloud" class="nav-icon"></i> {{ __('Yeni Belge Yükle') }}
+                                class="nav-link {{ request()->routeIs('documents.create') ? 'active' : '' }}">
+                                <i data-lucide="upload-cloud" class="nav-icon"></i>
+                                <span class="nav-text">{{ __('Yeni Belge Yükle') }}</span>
                             </a>
                         </li>
                     @endcan
 
-                    @canany(['menu.settings', 'menu.users', 'menu.reports'])
+                    {{-- GÖREV OPERASYONLARI EKLENTİSİ --}}
+                    @can('menu.tasks')
+                        <li class="nav-item">
+                            <a href="{{ route('tasks.index') }}"
+                                class="nav-link {{ request()->routeIs('tasks.index') ? 'active' : '' }}">
+                                <i data-lucide="trello" class="nav-icon"></i>
+                                <span class="nav-text">{{ __('Kanban/Ajanda') }}</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ route('tasks.create') }}"
+                                class="nav-link {{ request()->routeIs('tasks.create') ? 'active' : '' }}">
+                                <i data-lucide="rocket" class="nav-icon"></i>
+                                <span class="nav-text">{{ __('Yeni Süreç Başlat') }}</span>
+                            </a>
+                        </li>
+                    @endcan
+
+                    @can('menu.tasks_archive')
+                        <li class="nav-item">
+                            <a href="{{ route('tasks.archive') }}"
+                                class="nav-link {{ request()->routeIs('tasks.archive') ? 'active' : '' }}">
+                                <i data-lucide="archive" class="nav-icon"></i>
+                                <span class="nav-text">{{ __('Süreçler İş Arşivi') }}</span>
+                            </a>
+                        </li>
+                    @endcan
+
+                    {{-- SİSTEM YÖNETİMİ BAŞLIĞI (İçindeki tüm alt yetkiler tam eşleşmeyle yazıldı) --}}
+                    @canany(['menu.analytics', 'menu.users', 'menu.settings', 'menu.process_templates'])
                         <li class="nav-section">{{ __('SİSTEM YÖNETİMİ') }}</li>
+
                         @can('menu.analytics')
-                            <li>
+                            <li class="nav-item">
                                 <a href="{{ route('analytics.index') }}"
-                                    class="{{ request()->routeIs('analytics.*') ? 'active' : '' }}"
-                                    style="{{ request()->routeIs('analytics.*') ? 'background: linear-gradient(90deg, var(--primary-color) 0%, var(--accent-color) 100%); color: #fff;' : '' }}">
-                                    <i data-lucide="pie-chart" class="nav-icon" style="{{ request()->routeIs('analytics.*') ? 'color: #fff;' : 'color: var(--accent-color);' }}"></i> 
-                                    <span style="{{ request()->routeIs('analytics.*') ? 'font-weight: 700;' : 'font-weight: 600;' }}">{{ __('Sistem Analitiği') }}</span>
+                                    class="nav-link nav-link-special {{ request()->routeIs('analytics.*') ? 'active' : '' }}">
+                                    <i data-lucide="pie-chart" class="nav-icon"></i>
+                                    <span class="nav-text">{{ __('Sistem Analitiği') }}</span>
                                 </a>
                             </li>
                         @endcan
+
                         @can('menu.users')
-                            <li>
+                            <li class="nav-item">
                                 <a href="{{ route('users.index') }}"
-                                    class="{{ request()->routeIs('users.*') && !request()->routeIs('users.onay_bekleyenler') ? 'active' : '' }}">
-                                    <i data-lucide="users" class="nav-icon"></i> {{ __('Kullanıcı Yönetimi') }}
+                                    class="nav-link {{ request()->routeIs('users.*') && !request()->routeIs('users.onay_bekleyenler') ? 'active' : '' }}">
+                                    <i data-lucide="users" class="nav-icon"></i>
+                                    <span class="nav-text">{{ __('Kullanıcı Yönetimi') }}</span>
                                 </a>
                             </li>
-                            <li>
+                            <li class="nav-item">
                                 <a href="{{ route('users.onay_bekleyenler') }}"
-                                    class="{{ request()->routeIs('users.onay_bekleyenler') ? 'active' : '' }}"
-                                    style="display: flex; align-items: center;">
+                                    class="nav-link {{ request()->routeIs('users.onay_bekleyenler') ? 'active' : '' }}">
                                     <i data-lucide="webhook" class="nav-icon"></i>
-                                    <span>{{ __('Onay Bekleyenler') }}</span>
+                                    <span class="nav-text">{{ __('Onay Bekleyenler') }}</span>
+                                </a>
+                            </li>
+                        @endcan
+
+                        @can('menu.process_templates')
+                            <li class="nav-item">
+                                <a href="{{ route('process-templates.index') }}"
+                                    class="nav-link {{ request()->routeIs('process-templates.*') ? 'active' : '' }}">
+                                    <i data-lucide="layout-template" class="nav-icon"></i>
+                                    <span class="nav-text">{{ __('Süreç Şablonları') }}</span>
                                 </a>
                             </li>
                         @endcan
 
                         @can('menu.settings')
-                            <li>
+                            <li class="nav-item">
                                 <a href="{{ route('settings.permissions') }}"
-                                    class="{{ request()->routeIs('settings.permissions') ? 'active' : '' }}">
-                                    <i data-lucide="shield-alert" class="nav-icon"></i> {{ __('Sistem Ayarları') }}
+                                    class="nav-link {{ request()->routeIs('settings.permissions') ? 'active' : '' }}">
+                                    <i data-lucide="shield-alert" class="nav-icon"></i>
+                                    <span class="nav-text">{{ __('Sistem Ayarları') }}</span>
                                 </a>
                             </li>
-                            <li>
+                            <li class="nav-item">
                                 <a href="{{ route('settings.notifications') }}"
-                                    class="{{ request()->routeIs('settings.notifications') ? 'active' : '' }}">
-                                    <i data-lucide="printer" class="nav-icon"></i> {{ __('Otomatik Rapor Ayarları') }}
+                                    class="nav-link {{ request()->routeIs('settings.notifications') ? 'active' : '' }}">
+                                    <i data-lucide="printer" class="nav-icon"></i>
+                                    <span class="nav-text">{{ __('Otomatik Rapor Ayarları') }}</span>
                                 </a>
                             </li>
-                            <li>
+                            <li class="nav-item">
                                 <a href="{{ route('settings.mail') }}"
-                                    class="{{ request()->routeIs('settings.mail') ? 'active' : '' }}">
-                                    <i data-lucide="mail" class="nav-icon"></i> {{ __('Mail Şablonları ve Ayarlar') }}
+                                    class="nav-link {{ request()->routeIs('settings.mail') ? 'active' : '' }}">
+                                    <i data-lucide="mail" class="nav-icon"></i>
+                                    <span class="nav-text">{{ __('Mail Şablonları ve Ayarlar') }}</span>
                                 </a>
                             </li>
-                            <li>
+                            <li class="nav-item">
                                 <a href="{{ route('settings.intents.index') }}"
-                                    class="{{ request()->routeIs('settings.intents.*') ? 'active' : '' }}">
-                                    <i data-lucide="bot" class="nav-icon"></i> {{ __('Asistan Eğitimi') }}
+                                    class="nav-link {{ request()->routeIs('settings.intents.*') ? 'active' : '' }}">
+                                    <i data-lucide="bot" class="nav-icon"></i>
+                                    <span class="nav-text">{{ __('Asistan Eğitimi') }}</span>
                                 </a>
                             </li>
-                            @if (auth()->user()->hasRole('Super Admin'))
-                                <li class="menu-item">
-                                    <a href="{{ route('system.logs.index') }}"
-                                        class="menu-link {{ request()->routeIs('system.logs.index') ? 'active' : '' }}">
-                                        <i data-lucide="shield-alert"></i>
-                                        <span>Kanıt ve Log Merkezi</span>
-                                    </a>
-                                </li>
-                                <li class="menu-item">
-                                    <a href="{{ route('settings.permissions.explorer') }}"
-                                        class="menu-link {{ request()->routeIs('system.logs.index') ? 'active' : '' }}">
-                                        <i data-lucide="book-user"></i>
-                                        <span>{{ __('Kullanıcı Yetki Röntgeni') }}</span>
-                                    </a>
-                                </li>
-                            @endif
                         @endcan
+
+                        @if (auth()->user()->hasRole('Super Admin'))
+                            <li class="nav-item">
+                                <a href="{{ route('system.logs.index') }}"
+                                    class="nav-link {{ request()->routeIs('system.logs.index') ? 'active' : '' }}">
+                                    <i data-lucide="shield-alert" class="nav-icon"></i>
+                                    <span class="nav-text">{{ __('Kanıt ve Log Merkezi') }}</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a href="{{ route('settings.permissions.explorer') }}"
+                                    class="nav-link {{ request()->routeIs('settings.permissions.explorer') ? 'active' : '' }}">
+                                    <i data-lucide="book-user" class="nav-icon"></i>
+                                    <span class="nav-text">{{ __('Kullanıcı Yetki Röntgeni') }}</span>
+                                </a>
+                            </li>
+                        @endif
                     @endcanany
                 </ul>
             </aside>

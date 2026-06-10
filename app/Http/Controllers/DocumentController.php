@@ -209,7 +209,7 @@ class DocumentController extends Controller
             ->orderBy('name')
             ->get();
 
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = Auth::user();
         $notifiableSuperiors = $this->documentService->getNotifiableSuperiors($user);
 
@@ -251,7 +251,7 @@ class DocumentController extends Controller
                 $data['tags'] = $tagIds;
             }
 
-            /** @var \App\Models\User $user */
+            /** @var User $user */
             $user = Auth::user();
 
             // Tüm işlemi güvenle Service'e devret

@@ -21,7 +21,7 @@ use App\Http\Controllers\DelegationController;
 use App\Http\Controllers\ReportEngineController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use Illuminate\Support\Facades\Http;
-use App\Http\Controllers\SsoController; 
+use App\Http\Controllers\SsoController;
 
 // Sadece Super Adminlerin erişebileceği Kara Kutu Rotası
 Route::middleware(['auth', 'role:Super Admin'])->group(function () {
@@ -34,27 +34,6 @@ Route::middleware(['auth', 'role:Super Admin'])->group(function () {
     Route::get('/settings/users/{user}/permission-details', [\App\Http\Controllers\Settings\UserPermissionExplorerController::class, 'getUserDetails'])
         ->name('settings.users.permission_details');
 });
-//   {{--
-// ==========================================================================
-// 1. ZİYARETÇİ & SİSTEM GİRİŞ ROTALARI (GUEST)
-// ==========================================================================
-//Route::get('/', fn() => redirect()->route(Auth::check() ? 'dashboard' : 'login'));
-//Route::get('/language/{locale}', [LanguageController::class, 'switch'])->name('language.switch');
-
-//Route::middleware('guest')->group(function () {
- //   Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
- //Route::post('/login', [AuthController::class, 'login'])->name('login.post');
- //Route::get('forgot-password', [PasswordResetController::class, 'showLinkRequestForm'])->name('password.request');
- /// Route::post('forgot-password', [PasswordResetController::class, 'sendResetLinkEmail'])->name('password.email');
- //   Route::get('reset-password/{token}', [PasswordResetController::class, 'showResetForm'])->name('password.reset');
-  //  Route::post('reset-password', [PasswordResetController::class, 'reset'])->name('password.update');
-//});
- //  --}}
-
-
-
-
-
 
 // ==========================================================================
 // 1. ZİYARETÇİ & SİSTEM GİRİŞ ROTALARI (GUEST)
@@ -81,11 +60,11 @@ if (app()->environment('local')) {
 
 Route::post('/logout', function () {
     Auth::logout();
-    
+
     if (app()->environment('local')) {
         return redirect()->route('login');
     }
-    
+
     return redirect('https://kys.koksan.com/merkezi_yonetim_sistemi');
 })->name('logout');
 
@@ -99,9 +78,6 @@ Route::controller(\App\Http\Controllers\Auth\SsoController::class)->prefix('sso'
 // ==========================================================================
 
 
-
-
-
 // ==========================================================================
 // 2. OTURUM AÇMIŞ KULLANICI ROTALARI (AUTH)
 // ==========================================================================
@@ -110,15 +86,21 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/notifications/{id}/read', [App\Http\Controllers\ProfileController::class, 'readAndRedirect'])->name('notifications.read');
 
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    // YENİ: Dashboard'a Menü Kalkanı eklendi
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard')->middleware('can:menu.dashboard');
+
     Route::post('/assistant/chat', [\App\Http\Controllers\AssistantController::class, 'chat'])->name('assistant.chat');
+
     // --- AKILLI ASİSTAN (BOT) YÖNETİMİ ---
     Route::prefix('settings')->name('settings.')->group(function () {
         Route::get('/intents', [\App\Http\Controllers\BotIntentController::class, 'index'])->name('intents.index');
         Route::post('/intents', [\App\Http\Controllers\BotIntentController::class, 'store'])->name('intents.store');
         Route::delete('/intents/{intent}', [\App\Http\Controllers\BotIntentController::class, 'destroy'])->name('intents.destroy');
     });
-    Route::get('/analytics', [\App\Http\Controllers\AnalyticsController::class, 'index'])->name('analytics.index');
+
+    // YENİ: Analitik sayfasına Menü Kalkanı eklendi
+    Route::get('/analytics', [\App\Http\Controllers\AnalyticsController::class, 'index'])->name('analytics.index')->middleware('can:menu.analytics');
 
     // --- KULLANICI & PROFİL YÖNETİMİ ---
     Route::prefix('profile')->name('profile.')->group(function () {
@@ -147,7 +129,8 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // --- KLASÖRLER (FOLDERS) ---
-    Route::resource('folders', FolderController::class);
+    // YENİ: Folders resource rotasına Menü Kalkanı eklendi
+    Route::resource('folders', FolderController::class)->middleware('can:menu.folders');
     // Klasör İçi Özel ACL (Normal Kullanıcılar için, Policy ile korunur)
     Route::post('/folders/{folder}/permissions', [FolderPermissionController::class, 'store'])->name('folders.permissions.store');
     Route::delete('/folders/{folder}/permissions/{user}', [FolderPermissionController::class, 'destroy'])->name('folders.permissions.destroy');
@@ -159,7 +142,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/api/document-types/{id}/fields', [DocumentController::class, 'getCustomFields'])->name('api.document-types.fields');
 
     // --- RAPORLAR ---
-    Route::get('/reports', [ReportEngineController::class, 'index'])->name('reports.index');
+    // YENİ: Raporlar sayfasına Menü Kalkanı eklendi
+    Route::get('/reports', [ReportEngineController::class, 'index'])->name('reports.index')->middleware('can:menu.reports');
     Route::post('/reports/store', [ReportEngineController::class, 'store'])->name('reports.store');
 
     // ---  FİZİKSEL EVRAK YÖNETİMİ ---
@@ -168,7 +152,8 @@ Route::middleware(['auth'])->group(function () {
 
     // --- DOKÜMAN YÖNETİMİ ---
     Route::prefix('documents')->name('documents.')->group(function () {
-        Route::get('/', [DocumentController::class, 'index'])->name('index');
+        // YENİ: Sadece documents.index sayfasına Menü Kalkanı eklendi (Direkt link erişimlerini bozmamak için)
+        Route::get('/', [DocumentController::class, 'index'])->name('index')->middleware('can:menu.documents');
         Route::get('/create', [DocumentController::class, 'create'])->name('create');
         Route::post('/', [DocumentController::class, 'store'])->name('store');
         Route::get('/{document}/edit', [DocumentController::class, 'edit'])->name('edit');
@@ -210,29 +195,58 @@ Route::middleware(['auth'])->group(function () {
         });
     });
 
+
     // ==========================================================================
-    // 3. SİSTEM YÖNETİCİSİ ROTALARI (Sadece Özel Yetki veya Süper Admin/Admin)
+    // 3. SİSTEM YÖNETİCİSİ & KULLANICI ROTALARI
     // ==========================================================================
 
-
-
-    // YENİ ROTALAR BURAYA (Resource'dan ÖNCE olmalı!)
+    // YENİ: Kullanıcılar menüsü kalkanı ('can:menu.users') eklendi. (user.manage yetkisine ek olarak)
     Route::get('/users/onay-bekleyenler', [UserController::class, 'onayBekleyenler'])
         ->name('users.onay_bekleyenler')
-        ->middleware('can:user.manage');
-        
+        ->middleware(['can:user.manage', 'can:menu.users']);
+
     Route::post('/users/{id}/onayla', [UserController::class, 'basvuruOnayla'])
         ->name('r_yonetim_basvuru_onayla')
-        ->middleware('can:user.manage');
-    // Sadece "user.manage" yetkisi olanlar girebilir (Daha önce yaptığımız VIP kalkanı)
-    Route::resource('users', UserController::class)->middleware('can:user.manage');
+        ->middleware(['can:user.manage', 'can:menu.users']);
 
-    // Sadece Rolü Super Admin veya Admin Olanlar
-    Route::middleware(['role:Super Admin|Admin'])->prefix('settings')->name('settings.')->group(function () {
+    Route::resource('users', UserController::class)->middleware(['can:user.manage', 'can:menu.users']);
 
-    
+    // ==========================================================================
+    // --- KÖKSAN BPM: SÜREÇ TASARIM MERKEZİ ---
+    // ==========================================================================
+    Route::middleware(['can:menu.process_templates'])->group(function () {
+        Route::resource('process-templates', \App\Http\Controllers\ProcessTemplateController::class);
+        Route::post('process-templates/{template}/stages', [\App\Http\Controllers\ProcessStageController::class, 'store'])->name('process-stages.store');
+        Route::patch('process-templates/{template}/stages/reorder', [\App\Http\Controllers\ProcessStageController::class, 'updateOrder'])->name('process-stages.reorder');
+        Route::delete('process-stages/{stage}', [\App\Http\Controllers\ProcessStageController::class, 'destroy'])->name('process-stages.destroy');
+    });
 
-       // İzinler, Roller ve Gizlilik
+    // ==========================================================================
+    // --- KÖKSAN BPM: GÖREV (TASK) YÖNETİMİ VE AD-HOC EKİPLER (STANDART PERSONEL) ---
+    // ==========================================================================
+    Route::middleware(['can:menu.tasks'])->group(function () {
+        Route::get('/api/users/search', [\App\Http\Controllers\TaskController::class, 'searchUsers'])->name('api.users.search');
+        Route::get('/api/process-templates/{id}/fields', [\App\Http\Controllers\TaskController::class, 'getTemplateFields'])->name('api.process-templates.fields');
+        Route::patch('tasks/{task}/stage', [\App\Http\Controllers\TaskController::class, 'updateStage'])->name('tasks.updateStage');
+        Route::post('tasks/{task}/request-closure', [\App\Http\Controllers\TaskClosureController::class, 'requestClosure'])->name('tasks.request-closure');
+        Route::post('tasks/{task}/approve-closure', [\App\Http\Controllers\TaskClosureController::class, 'approveClosure'])->name('tasks.approve-closure');
+        Route::post('tasks/{task}/reject-closure', [\App\Http\Controllers\TaskClosureController::class, 'rejectClosure'])->name('tasks.reject-closure');
+        Route::get('tasks/{task}/closure-document', [\App\Http\Controllers\TaskClosureController::class, 'downloadDocument'])->name('tasks.closure-document');
+        Route::resource('tasks', \App\Http\Controllers\TaskController::class);
+    });
+
+    // İŞ ARŞİVİ ROTASI
+    Route::get('tasks/archive/completed', [\App\Http\Controllers\TaskController::class, 'archive'])
+        ->name('tasks.archive')
+        ->middleware('can:menu.tasks_archive');
+
+    // ==========================================================================
+    // --- SİSTEM AYARLARI ROTALARI ---
+    // ==========================================================================
+    // YENİ: Ayarlar ana menüsü için 'can:menu.settings' eklendi.
+    Route::middleware(['role:Super Admin|Admin', 'can:menu.settings'])->prefix('settings')->name('settings.')->group(function () {
+
+        // İzinler, Roller ve Gizlilik
         Route::get('/permissions', [PermissionSettingsController::class, 'index'])->name('permissions');
         Route::post('/permissions', [PermissionSettingsController::class, 'update'])->name('permissions.update');
         Route::post('/roles', [PermissionSettingsController::class, 'storeRole'])->name('roles.store');
@@ -241,7 +255,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/privacy-levels', [PermissionSettingsController::class, 'storePrivacyLevel'])->name('privacy-levels.store');
         Route::delete('/privacy-levels/{key}', [PermissionSettingsController::class, 'destroyPrivacyLevel'])->name('privacy-levels.destroy');
 
-        // Klasör AJAX Matrisi (Senin 404 Hatanı Veren Kısım Burasıydı, artık güvenli bir rotası var)
+        // Klasör AJAX Matrisi 
         Route::get('/folders/{folder}/permissions', [FolderPermissionController::class, 'getPermissions'])->name('folders.permissions.get');
         Route::post('/folders/{folder}/permissions', [FolderPermissionController::class, 'sync'])->name('folders.permissions.sync');
 
