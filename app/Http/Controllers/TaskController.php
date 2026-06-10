@@ -25,7 +25,13 @@ class TaskController extends Controller
         $templates = ProcessTemplate::orderBy('name')->get();
 
         if ($templates->isEmpty()) {
-            return view('tasks.index', ['templates' => collect(), 'selectedTemplate' => null, 'stages' => collect(), 'calendarEvents' => []]);
+            return view('tasks.index', [
+                'templates' => collect(),
+                'selectedTemplate' => null,
+                'stages' => collect(),
+                'calendarEvents' => [],
+                'currentView' => 'kanban' 
+            ]);
         }
 
         $templateId = $request->query('template_id', $templates->first()->id);
