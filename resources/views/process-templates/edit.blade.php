@@ -73,7 +73,7 @@
         {{-- SAĞ TARAF: KANBAN AŞAMALARI (STAGES) --}}
         <div class="card glass-card"
             style="border-radius: 12px; padding: 25px; border-top: 4px solid #f59e0b; position: sticky; top: 20px;">
-            <h4 style="margin: 0 0 10px 0; color: var(--secondary-color);"><i data-lucide="trello"
+            <h4 style="margin: 0 0 10px 0; color: var(--secondary-color);"><i data-lucide="kanban"
                     style="width: 20px; vertical-align: middle; color: #f59e0b;"></i> {{ __('Süreç Kanban Aşamaları') }}
             </h4>
             <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 20px;">Görevlerin süreç boyunca geçeceği

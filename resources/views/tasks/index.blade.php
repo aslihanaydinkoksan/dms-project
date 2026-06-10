@@ -418,7 +418,7 @@
                             if (evt.from === evt.to && evt.oldIndex === evt.newIndex) return;
 
                             cardEl.style.opacity = '0.5';
-                            fetch(`/tasks/${cardEl.dataset.taskId}/stage`, {
+                            fetch(`{{ url('/tasks') }}/${cardEl.dataset.taskId}/stage`, {
                                 method: 'PATCH',
                                 headers: {
                                     'Content-Type': 'application/json',
@@ -471,7 +471,7 @@
             // Modal Yönetimi
             window.openClosureModal = function(taskId, requiresDocument) {
                 const modal = document.getElementById('taskClosureModal');
-                document.getElementById('closureForm').action = `/tasks/${taskId}/request-closure`;
+                document.getElementById('closureForm').action = `{{ url('/tasks') }}/${taskId}/request-closure`;
                 document.getElementById('closureDocumentInput').required = requiresDocument;
                 document.getElementById('docRequiredStar').style.display = requiresDocument ? 'inline' : 'none';
                 modal.style.display = 'flex';

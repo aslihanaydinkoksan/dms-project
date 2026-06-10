@@ -209,7 +209,7 @@
                 lucide.createIcons();
 
                 // AJAX İsteği
-                fetch(`/api/process-templates/${templateId}/fields`)
+                fetch(`{{ url('/api/process-templates') }}/${templateId}/fields`)
                     .then(response => response.json())
                     .then(fields => {
                         dynamicFieldsContainer.innerHTML = '';
@@ -297,7 +297,7 @@
                     load: function(query, callback) {
                         if (!query.length) return callback();
 
-                        fetch(`/api/users/search?q=${encodeURIComponent(query)}`)
+                        fetch(`{{ url('/api/users/search') }}?q=${encodeURIComponent(query)}`)
                             .then(response => response.json())
                             .then(json => {
                                 callback(json);

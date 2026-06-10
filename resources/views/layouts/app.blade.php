@@ -480,7 +480,7 @@
                         <li class="nav-item">
                             <a href="{{ route('tasks.index') }}"
                                 class="nav-link {{ request()->routeIs('tasks.index') ? 'active' : '' }}">
-                                <i data-lucide="trello" class="nav-icon"></i>
+                                <i data-lucide="kanban"></i>
                                 <span class="nav-text">{{ __('Kanban/Ajanda') }}</span>
                             </a>
                         </li>
