@@ -30,7 +30,7 @@ class TaskController extends Controller
                 'selectedTemplate' => null,
                 'stages' => collect(),
                 'calendarEvents' => [],
-                'currentView' => 'kanban' 
+                'currentView' => 'kanban'
             ]);
         }
 
@@ -43,9 +43,18 @@ class TaskController extends Controller
         // Kanban İçin Aşamalar ve Veriler
         $stages = \App\Models\ProcessStage::where('process_template_id', $selectedTemplate->id)
             ->with(['tasks' => function ($query) {
-                $query->with(['creator', 'users'])->whereIn('status', ['active', 'pending_closure_approval'])->orderBy('updated_at', 'desc');
+                $query->with(['creator', 'users'])
+                    ->where(function ($q) {
+                        // Aktif ve Onay Bekleyenleri her zaman getir
+                        $q->whereIn('status', ['active', 'pending_closure_approval'])
+                            // Tamamlananları ise sadece SON 14 GÜN içinde güncellenmişse getir (Performans Kalkanı)
+                            ->orWhere(function ($sq) {
+                                $sq->where('status', 'completed')
+                                    ->where('updated_at', '>=', \Carbon\Carbon::now()->subDays(14));
+                            });
+                    })
+                    ->orderBy('updated_at', 'desc');
             }])->orderBy('sort_order')->get();
-
         // AJANDA (CALENDAR) İÇİN DİNAMİK EVENT ÜRETİCİ
         $calendarEvents = [];
         if ($currentView === 'calendar') {
@@ -85,10 +94,10 @@ class TaskController extends Controller
     public function show(\App\Models\Task $task)
     {
         $task->load(['template.department', 'creator', 'users', 'stage']);
-        
+
         // En yeni log en üstte olacak şekilde çekiyoruz
         $logs = $task->logs()->with('user')->latest()->get();
-        
+
         return view('tasks.show', compact('task', 'logs'));
     }
     /**

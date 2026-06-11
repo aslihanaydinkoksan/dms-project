@@ -69,4 +69,20 @@ class Task extends Model
     {
         return $this->hasMany(TaskLog::class);
     }
+    // --- GÖREV DURUM YARDIMCILARI (UI İÇİN) ---
+    
+    public function isCompleted(): bool
+    {
+        return $this->status === 'completed';
+    }
+
+    public function isPendingApproval(): bool
+    {
+        return $this->status === 'pending_closure_approval';
+    }
+
+    public function isLocked(): bool
+    {
+        return $this->isCompleted() || $this->isPendingApproval();
+    }
 }

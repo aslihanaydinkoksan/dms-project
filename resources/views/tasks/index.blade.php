@@ -394,6 +394,26 @@
                 background-color: #ef4444;
                 border: 1px solid #b91c1c;
             }
+
+            /* KANBAN KART DURUMLARI  */
+            .card-status-active {
+                background: #ffffff;
+                border: 1px solid var(--border-color);
+                cursor: grab;
+            }
+
+            .card-status-pending {
+                background: #ffffff;
+                border: 1px solid var(--border-color);
+                cursor: default;
+                opacity: 0.95;
+            }
+
+            .card-status-completed {
+                background: #f0fdf4;
+                border: 1px solid #86efac;
+                cursor: default;
+            }
         </style>
         <script>
             document.addEventListener('DOMContentLoaded', function() {
