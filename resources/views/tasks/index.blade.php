@@ -276,13 +276,34 @@
                                         </div>
                                     @else
                                         {{-- Aktif Görev --}}
-                                        <div style="margin-bottom: 10px;">
+                                        @php
+                                            $canEditTask =
+                                                $task->creator_id === auth()->id() ||
+                                                \Illuminate\Support\Facades\DB::table('task_user')
+                                                    ->where('task_id', $task->id)
+                                                    ->where('user_id', auth()->id())
+                                                    ->where('role', 'manager')
+                                                    ->exists() ||
+                                                auth()->user()->hasRole('Super Admin') ||
+                                                auth()->user()->hasRole('Admin');
+                                        @endphp
+
+                                        <div style="display: flex; gap: 6px; margin-bottom: 10px;">
                                             <a href="{{ route('tasks.show', $task->id) }}"
                                                 class="btn btn-sm btn-outline-secondary"
-                                                style="width: 100%; border-radius: 6px; font-weight: 600; display: flex; justify-content: center; align-items: center; gap: 6px;">
-                                                <i data-lucide="eye" style="width: 16px;"></i> Detaylara Bak
+                                                style="flex: 1; border-radius: 6px; font-weight: 600; display: flex; justify-content: center; align-items: center; gap: 6px;">
+                                                <i data-lucide="eye" style="width: 16px;"></i> Detay
                                             </a>
+
+                                            @if ($canEditTask)
+                                                <a href="{{ route('tasks.edit', $task->id) }}"
+                                                    class="btn btn-sm btn-outline-primary"
+                                                    style="flex: 1; border-radius: 6px; font-weight: 600; display: flex; justify-content: center; align-items: center; gap: 6px;">
+                                                    <i data-lucide="edit" style="width: 16px;"></i> Düzenle
+                                                </a>
+                                            @endif
                                         </div>
+
                                         <button type="button"
                                             onclick="openClosureModal({{ $task->id }}, {{ $task->template->requires_document_on_closure ? 'true' : 'false' }})"
                                             class="btn btn-sm btn-outline-success"

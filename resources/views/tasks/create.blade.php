@@ -68,8 +68,17 @@
             </div>
 
             {{-- SAĞ SÜTUN: AD-HOC PROJE EKİBİ (TOM SELECT) --}}
+
+            {{-- SIKIMOD KİLİT UYARISI (JS İLE TETİKLENECEK) --}}
+            <div id="strictModeLockBadge" class="alert alert-danger"
+                style="display: none; background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; padding: 12px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; margin-bottom: 15px;">
+                <i data-lucide="lock" style="width: 16px; vertical-align: text-bottom; margin-right: 4px;"></i>
+                {{ __('🔒 Bu süreç Sıkı Mod ile korunmaktadır. Sadece sistem tarafından atanan yetkili kadro bu süreci görebilir ve yönetebilir, dışarıdan ekstra personel daveti kapatılmıştır.') }}
+            </div>
+
             <div class="card glass-card"
                 style="border-radius: 12px; padding: 25px; border-top: 4px solid #f59e0b; position: sticky; top: 20px;">
+
                 {{-- ZORUNLU (KİLİTLİ) GRUP BÖLÜMÜ (JS İle Doldurulacak) --}}
                 <div id="mandatoryGroupSection" style="display: none; margin-bottom: 25px;">
                     <h5
@@ -80,22 +89,34 @@
                     <div id="mandatoryMembersContainer" style="display: flex; flex-direction: column; gap: 8px;">
                     </div>
                 </div>
-                <div class="flex-between mb-15" style="display: flex; justify-content: space-between; align-items: center;">
-                    <h4 style="margin: 0; color: var(--secondary-color); display:flex; align-items:center; gap:8px;">
-                        <i data-lucide="users" style="width: 20px; color: #f59e0b;"></i> {{ __('Proje Ekibi (Ad-Hoc)') }}
-                    </h4>
-                    <button type="button" id="addTeamMemberBtn" class="btn btn-sm btn-outline-warning"
-                        style="font-weight: 600; color: #d97706; border-color: #fcd34d; background: #fffbeb;">
-                        <i data-lucide="plus" style="width: 14px;"></i> Kişi Ekle
-                    </button>
-                </div>
-                <p class="text-muted" style="font-size: 0.8rem; margin-bottom: 20px; line-height: 1.4;">Bu işi yürütürken
-                    size yardımcı olacak veya kapanışta onay verecek kişileri buradan atayabilirsiniz.</p>
 
-                <div id="teamMembersContainer"
-                    style="display: flex; flex-direction: column; gap: 15px; margin-bottom: 25px;">
-                </div>
+                {{-- ========================================================== --}}
+                {{-- İŞTE EKSİK OLAN VE EKLENEN KAPSAYICI (WRAPPER) BURASI    --}}
+                {{-- ========================================================== --}}
+                <div id="adhocTeamSelectorWrapper">
+                    <div class="flex-between mb-15"
+                        style="display: flex; justify-content: space-between; align-items: center;">
+                        <h4 style="margin: 0; color: var(--secondary-color); display:flex; align-items:center; gap:8px;">
+                            <i data-lucide="users" style="width: 20px; color: #f59e0b;"></i>
+                            {{ __('Proje Ekibi (Ad-Hoc)') }}
+                        </h4>
+                        <button type="button" id="addTeamMemberBtn" class="btn btn-sm btn-outline-warning"
+                            style="font-weight: 600; color: #d97706; border-color: #fcd34d; background: #fffbeb;">
+                            <i data-lucide="plus" style="width: 14px;"></i> Kişi Ekle
+                        </button>
+                    </div>
 
+                    <p class="text-muted" style="font-size: 0.8rem; margin-bottom: 20px; line-height: 1.4;">Bu işi
+                        yürütürken
+                        size yardımcı olacak veya kapanışta onay verecek kişileri buradan atayabilirsiniz.</p>
+
+                    <div id="teamMembersContainer"
+                        style="display: flex; flex-direction: column; gap: 15px; margin-bottom: 25px;">
+                    </div>
+                </div>
+                {{-- WRAPPER BİTİŞİ --}}
+
+                {{-- SÜRECİ BAŞLAT BUTONU (Asla Gizlenmeyecek) --}}
                 <div style="border-top: 1px solid var(--border-color); padding-top: 20px;">
                     <button type="submit" id="submitBtn" class="btn btn-primary btn-block" disabled
                         style="width: 100%; padding: 15px; font-size: 1.1rem; font-weight: bold; opacity: 0.5;">
@@ -231,10 +252,15 @@
                         submitBtn.style.opacity = '1';
 
                         // =================================================================
-                        // 1. ZORUNLU KADRO (ANTI-BYPASS) ÇİZİM MANTIĞI
+                        // 1. ZORUNLU KADRO & SIKIMOD (STRICT MODE) ÇİZİM MANTIĞI
                         // =================================================================
                         const mandatorySection = document.getElementById('mandatoryGroupSection');
                         const mandatoryContainer = document.getElementById('mandatoryMembersContainer');
+                        const strictBadge = document.getElementById('strictModeLockBadge');
+                        const adhocWrapper = document.getElementById('adhocTeamSelectorWrapper');
+
+                        // Projedeki mevcut TomSelect nesnesini yakalıyoruz
+                        const tomSelectControl = document.getElementById('teamMembers')?.tomselect;
 
                         if (mandatoryGroup && mandatoryGroup.members.length > 0) {
                             document.getElementById('mandatoryGroupName').innerText =
@@ -263,9 +289,44 @@
                                 `);
                             });
                             mandatorySection.style.display = 'block';
+
+                            // --- SIKIMOD VE MÜKERRERLİK İZOLASYON ALANI ---
+                            if (!mandatoryGroup.allow_ad_hoc) {
+                                // SIKIMOD AKTİF: Ad-Hoc seçim alanını kapat, kilit rozetini aç!
+                                if (strictBadge) strictBadge.style.display = 'block';
+                                if (adhocWrapper) adhocWrapper.style.display = 'none';
+                                if (tomSelectControl) tomSelectControl
+                                    .clear(); // Seçilmiş olanları sıfırla
+                            } else {
+                                // ESNEK MOD AKTİF: Seçim alanını aç, mükerrerliği önlemek için gruptakileri dropdown'dan kilitle!
+                                if (strictBadge) strictBadge.style.display = 'none';
+                                if (adhocWrapper) adhocWrapper.style.display = 'block';
+
+                                if (tomSelectControl) {
+                                    // Önce tüm seçeneklerin kilidini aç (şablon değiştirilme ihtimaline karşı)
+                                    Object.keys(tomSelectControl.options).forEach(id => {
+                                        tomSelectControl.enableOption(id);
+                                    });
+                                    // Zorunlu gruptan gelen kullanıcıların ID'lerini dropdown listesinden kaldır/disable yap!
+                                    mandatoryGroup.member_ids.forEach(id => {
+                                        tomSelectControl.disableOption(id);
+                                        tomSelectControl.removeItem(
+                                            id
+                                        ); // Eğer kazara önceden seçilmişse listeden sök at
+                                    });
+                                }
+                            }
                         } else {
+                            // Şablonda zorunlu grup yoksa her şeyi normal/esnek moda geri çek
                             mandatorySection.style.display = 'none';
                             mandatoryContainer.innerHTML = '';
+                            if (strictBadge) strictBadge.style.display = 'none';
+                            if (adhocWrapper) adhocWrapper.style.display = 'block';
+
+                            if (tomSelectControl) {
+                                Object.keys(tomSelectControl.options).forEach(id => tomSelectControl
+                                    .enableOption(id));
+                            }
                         }
 
                         // =================================================================

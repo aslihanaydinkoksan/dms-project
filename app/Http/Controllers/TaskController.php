@@ -7,6 +7,8 @@ use App\Http\Requests\StoreTaskRequest;
 use App\Services\TaskService;
 use App\Models\ProcessTemplate;
 use App\Models\User;
+use Illuminate\Support\Facades\Auth;
+
 
 class TaskController extends Controller
 {
@@ -190,13 +192,12 @@ class TaskController extends Controller
         return response()->json($users);
     }
     /**
-     * AJAX (Fetch API): Şablon seçildiğinde dinamik alanlarını ve ZORUNLU GRUBU döndürür
+     * AJAX (Fetch API): Şablon seçildiğinde dinamik alanları, Sıkı Mod durumunu ve Zorunlu Grubu döndürür
      */
     public function getTemplateFields(int $id)
     {
         $template = ProcessTemplate::with(['mandatoryGroup.members.department'])->findOrFail($id);
 
-        // Zorunlu Grubu ve Üyelerini JSON Formatına Hazırla
         $mandatoryGroupData = null;
         if ($template->mandatoryGroup && $template->mandatoryGroup->is_active) {
             $members = $template->mandatoryGroup->members->map(function ($m) {
@@ -210,6 +211,8 @@ class TaskController extends Controller
 
             $mandatoryGroupData = [
                 'name' => $template->mandatoryGroup->name,
+                'allow_ad_hoc' => (bool)$template->allow_ad_hoc_members, // Sıkı mod bayrağı
+                'member_ids' => $template->mandatoryGroup->members->pluck('id')->toArray(), // İzolasyon dizisi
                 'members' => $members
             ];
         }
@@ -239,5 +242,85 @@ class TaskController extends Controller
         $tasks = $query->latest('updated_at')->paginate(15)->withQueryString();
 
         return view('tasks.archive', compact('tasks', 'templates'));
+    }
+    /**
+     * Helper: Görevi düzenleme yetkisi var mı ve görev aktif mi?
+     */
+    private function authorizeTaskEdit(\App\Models\Task $task): void
+    {
+        if ($task->status !== 'active') {
+            abort(403, '🛑 Sadece aktif (açık) görevler düzenlenebilir.');
+        }
+
+        $isAuthorized = $task->creator_id === Auth::id()
+            || \Illuminate\Support\Facades\DB::table('task_user')->where('task_id', $task->id)->where('user_id', Auth::id())->where('role', 'manager')->exists()
+            || Auth::user()->hasRole('Super Admin')
+            || Auth::user()->hasRole('Admin');
+
+        if (!$isAuthorized) {
+            abort(403, '🛑 Bu süreci düzenlemek için Proje Yöneticisi veya İşin Sahibi olmalısınız.');
+        }
+    }
+
+    /**
+     * Görev Düzenleme Ekranı (Form)
+     */
+    public function edit(\App\Models\Task $task)
+    {
+        $this->authorizeTaskEdit($task);
+
+        // İlişkileri yükle (Performans için N+1 kalkanı)
+        $task->load(['template.mandatoryGroup.members.department', 'users.department']);
+
+        // TomSelect için aktif kullanıcıları al
+        $users = User::where('is_active', true)->with('department:id,name')->orderBy('name')->get();
+
+        // Zorunlu üyeleri ve Kurucuyu Ad-Hoc listesinden (TomSelect'ten) hariç tutmak için tespit et
+        $mandatoryUserIds = $task->template->mandatoryGroup ? $task->template->mandatoryGroup->members->pluck('id')->toArray() : [];
+        $existingAdHocMembers = $task->users->filter(function ($u) use ($mandatoryUserIds, $task) {
+            return !in_array($u->id, $mandatoryUserIds) && $u->id !== $task->creator_id;
+        })->values();
+
+        return view('tasks.edit', compact('task', 'users', 'mandatoryUserIds', 'existingAdHocMembers'));
+    }
+
+    /**
+     * Görev Güncelleme İşlemi (POST/PUT)
+     */
+    public function update(Request $request, \App\Models\Task $task)
+    {
+        $this->authorizeTaskEdit($task);
+
+        // 1. Temel Validasyon Kuralları
+        $rules = [
+            'title' => 'required|string|max:255',
+            'team_members' => 'nullable|array',
+            'team_members.*.user_id' => 'required|exists:users,id',
+            'team_members.*.role' => 'required|in:manager,member',
+            'custom_data' => 'nullable|array',
+        ];
+
+        // 2. Dinamik Şablon Alanları (EAV/JSON) İçin Validasyon Üretimi
+        $fields = $task->template->fields ?? [];
+        foreach ($fields as $field) {
+            $rule = [];
+            $rule[] = !empty($field['required']) ? 'required' : 'nullable';
+
+            if ($field['type'] === 'number') {
+                $rule[] = 'numeric';
+            } elseif ($field['type'] === 'date') {
+                $rule[] = 'date';
+            } else {
+                $rule[] = 'string';
+            }
+
+            $rules["custom_data.{$field['name']}"] = implode('|', $rule);
+        }
+
+        // 3. Veriyi Doğrula ve Servise Gönder
+        $validatedData = $request->validate($rules);
+        $this->taskService->updateTask($task, $validatedData);
+
+        return redirect()->route('tasks.show', $task->id)->with('success', '✨ Süreç bilgileri başarıyla güncellendi.');
     }
 }

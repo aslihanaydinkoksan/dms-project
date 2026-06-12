@@ -13,7 +13,8 @@ class ProcessTemplate extends Model
         'department_id',
         'fields',
         'requires_document_on_closure',
-        'mandatory_user_group_id'
+        'mandatory_user_group_id',
+        'allow_ad_hoc_members',
     ];
 
     // KRİTİK: fields sütununu otomatik array/object olarak işlemek için cast ediyoruz

@@ -62,6 +62,21 @@
                         </option>
                     @endforeach
                 </select>
+                {{-- SIKIMOD / ESNEK KADRO İZNİ (ANTI-BYPASS GÜVENLİK) --}}
+                <div class="form-group mb-20" style="margin-top: 15px;">
+                    <input type="hidden" name="allow_ad_hoc_members" value="0"> {{-- Checkbox seçilmezse 0 gitmesi için --}}
+                    <label
+                        style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600; color: var(--text-color);">
+                        <input type="checkbox" name="allow_ad_hoc_members" value="1"
+                            {{ !isset($processTemplate) || $processTemplate->allow_ad_hoc_members ? 'checked' : '' }}
+                            style="width: 18px; height: 18px; accent-color: var(--primary-color);">
+                        {{ __('Esnek Kadro İzni (Bu süreç başlatılırken dışarıdan ekstra personel davet edilebilsin)') }}
+                    </label>
+                    <p class="text-muted" style="font-size: 0.8rem; margin-left: 26px; margin-top: 2px;">
+                        Eğer bu izni **kapatırsanız** süreç "Sıkı Mod" ile korunur; süreç başlatılırken kullanıcılar ekstra
+                        kimseyi projeye dahil edemez, sadece yukarıda seçtiğiniz zorunlu grup süreci yönetir.
+                    </p>
+                </div>
             </div>
             <div class="form-group mt-20" style="margin-top: 20px;">
                 <label

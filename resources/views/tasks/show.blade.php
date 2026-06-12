@@ -26,25 +26,47 @@
                 </p>
             </div>
         </div>
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 10px;">
+            {{-- YETKİ KONTROLÜ: Sadece Yetkililer ve Aktif Görevlerde Düzenle Butonu Çıksın --}}
+            @php
+                $canEditTask =
+                    $task->status === 'active' &&
+                    ($task->creator_id === auth()->id() ||
+                        \Illuminate\Support\Facades\DB::table('task_user')
+                            ->where('task_id', $task->id)
+                            ->where('user_id', auth()->id())
+                            ->where('role', 'manager')
+                            ->exists() ||
+                        auth()->user()->hasRole('Super Admin') ||
+                        auth()->user()->hasRole('Admin'));
+            @endphp
 
-        <div>
+            @if ($canEditTask)
+                {{-- margin-top: 10px kaldırıldı, kapsayıcıya taşındı --}}
+                <a href="{{ route('tasks.edit', $task->id) }}" class="btn btn-sm btn-outline-primary"
+                    style="display: inline-flex; align-items: center; gap: 6px; border-radius: 8px; font-weight: 600;">
+                    <i data-lucide="edit" style="width: 16px;"></i> {{ __('Süreci Düzenle') }}
+                </a>
+            @endif
+
             @if ($task->status === 'completed')
+                {{-- İkonların da yazıyla kusursuz hizalanması için rozetlere de display: inline-flex eklendi --}}
                 <span class="badge"
-                    style="background: #dcfce7; color: #166534; padding: 8px 16px; border-radius: 8px; font-size: 0.9rem; border: 1px solid #bbf7d0;">
-                    <i data-lucide="check-circle" style="width: 16px; vertical-align: middle; margin-right: 4px;"></i>
+                    style="display: inline-flex; align-items: center; gap: 6px; background: #dcfce7; color: #166534; padding: 8px 16px; border-radius: 8px; font-size: 0.9rem; border: 1px solid #bbf7d0;">
+                    <i data-lucide="check-circle" style="width: 16px;"></i>
                     Tamamlandı / Arşivlendi
                 </span>
             @elseif($task->status === 'pending_closure_approval')
                 <span class="badge"
-                    style="background: #fffbeb; color: #b45309; padding: 8px 16px; border-radius: 8px; font-size: 0.9rem; border: 1px solid #fde68a;">
-                    <i data-lucide="clock" style="width: 16px; vertical-align: middle; margin-right: 4px;"></i> Yönetici
-                    Onayı Bekliyor
+                    style="display: inline-flex; align-items: center; gap: 6px; background: #fffbeb; color: #b45309; padding: 8px 16px; border-radius: 8px; font-size: 0.9rem; border: 1px solid #fde68a;">
+                    <i data-lucide="clock" style="width: 16px;"></i>
+                    Yönetici Onayı Bekliyor
                 </span>
             @elseif($task->status === 'active')
                 <span class="badge"
-                    style="background: #eff6ff; color: #1e40af; padding: 8px 16px; border-radius: 8px; font-size: 0.9rem; border: 1px solid #bfdbfe;">
-                    <i data-lucide="activity" style="width: 16px; vertical-align: middle; margin-right: 4px;"></i> Devam
-                    Ediyor
+                    style="display: inline-flex; align-items: center; gap: 6px; background: #eff6ff; color: #1e40af; padding: 8px 16px; border-radius: 8px; font-size: 0.9rem; border: 1px solid #bfdbfe;">
+                    <i data-lucide="activity" style="width: 16px;"></i>
+                    Devam Ediyor
                 </span>
             @endif
         </div>

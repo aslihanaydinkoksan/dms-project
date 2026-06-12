@@ -6,6 +6,8 @@ use App\Models\Task;
 use App\Models\ProcessTemplate;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+
 
 class TaskService
 {
@@ -31,39 +33,101 @@ class TaskService
                 'status'              => 'active',
             ]);
 
-            // c) Ad-Hoc Proje Ekibini Senkronize Et (Pivot Tablo)
             $syncData = [];
 
-            if (!empty($validatedData['team_members'])) {
-                foreach ($validatedData['team_members'] as $member) {
-                    $syncData[$member['user_id']] = ['role' => $member['role']];
+            // c) ANTI-BYPASS KALKANI: Esnek mod varsa ekibi al, yoksa imha et!
+            if ($template->allow_ad_hoc_members) {
+                if (!empty($validatedData['team_members'])) {
+                    foreach ($validatedData['team_members'] as $member) {
+                        $syncData[$member['user_id']] = ['role' => $member['role']];
+                    }
                 }
+            } else {
+                // Şablon SIKI MODDA! Gelen tüm Ad-Hoc verilerini güvenlik nedeniyle çöpe at.
+                unset($validatedData['team_members']);
             }
 
-            // Kurucu (Creator) otomatik olarak 'manager' rolüyle ekibe dahil edilir (Opsiyonel ama kurumsal mantıkta faydalıdır)
+            // d) Kurucu (Creator) otomatik olarak 'manager' rolüyle ekibe dahil edilir
             if (!isset($syncData[$creator->id])) {
                 $syncData[$creator->id] = ['role' => 'manager'];
             }
 
-            //Zorunlu Kullanıcı Grubu Kontrolü: Eğer şablonda atanmış bir zorunlu grup varsa, o grubun üyelerini de ekibe dahil et (Grup kuralları override eder)
+            // e) ZORUNLU GRUP KONTROLÜ: Varsa sisteme zorla dahil et (Ad-Hoc'u ezer)
             if ($template->mandatory_user_group_id) {
-                // Şablona atanmış zorunlu grubu ve üyelerini çek
                 $mandatoryGroup = $template->mandatoryGroup()->with('members')->first();
 
                 if ($mandatoryGroup && $mandatoryGroup->is_active) {
                     foreach ($mandatoryGroup->members as $mandatoryMember) {
-                        // Eğer kullanıcı arayüzden bu kişiyi 'member' seçtiyse ama grupta 'manager' ise,
-                        // Grup kuralı ezer (override). Sistem güvenliği sağlanır.
                         $syncData[$mandatoryMember->id] = [
                             'role' => $mandatoryMember->pivot->role
                         ];
                     }
                 }
             }
-            // Pivot tabloya yaz (task_user)
+
+            // f) Tüm süzgeçlerden geçen temiz ve güvenli listeyi Pivot tabloya (task_user) yaz
             $task->users()->sync($syncData);
 
-            // Gerekirse ileride buraya Mail/Bildirim tetikleyicileri (Events/Observers) eklenecek
+            return $task;
+        });
+    }
+    /**
+     * Mevcut bir işi (Task) dinamik veriler ve Ad-Hoc ekiplerle günceller.
+     */
+    public function updateTask(Task $task, array $validatedData): Task
+    {
+        return DB::transaction(function () use ($task, $validatedData) {
+
+            // 1. Temel ve Dinamik Verileri Güncelle
+            $task->update([
+                'title'       => $validatedData['title'],
+                'custom_data' => $validatedData['custom_data'] ?? [],
+            ]);
+
+            $syncData = [];
+
+            // 2. ANTI-BYPASS KALKANI: Esnek mod varsa ekibi al, yoksa gelen veriyi reddet
+            if ($task->template->allow_ad_hoc_members) {
+                if (!empty($validatedData['team_members'])) {
+                    foreach ($validatedData['team_members'] as $member) {
+                        $syncData[$member['user_id']] = ['role' => $member['role']];
+                    }
+                }
+            }
+
+            // 3. Kurucuyu (Creator) yönetici olarak koru (Dışarıdan silinmesini engelle)
+            if (!isset($syncData[$task->creator_id])) {
+                $syncData[$task->creator_id] = ['role' => 'manager'];
+            }
+
+            // 4. ZORUNLU GRUP KONTROLÜ: Varsa sisteme zorla dahil et (Formdan gelenleri ezer)
+            if ($task->template->mandatory_user_group_id) {
+                $mandatoryGroup = $task->template->mandatoryGroup()->with('members')->first();
+
+                if ($mandatoryGroup && $mandatoryGroup->is_active) {
+                    foreach ($mandatoryGroup->members as $mandatoryMember) {
+                        $syncData[$mandatoryMember->id] = [
+                            'role' => $mandatoryMember->pivot->role
+                        ];
+                    }
+                }
+            }
+
+            // 5. Temizlenmiş ve güvenli listeyi veritabanına yaz
+            $task->users()->sync($syncData);
+            \App\Models\TaskLog::create([
+                'task_id' => $task->id,
+                'user_id' => Auth::id(),
+                'action' => 'task_updated',
+                'description' => "Süreç form verileri veya proje ekibi güncellendi.",
+                // Değişen verileri JSON olarak veritabanına gömüyoruz (İleride kim neyi değiştirmiş görmek için)
+                'new_data' => [
+                    'title' => $validatedData['title'],
+                    'custom_data' => $validatedData['custom_data'] ?? [],
+                    'team_members' => $syncData // Son haline karar verilmiş ekip listesi
+                ],
+                'ip_address' => request()->ip()
+            ]);
 
             return $task;
         });
