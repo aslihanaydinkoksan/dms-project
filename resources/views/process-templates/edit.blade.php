@@ -199,65 +199,45 @@
 
 @push('scripts')
     <script>
+        // Fonksiyonları dışarı alıyoruz ki her yerden erişilebilsin
+        function attachRowEvents(row) {
+            const typeSelect = row.querySelector('.type-select');
+            const optionsWrapper = row.querySelector('.options-wrapper');
+            const optionsInput = row.querySelector('.options-input');
+            const labelInput = row.querySelector('.label-input');
+            const keyInput = row.querySelector('.key-input');
+
+            typeSelect.addEventListener('change', function() {
+                if (this.value === 'select') {
+                    optionsWrapper.style.display = 'block';
+                    optionsInput.required = true;
+                } else {
+                    optionsWrapper.style.display = 'none';
+                    optionsInput.required = false;
+                    optionsInput.value = '';
+                }
+            });
+
+            labelInput.addEventListener('keyup', function() {
+                if (!keyInput.value || keyInput.dataset.auto === 'true') {
+                    keyInput.dataset.auto = 'true';
+                    keyInput.value = this.value.toLowerCase()
+                        .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
+                        .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
+                        .replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+                }
+            });
+
+            keyInput.addEventListener('input', () => keyInput.dataset.auto = 'false');
+            lucide.createIcons();
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             lucide.createIcons();
 
             const container = document.getElementById('formBuilderContainer');
             const template = document.getElementById('field-row-template').innerHTML;
             let fieldIndex = 0;
-
-            document.getElementById('addFieldBtn').addEventListener('click', function() {
-                // Şablonu al ve index'i değiştir
-                const html = template.replace(/__INDEX__/g, fieldIndex);
-                container.insertAdjacentHTML('beforeend', html);
-
-                // Yeni eklenen satırı yakala
-                const newRow = container.lastElementChild;
-
-                // Satır bazlı elementleri yakala (Hata giderildi: const yerine let veya scoping ile)
-                const typeSelect = newRow.querySelector('.type-select');
-                const optionsWrapper = newRow.querySelector('.options-wrapper');
-                const optionsInput = newRow.querySelector('.options-input');
-                const labelInput = newRow.querySelector('.label-input');
-                const keyInput = newRow.querySelector('.key-input');
-
-                // 1. Dropdown (Select) tipi seçildiğinde seçenek kutusunu göster
-                typeSelect.addEventListener('change', function() {
-                    if (this.value === 'select') {
-                        optionsWrapper.style.display = 'block';
-                        optionsInput.required = true;
-                    } else {
-                        optionsWrapper.style.display = 'none';
-                        optionsInput.required = false;
-                        optionsInput.value = '';
-                    }
-                });
-
-                // 2. Label'dan Key'e otomatik Slug çevirici (Boşalan özellik geri geldi)
-                labelInput.addEventListener('keyup', function() {
-                    if (!keyInput.value || keyInput.dataset.auto === 'true') {
-                        keyInput.dataset.auto = 'true';
-                        keyInput.value = this.value.toLowerCase()
-                            .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
-                            .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
-                            .replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
-                    }
-                });
-
-                keyInput.addEventListener('input', () => keyInput.dataset.auto = 'false');
-
-                lucide.createIcons();
-                fieldIndex++;
-            });
-
-            container.addEventListener('click', function(e) {
-                const btn = e.target.closest('.remove-field-btn');
-                if (btn) {
-                    btn.closest('.field-row').remove();
-                }
-            });
-            // Mevcut alanları yükle (Sadece Edit sayfasına özel)
-            const existingFields = @json($processTemplate->fields ?? []);
 
             function renderFieldRow(data = null) {
                 const html = template.replace(/__INDEX__/g, fieldIndex);
@@ -270,20 +250,32 @@
                     newRow.querySelector('.type-select').value = data.type || 'text';
                     if (data.required) newRow.querySelector('.req-check').checked = true;
 
-                    // Select tipi ise ve seçenekleri varsa göster
                     if (data.type === 'select' && data.options) {
                         newRow.querySelector('.options-wrapper').style.display = 'block';
-                        newRow.querySelector('.options-input').value = data.options.join(', ');
+                        newRow.querySelector('.options-input').value = Array.isArray(data.options) ? data.options
+                            .join(', ') : '';
                     }
                 }
-
-                // Satırın olay dinleyicilerini (Event Listeners) bağla
                 attachRowEvents(newRow);
                 fieldIndex++;
             }
 
-            // Mevcutları çiz
-            existingFields.forEach(field => renderFieldRow(field));
+            // 1. Mevcut Alanları Yükle
+            @if (isset($processTemplate) && !empty($processTemplate->fields))
+                const existingFields = @json($processTemplate->fields);
+                existingFields.forEach(field => renderFieldRow(field));
+            @endif
+
+            // 2. Yeni Alan Ekle Butonu
+            document.getElementById('addFieldBtn').addEventListener('click', function() {
+                renderFieldRow(null);
+            });
+
+            // 3. Silme İşlemi (Delegate)
+            container.addEventListener('click', function(e) {
+                const btn = e.target.closest('.remove-field-btn');
+                if (btn) btn.closest('.field-row').remove();
+            });
         });
     </script>
 @endpush
