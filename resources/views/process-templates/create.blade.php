@@ -138,7 +138,8 @@
             </div>
             <div>
                 <label style="font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; display: block;">Veri Tipi</label>
-                <select name="fields[__INDEX__][type]" class="form-control type-select" style="width: 100%; border-radius: 6px;">
+                <select name="fields[__INDEX__][type]" class="form-control type-select"
+                    style="width: 100%; border-radius: 6px;">
                     <option value="text">Kısa Metin (Text)</option>
                     <option value="number">Sayısal (Number)</option>
                     <option value="date">Tarih (Date)</option>
@@ -169,6 +170,43 @@
 
 @push('scripts')
     <script>
+        // 1. Olayları (Event Listeners) bağlayan global fonksiyon
+        function attachRowEvents(row) {
+            const typeSelect = row.querySelector('.type-select');
+            const optionsWrapper = row.querySelector('.options-wrapper');
+            const optionsInput = row.querySelector('.options-input');
+            const labelInput = row.querySelector('.label-input');
+            const keyInput = row.querySelector('.key-input');
+
+            // Dropdown (Select) tipi seçildiğinde seçenek kutusunu göster
+            typeSelect.addEventListener('change', function() {
+                if (this.value === 'select') {
+                    optionsWrapper.style.display = 'block';
+                    optionsInput.required = true;
+                } else {
+                    optionsWrapper.style.display = 'none';
+                    optionsInput.required = false;
+                    optionsInput.value = '';
+                }
+            });
+
+            // Label'dan Key'e otomatik Slug çevirici (Türkçe karakter destekli)
+            labelInput.addEventListener('keyup', function() {
+                if (!keyInput.value || keyInput.dataset.auto === 'true') {
+                    keyInput.dataset.auto = 'true';
+                    keyInput.value = this.value.toLowerCase()
+                        .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
+                        .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
+                        .replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+                }
+            });
+
+            // Eğer kullanıcı System Key alanına manuel müdahale ederse, otomatik çeviriciyi durdur
+            keyInput.addEventListener('input', () => keyInput.dataset.auto = 'false');
+
+            lucide.createIcons();
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             lucide.createIcons();
 
@@ -176,56 +214,35 @@
             const template = document.getElementById('field-row-template').innerHTML;
             let fieldIndex = 0;
 
-            document.getElementById('addFieldBtn').addEventListener('click', function() {
-                // Şablonu al ve index'i değiştir
+            // 2. Yeni Satır Çizici Fonksiyon (Create sayfasında içi boş çizilir)
+            function renderFieldRow() {
                 const html = template.replace(/__INDEX__/g, fieldIndex);
                 container.insertAdjacentHTML('beforeend', html);
 
-                // Yeni eklenen satırı yakala
                 const newRow = container.lastElementChild;
 
-                // Satır bazlı elementleri yakala (Hata giderildi: const yerine let veya scoping ile)
-                const typeSelect = newRow.querySelector('.type-select');
-                const optionsWrapper = newRow.querySelector('.options-wrapper');
-                const optionsInput = newRow.querySelector('.options-input');
-                const labelInput = newRow.querySelector('.label-input');
-                const keyInput = newRow.querySelector('.key-input');
+                // İlk eklendiğinde System Key için otomatik üretimi (auto) açık işaretle
+                newRow.querySelector('.key-input').dataset.auto = 'true';
 
-                // 1. Dropdown (Select) tipi seçildiğinde seçenek kutusunu göster
-                typeSelect.addEventListener('change', function() {
-                    if (this.value === 'select') {
-                        optionsWrapper.style.display = 'block';
-                        optionsInput.required = true;
-                    } else {
-                        optionsWrapper.style.display = 'none';
-                        optionsInput.required = false;
-                        optionsInput.value = '';
-                    }
-                });
-
-                // 2. Label'dan Key'e otomatik Slug çevirici (Boşalan özellik geri geldi)
-                labelInput.addEventListener('keyup', function() {
-                    if (!keyInput.value || keyInput.dataset.auto === 'true') {
-                        keyInput.dataset.auto = 'true';
-                        keyInput.value = this.value.toLowerCase()
-                            .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
-                            .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
-                            .replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
-                    }
-                });
-
-                keyInput.addEventListener('input', () => keyInput.dataset.auto = 'false');
-
-                lucide.createIcons();
+                attachRowEvents(newRow);
                 fieldIndex++;
+            }
+
+            // Yeni Alan Ekle Butonu Tıklaması
+            document.getElementById('addFieldBtn').addEventListener('click', function() {
+                renderFieldRow();
             });
 
+            // Silme İşlemi (Delegate Pattern - Tüm konteyneri dinler)
             container.addEventListener('click', function(e) {
                 const btn = e.target.closest('.remove-field-btn');
                 if (btn) {
                     btn.closest('.field-row').remove();
                 }
             });
+
+            // Opsiyonel: Sayfa açılışında kullanıcıya boş bir alan hazır gelsin istersen:
+            // renderFieldRow(); 
         });
     </script>
 @endpush
