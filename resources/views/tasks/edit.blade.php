@@ -233,88 +233,54 @@
 
             @if ($task->template->allow_ad_hoc_members)
                 @php
-                    // Blade motorunu yormamak için PHP mapping işlemini burada yapıyoruz
-                    $mappedUsers = $users->map(function ($u) {
-                        return [
-                            'id' => $u->id,
-                            'name' => $u->name,
-                            'department' => $u->department->name ?? 'Birim Yok',
-                        ];
-                    });
-
-                    $mappedAdHocMembers = $existingAdHocMembers->map(function ($u) {
-                        return [
-                            'id' => $u->id,
-                            'name' => $u->name,
-                            'department' => $u->department->name ?? '',
-                            'role' => $u->pivot->role,
-                        ];
-                    });
+                    $mappedUsers = $users->map(fn($u) => ['id' => $u->id, 'name' => $u->name, 'department' => $u->department->name ?? 'Birim Yok']);
+                    $mappedAdHocMembers = $existingAdHocMembers->map(fn($u) => ['id' => $u->id, 'name' => $u->name, 'department' => $u->department->name ?? '', 'role' => $u->pivot->role]);
                 @endphp
 
-                // Laravel'den gelen tertemiz dizileri JS objelerine çeviriyoruz
                 const usersData = @json($mappedUsers);
                 const existingAdHocMembers = @json($mappedAdHocMembers);
                 const mandatoryUserIds = @json($mandatoryUserIds);
                 const creatorId = {{ $task->creator_id }};
-
                 const container = document.getElementById('teamMembersContainer');
                 let memberIndex = 0;
 
                 // TomSelect'i Başlat
-                let tsInstance = new TomSelect('#userSelectBox', {
+                const tsInstance = new TomSelect('#userSelectBox', {
                     options: usersData,
                     valueField: 'id',
                     labelField: 'name',
                     searchField: ['name', 'department'],
                     render: {
-                        option: function(item, escape) {
-                            return `<div><span style="font-weight:600;">${escape(item.name)}</span> <span style="font-size:0.75rem; color:#64748b;">(${escape(item.department)})</span></div>`;
-                        },
-                        item: function(item, escape) {
-                            return `<div>${escape(item.name)}</div>`;
-                        }
+                        option: (item, escape) =>
+                            `<div><span style="font-weight:600;">${escape(item.name)}</span> <span style="font-size:0.75rem; color:#64748b;">(${escape(item.department)})</span></div>`,
+                        item: (item, escape) => `<div>${escape(item.name)}</div>`
                     }
                 });
-                if (tsInstance) {
-                    // Zorunlu üyeleri ve Kurucuyu Seçim Listesinden Engelle
-                    mandatoryUserIds.forEach(id => {
-                        if (typeof tsInstance.disableOption === 'function') {
-                            tsInstance.disableOption(id);
-                        }
-                    });
 
-                    if (typeof tsInstance.disableOption === 'function') {
-                        tsInstance.disableOption(creatorId);
+                // --- GÜVENLİ İZOLASYON BLOĞU ---
+                // disableOption metodunu ancak nesne hazır olduğunda çağırıyoruz
+                function lockUser(id) {
+                    if (tsInstance && typeof tsInstance.disableOption === 'function') {
+                        tsInstance.disableOption(id);
                     }
-
-                    // Halihazırda var olan Ad-Hoc üyeleri sayfaya çiz
-                    existingAdHocMembers.forEach(member => {
-                        renderMemberHTML(member.id, member.name, member.department, member.role);
-                        if (typeof tsInstance.disableOption === 'function') {
-                            tsInstance.disableOption(member.id);
-                        }
-                    });
                 }
 
-                // Zorunlu üyeleri ve Kurucuyu Seçim Listesinden (TomSelect) Engelle
-                mandatoryUserIds.forEach(id => tsInstance.disableOption(id));
-                tsInstance.disableOption(creatorId);
+                mandatoryUserIds.forEach(id => lockUser(id));
+                lockUser(creatorId);
 
-                // Halihazırda var olan Ad-Hoc üyeleri sayfaya çiz
                 existingAdHocMembers.forEach(member => {
                     renderMemberHTML(member.id, member.name, member.department, member.role);
-                    tsInstance.disableOption(member.id); // Çizileni de listeden kilitle
+                    lockUser(member.id);
                 });
 
-                // "Kişi Ekle" Butonuna Tıklanınca TomSelect Kutusunu Aç
-                document.getElementById('addTeamMemberBtn').addEventListener('click', function() {
+                // "Kişi Ekle" Butonu
+                document.getElementById('addTeamMemberBtn').addEventListener('click', () => {
                     const wrapper = document.getElementById('teamSelectorWrapper');
                     wrapper.style.display = wrapper.style.display === 'none' ? 'block' : 'none';
                 });
 
                 // Listeye Ekle Butonu
-                document.getElementById('confirmAddMemberBtn').addEventListener('click', function() {
+                document.getElementById('confirmAddMemberBtn').addEventListener('click', () => {
                     const userId = tsInstance.getValue();
                     if (!userId) {
                         alert("Lütfen bir personel seçin.");
@@ -322,55 +288,45 @@
                     }
 
                     const userObj = tsInstance.options[userId];
-                    const role = document.getElementById('roleSelectBox').value;
+                    renderMemberHTML(userId, userObj.name, userObj.department, document.getElementById(
+                        'roleSelectBox').value);
 
-                    renderMemberHTML(userId, userObj.name, userObj.department, role);
-
-                    tsInstance.disableOption(userId);
+                    lockUser(userId);
                     tsInstance.clear();
                     document.getElementById('teamSelectorWrapper').style.display = 'none';
                 });
 
-                // HTML Çizici Fonksiyon
                 function renderMemberHTML(userId, userName, userDept, role) {
                     const isManager = role === 'manager';
                     const html = `
-                    <div class="team-member-row" style="background: #fff; border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                    <div class="team-member-row" style="background: #fff; border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
                         <input type="hidden" name="team_members[${memberIndex}][user_id]" value="${userId}">
                         <input type="hidden" name="team_members[${memberIndex}][role]" value="${role}">
-                        
                         <div style="display:flex; align-items:center; gap:10px;">
                             <div style="width: 32px; height: 32px; border-radius: 50%; background: ${isManager ? '#eab308' : '#3b82f6'}; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold;">
                                 ${userName.substring(0,2).toUpperCase()}
                             </div>
-                            <div style="line-height: 1.2;">
-                                <div style="font-weight: 600; font-size: 0.9rem; color: var(--text-color);">${userName}</div>
-                                <div style="font-size: 0.75rem; color: var(--text-muted);">${userDept}</div>
+                            <div>
+                                <div style="font-weight: 600; font-size: 0.9rem;">${userName}</div>
+                                <div style="font-size: 0.75rem; color: #64748b;">${userDept}</div>
                             </div>
                         </div>
-
-                        <div style="display:flex; align-items:center; gap:10px;">
-                            <span style="font-size: 0.7rem; background: ${isManager ? '#fffbeb' : '#f1f5f9'}; color: ${isManager ? '#b45309' : '#475569'}; padding: 4px 8px; border-radius: 4px; font-weight: 700; border: 1px solid ${isManager ? '#fde68a' : '#e2e8f0'};">
-                                ${isManager ? '👑 YÖNETİCİ' : 'ÜYE'}
-                            </span>
-                            <button type="button" class="btn btn-sm btn-outline-danger remove-member-btn" data-userid="${userId}" style="padding: 4px 8px; border:none; background:#fee2e2;">
-                                <i data-lucide="x" style="width: 14px;"></i>
-                            </button>
-                        </div>
-                    </div>
-                `;
+                        <button type="button" class="btn btn-sm btn-outline-danger remove-member-btn" data-userid="${userId}">
+                            <i data-lucide="x" style="width: 14px;"></i>
+                        </button>
+                    </div>`;
                     container.insertAdjacentHTML('beforeend', html);
                     lucide.createIcons();
                     memberIndex++;
                 }
 
-                // Silme İşlemi (Delegate)
-                container.addEventListener('click', function(e) {
-                    const removeBtn = e.target.closest('.remove-member-btn');
-                    if (removeBtn) {
-                        const userId = removeBtn.getAttribute('data-userid');
-                        tsInstance.enableOption(userId); // TomSelect'te tekrar seçilebilir yap
-                        removeBtn.closest('.team-member-row').remove();
+                container.addEventListener('click', (e) => {
+                    const btn = e.target.closest('.remove-member-btn');
+                    if (btn) {
+                        const userId = btn.getAttribute('data-userid');
+                        if (tsInstance && typeof tsInstance.enableOption === 'function') tsInstance
+                            .enableOption(userId);
+                        btn.closest('.team-member-row').remove();
                     }
                 });
             @endif
