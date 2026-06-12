@@ -114,26 +114,47 @@
                     <div class="kanban-cards-container custom-scrollbar" data-stage-id="{{ $stage->id }}"
                         style="padding: 15px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; flex-grow: 1; min-height: 150px;">
                         @foreach ($stage->tasks as $task)
-                            <div class="card glass-card kanban-task-card" data-task-id="{{ $task->id }}"
-                                style="background: #ffffff; border: 1px solid var(--border-color); border-radius: 10px; padding: 15px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); {{ $task->status === 'active' ? 'cursor: grab;' : 'opacity: 0.95;' }} position: relative; transition: all 0.2s ease;">
+                            @php
+                                // Modeldeki zekayı kullanarak kartın CSS sınıfını belirliyoruz
+                                $statusClass = $task->isCompleted()
+                                    ? 'card-status-completed'
+                                    : ($task->isPendingApproval()
+                                        ? 'card-status-pending'
+                                        : 'card-status-active');
+                            @endphp
 
+                            <div class="card glass-card kanban-task-card {{ $statusClass }} {{ $task->isLocked() ? 'filtered' : '' }}"
+                                data-task-id="{{ $task->id }}"
+                                style="border-radius: 10px; padding: 15px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); position: relative; transition: all 0.2s ease;">
+
+                                {{-- 1. BAŞLIK VE ETİKETLER (BADGE) --}}
                                 <div
                                     style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 6px; display: flex; align-items: center; gap: 4px;">
                                     <i data-lucide="hash" style="width:12px; color: var(--accent-color);"></i>
                                     TASK-{{ str_pad($task->id, 4, '0', STR_PAD_LEFT) }}
-                                    @if ($task->status === 'pending_closure_approval')
+
+                                    @if ($task->isCompleted())
                                         <span
-                                            style="margin-left:auto; background: #fffbeb; color: #b45309; padding: 2px 6px; border-radius: 4px; font-weight: 700; font-size: 0.65rem; border: 1px solid #fde68a;">{{ __('ONAYDA') }}</span>
+                                            style="margin-left:auto; background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px; font-weight: 700; font-size: 0.65rem; border: 1px solid #bbf7d0; display:flex; align-items:center; gap:3px;">
+                                            <i data-lucide="check-circle" style="width:12px;"></i> {{ __('ONAYLANDI') }}
+                                        </span>
+                                    @elseif ($task->isPendingApproval())
+                                        <span
+                                            style="margin-left:auto; background: #fffbeb; color: #b45309; padding: 2px 6px; border-radius: 4px; font-weight: 700; font-size: 0.65rem; border: 1px solid #fde68a;">
+                                            {{ __('ONAYDA') }}
+                                        </span>
                                     @endif
                                 </div>
 
+                                {{-- 2. GÖREV BAŞLIĞI --}}
                                 <h5
-                                    style="margin: 0 0 12px 0; font-size: 0.95rem; font-weight: 700; color: var(--primary-color); line-height: 1.4;">
+                                    style="margin: 0 0 12px 0; font-size: 0.95rem; font-weight: 700; color: {{ $task->isCompleted() ? '#166534' : 'var(--primary-color)' }}; line-height: 1.4;">
                                     {{ $task->title }}
                                 </h5>
 
+                                {{-- 3. OLUŞTURAN VE TARİH --}}
                                 <div
-                                    style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px; border-top: 1px dashed #f1f5f9; padding-top: 10px; font-size: 0.75rem; color: var(--text-muted);">
+                                    style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px; border-top: 1px dashed {{ $task->isCompleted() ? '#bbf7d0' : '#f1f5f9' }}; padding-top: 10px; font-size: 0.75rem; color: var(--text-muted);">
                                     <div style="display: flex; align-items: center; gap: 4px;" title="İşi Başlatan">
                                         <i data-lucide="user" style="width: 12px; color: var(--accent-color);"></i>
                                         <span
@@ -145,6 +166,7 @@
                                     </div>
                                 </div>
 
+                                {{-- 4. AVATARLAR (Senin Kodunun Birebir Aynısı) --}}
                                 @if ($task->users->isNotEmpty())
                                     <div class="task-avatars"
                                         style="display: flex; align-items: center; flex-wrap: wrap; gap: 4px; margin-top: 10px;">
@@ -170,26 +192,30 @@
                                     </div>
                                 @endif
 
-                                {{-- FAZ 5: KAPANIŞ VE ONAY AKSİYONLARI --}}
+                                {{-- 5. AKSİYON BUTONLARI --}}
                                 <div
-                                    style="margin-top: 15px; border-top: 1px solid var(--border-color); padding-top: 12px;">
-                                    <div style="margin-bottom: 10px;">
-                                        <a href="{{ route('tasks.show', $task->id) }}"
-                                            class="btn btn-sm btn-outline-secondary"
-                                            style="width: 100%; border-radius: 6px; font-weight: 600; display: flex; justify-content: center; align-items: center; gap: 6px;">
-                                            <i data-lucide="eye" style="width: 16px;"></i> Detaylara Bak
-                                        </a>
-                                    </div>
+                                    style="margin-top: 15px; border-top: 1px solid {{ $task->isCompleted() ? '#bbf7d0' : 'var(--border-color)' }}; padding-top: 12px;">
 
-                                    @if ($task->status === 'active')
-                                        <button type="button"
-                                            onclick="openClosureModal({{ $task->id }}, {{ $task->template->requires_document_on_closure ? 'true' : 'false' }})"
-                                            class="btn btn-sm btn-outline-success"
-                                            style="width: 100%; border-radius: 6px; font-weight: 600; display: flex; justify-content: center; align-items: center; gap: 6px;">
-                                            <i data-lucide="check-circle" style="width: 16px;"></i>
-                                            {{ __('İşi Kapat / Onaya Sun') }}
-                                        </button>
-                                    @elseif($task->status === 'pending_closure_approval')
+                                    @if ($task->isCompleted())
+                                        {{-- Kapatılmış ve Onaylanmış Görev --}}
+                                        <div style="text-align: center;">
+                                            <span
+                                                style="font-size: 0.7rem; color: #15803d; font-weight: 600; display: block; margin-bottom: 5px;">Bu
+                                                iş kapatıldı ve arşivlendi.</span>
+                                            <a href="{{ route('tasks.show', $task->id) }}" class="btn btn-sm btn-success"
+                                                style="width: 100%; border-radius: 6px; font-weight: 600;">
+                                                Arşiv Detayını İncele
+                                            </a>
+                                        </div>
+                                    @elseif ($task->isPendingApproval())
+                                        {{-- Onay Bekleyen Görev --}}
+                                        <div style="margin-bottom: 10px;">
+                                            <a href="{{ route('tasks.show', $task->id) }}"
+                                                class="btn btn-sm btn-outline-secondary"
+                                                style="width: 100%; border-radius: 6px; font-weight: 600; display: flex; justify-content: center; align-items: center; gap: 6px;">
+                                                <i data-lucide="eye" style="width: 16px;"></i> Detaylara Bak
+                                            </a>
+                                        </div>
                                         <div
                                             style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px;">
                                             @if ($task->closure_note)
@@ -208,8 +234,6 @@
                                             @endif
 
                                             @php
-                                                // Garanti ve Performanslı Yetki Kontrolü:
-                                                // Giriş yapan kullanıcı bu işin atanan Yöneticisi mi yoksa Super Admin mi?
                                                 $currentUserIsManager =
                                                     \Illuminate\Support\Facades\DB::table('task_user')
                                                         ->where('task_id', $task->id)
@@ -244,11 +268,28 @@
                                                 </div>
                                             @else
                                                 <div class="text-center text-muted"
-                                                    style="font-size: 0.7rem; padding-top: 5px;"><i data-lucide="lock"
-                                                        style="width:10px; vertical-align:middle;"></i> Sadece Proje
-                                                    Yöneticisi onaylayabilir.</div>
+                                                    style="font-size: 0.7rem; padding-top: 5px;">
+                                                    <i data-lucide="lock" style="width:10px; vertical-align:middle;"></i>
+                                                    Sadece Proje Yöneticisi onaylayabilir.
+                                                </div>
                                             @endif
                                         </div>
+                                    @else
+                                        {{-- Aktif Görev --}}
+                                        <div style="margin-bottom: 10px;">
+                                            <a href="{{ route('tasks.show', $task->id) }}"
+                                                class="btn btn-sm btn-outline-secondary"
+                                                style="width: 100%; border-radius: 6px; font-weight: 600; display: flex; justify-content: center; align-items: center; gap: 6px;">
+                                                <i data-lucide="eye" style="width: 16px;"></i> Detaylara Bak
+                                            </a>
+                                        </div>
+                                        <button type="button"
+                                            onclick="openClosureModal({{ $task->id }}, {{ $task->template->requires_document_on_closure ? 'true' : 'false' }})"
+                                            class="btn btn-sm btn-outline-success"
+                                            style="width: 100%; border-radius: 6px; font-weight: 600; display: flex; justify-content: center; align-items: center; gap: 6px;">
+                                            <i data-lucide="check-circle" style="width: 16px;"></i>
+                                            {{ __('İşi Kapat / Onaya Sun') }}
+                                        </button>
                                     @endif
                                 </div>
                             </div>

@@ -26,7 +26,8 @@ class ProcessTemplateController extends Controller
     public function create()
     {
         $departments = Department::orderBy('name')->get();
-        return view('process-templates.create', compact('departments'));
+        $userGroups = \App\Models\UserGroup::where('is_active', true)->orderBy('name')->get();
+        return view('process-templates.create', compact('departments', 'userGroups'));
     }
 
     /**
@@ -47,7 +48,8 @@ class ProcessTemplateController extends Controller
     public function edit(ProcessTemplate $processTemplate)
     {
         $departments = Department::orderBy('name')->get();
-        return view('process-templates.edit', compact('processTemplate', 'departments'));
+        $userGroups = \App\Models\UserGroup::where('is_active', true)->orderBy('name')->get();
+        return view('process-templates.edit', compact('processTemplate', 'departments', 'userGroups'));
     }
 
     /**

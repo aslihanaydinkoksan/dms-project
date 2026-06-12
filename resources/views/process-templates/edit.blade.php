@@ -40,6 +40,29 @@
                             @endforeach
                         </select>
                     </div>
+                    {{-- ZORUNLU ÇEKİRDEK EKİP (ANTI-BYPASS) - EKLENEN KISIM --}}
+                    <div class="form-group mt-20"
+                        style="margin-top: 25px; border-top: 1px dashed var(--border-color); padding-top: 20px; margin-bottom: 20px;">
+                        <label style="font-weight: 600; margin-bottom: 8px; display: block; color: var(--danger-color);">
+                            <i data-lucide="shield-alert" style="width: 16px; vertical-align: middle;"></i>
+                            {{ __('Zorunlu Çekirdek Ekip (Opsiyonel)') }}
+                        </label>
+                        <p class="text-muted" style="font-size: 0.8rem; margin-top: -5px; margin-bottom: 10px;">
+                            Bu süreci başlatan kullanıcılar, aşağıda seçtiğiniz gruptaki kişileri projeye atamak
+                            <strong>zorundadır.</strong> Kullanıcı eklemese bile sistem bu kişileri otomatik olarak sürece
+                            dahil eder.
+                        </p>
+                        <select name="mandatory_user_group_id" class="form-control"
+                            style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);">
+                            <option value="">{{ __('-- Zorunlu Grup Yok (Sadece Ad-Hoc Ekip) --') }}</option>
+                            @foreach ($userGroups as $group)
+                                <option value="{{ $group->id }}"
+                                    {{ $processTemplate->mandatory_user_group_id == $group->id ? 'selected' : '' }}>
+                                    🛡️ {{ $group->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
                     <div class="form-group">
                         <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600;">
                             <input type="checkbox" name="requires_document_on_closure" value="1"

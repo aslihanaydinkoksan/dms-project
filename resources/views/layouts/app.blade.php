@@ -533,7 +533,15 @@
                                 </a>
                             </li>
                         @endcan
-
+                        @can('menu.user_groups')
+                            <li class="nav-item">
+                                <a href="{{ route('settings.user-groups.index') }}"
+                                    class="nav-link {{ request()->routeIs('settings.user-groups.*') ? 'active' : '' }}">
+                                    <i data-lucide="network" class="nav-icon"></i>
+                                    <span class="nav-text">{{ __('Zorunlu Gruplar') }}</span>
+                                </a>
+                            </li>
+                        @endcan
                         @can('menu.process_templates')
                             <li class="nav-item">
                                 <a href="{{ route('process-templates.index') }}"

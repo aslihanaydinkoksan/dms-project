@@ -255,28 +255,91 @@
                         </div>
                     @endif
                 </div>
+                {{-- ======================================================= --}}
+                {{-- TAMAMLANMIŞ GÖREV ROZETİ VE YENİDEN AÇMA BUTONU         --}}
+                {{-- ======================================================= --}}
+                @if ($task->isCompleted())
+                    <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap; margin-top: 10px;">
+
+                        {{-- Mevcut Arşiv Rozeti --}}
+                        <span class="badge"
+                            style="background: #dcfce7; color: #166534; padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; border: 1px solid #bbf7d0; display:flex; align-items:center; gap:5px;">
+                            <i data-lucide="check-circle" style="width: 16px;"></i> {{ __('Tamamlandı / Arşivlendi') }}
+                        </span>
+
+                        {{-- YÖNETİCİLER İÇİN "RE-OPEN" BUTONU --}}
+                        @php
+                            // Projenin yöneticisi mi kontrolü
+                            $currentUserIsManager =
+                                \Illuminate\Support\Facades\DB::table('task_user')
+                                    ->where('task_id', $task->id)
+                                    ->where('user_id', auth()->id())
+                                    ->where('role', 'manager')
+                                    ->exists() ||
+                                auth()->user()->hasRole('Super Admin') ||
+                                auth()->user()->hasRole('Admin');
+                        @endphp
+
+                        @if ($currentUserIsManager)
+                            <form action="{{ route('tasks.reopen', $task->id) }}" method="POST"
+                                onsubmit="return confirm('Bu süreci arşivden çıkarıp tekrar aktif Kanban tahtasına almak istediğinize emin misiniz?');"
+                                style="margin: 0;">
+                                @csrf
+                                <button type="submit" class="btn btn-sm"
+                                    style="background: #fffbeb; color: #d97706; border: 1px solid #fcd34d; font-weight: 600; display: flex; align-items: center; gap: 6px; border-radius: 8px; padding: 6px 12px; transition: all 0.2s; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.05);"
+                                    onmouseover="this.style.transform='translateY(-2px)'"
+                                    onmouseout="this.style.transform='translateY(0)'">
+                                    <i data-lucide="refresh-cw" style="width: 14px;"></i>
+                                    {{ __('Süreci Yeniden Aç (Re-Open)') }}
+                                </button>
+                            </form>
+                        @endif
+
+                    </div>
+                @endif
             @endif
 
             {{-- PROJE EKİBİ KARTI --}}
             <div class="card glass-card" style="border-radius: 12px; padding: 25px; border-top: 4px solid #f59e0b;">
                 <h4 style="margin: 0 0 15px 0; color: var(--secondary-color); display:flex; align-items:center; gap:8px;">
-                    <i data-lucide="users" style="width: 20px; color: #f59e0b;"></i> {{ __('Proje Ekibi') }}
+                    <i data-lucide="users" style="width: 20px; color: #f59e0b;"></i> {{ __('Proje Ekibi & Kurmaylar') }}
                 </h4>
+
+                @php
+                    // Şablona ait zorunlu grup üyelerinin ID'lerini hızlı kontrol için bir diziye (Array) alıyoruz
+$mandatoryUserIds = [];
+if ($task->template->mandatoryGroup) {
+    $mandatoryUserIds = $task->template->mandatoryGroup->members->pluck('id')->toArray();
+                    }
+                @endphp
 
                 <div style="display: flex; flex-direction: column; gap: 10px;">
                     @forelse($task->users as $user)
-                        @php $isListManager = $user->pivot->role === 'manager'; @endphp
+                        @php
+                            $isManager = $user->pivot->role === 'manager';
+                            $isCore = in_array($user->id, $mandatoryUserIds); // Bu kişi zorunlu gruptan mı geldi?
+                        @endphp
                         <div
-                            style="display: flex; align-items: center; justify-content: space-between; padding: 10px 15px; background: #fff; border: 1px solid var(--border-color); border-radius: 8px;">
+                            style="display: flex; align-items: center; justify-content: space-between; padding: 10px 15px; background: {{ $isCore ? '#f8fafc' : '#fff' }}; border: 1px solid {{ $isCore ? '#cbd5e1' : 'var(--border-color)' }}; border-radius: 8px;">
+
                             <div
                                 style="font-weight: 600; color: var(--text-color); display: flex; align-items: center; gap: 8px;">
                                 <div
-                                    style="width: 8px; height: 8px; border-radius: 50%; background: {{ $isListManager ? '#eab308' : '#3b82f6' }};">
+                                    style="width: 8px; height: 8px; border-radius: 50%; background: {{ $isManager ? '#eab308' : '#3b82f6' }};">
                                 </div>
                                 {{ $user->name }}
                             </div>
-                            <div>
-                                @if ($isListManager)
+
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                @if ($isCore)
+                                    <span
+                                        style="font-size: 0.65rem; background: #eef2ff; color: #4f46e5; padding: 4px 8px; border-radius: 4px; font-weight: 700; border: 1px solid #c7d2fe; display:flex; align-items:center; gap:3px;"
+                                        title="Sistem tarafından otomatik atanmış zorunlu üye">
+                                        <i data-lucide="shield-check" style="width:12px;"></i> ÇEKİRDEK KADRO
+                                    </span>
+                                @endif
+
+                                @if ($isManager)
                                     <span
                                         style="font-size: 0.75rem; background: #fffbeb; color: #b45309; padding: 4px 8px; border-radius: 4px; font-weight: 600; border: 1px solid #fde68a;">👑
                                         YÖNETİCİ</span>
@@ -285,6 +348,7 @@
                                         style="font-size: 0.75rem; background: #f1f5f9; color: #475569; padding: 4px 8px; border-radius: 4px; font-weight: 600;">ÜYE</span>
                                 @endif
                             </div>
+
                         </div>
                     @empty
                         <div class="text-muted text-center" style="font-size: 0.85rem; padding: 10px;">Bu işe atanmış özel

@@ -10,7 +10,7 @@ class UpdateProcessTemplateRequest extends FormRequest
     public function authorize(): bool
     {
         // Yetki kontrolünü Controller/Policy'de yapacağımız için burayı true bırakıyoruz.
-        return true; 
+        return true;
     }
 
     protected function prepareForValidation()
@@ -28,7 +28,8 @@ class UpdateProcessTemplateRequest extends FormRequest
             'name' => 'required|string|max:255',
             'department_id' => 'required|exists:departments,id',
             'requires_document_on_closure' => 'boolean',
-            
+            'mandatory_user_group_id' => 'nullable|exists:user_groups,id',
+
             // JSON (No-Code Form) Validasyonu: Array gelmeli ve içindeki her elemanın asgari alanları olmalı
             'fields' => 'nullable|array',
             'fields.*.name' => 'required_with:fields|string|max:100', // Sütun key'i (Örn: plaka_no)

@@ -99,4 +99,39 @@ class TaskClosureController extends Controller
             abort(403, 'Güvenlik İhlali: Bu işi sadece projenin atanan Yöneticisi onaylayabilir veya reddedebilir.');
         }
     }
+    /**
+     * GÖREVİ YENİDEN AÇMA (RE-OPEN) MEKANİZMASI
+     */
+    public function reopenTask(Request $request, Task $task)
+    {
+        // 1. Zaten var olan kendi metodumuzu kullanıyoruz (DRY Prensibi)
+        $this->authorizeManager($task);
+
+        // 2. Sistemsel Mantık Kontrolü (Sadece arşivdekiler açılabilir)
+        if ($task->status !== 'completed') {
+            return back()->with('error', 'Sadece tamamlanmış ve arşivlenmiş görevler yeniden açılabilir.');
+        }
+
+        // 3. Durum Değişimi ve İlk Aşamaya Döndürme
+        $oldStatus = $task->status;
+        $firstStage = $task->template->stages()->orderBy('sort_order', 'asc')->first();
+
+        $task->update([
+            'status' => 'active',
+            'current_stage_id' => $firstStage ? $firstStage->id : $task->current_stage_id,
+        ]);
+
+        // 4. Denetim İzi (Audit Log) - Yalan Söylemez Kurumsal Ayak İzi
+        \App\Models\TaskLog::create([
+            'task_id' => $task->id,
+            'user_id' => Auth::id(), // SOLID: Global auth() yerine $request->user()->id de yazılabilir
+            'action' => 'task_reopened',
+            'description' => "Süreç Yönetici (<strong>" . Auth::user()->name . "</strong>) tarafından arşivden çıkarılarak yeniden aktifleştirildi.",
+            'old_data' => ['status' => $oldStatus],
+            'new_data' => ['status' => 'active', 'stage_id' => $task->current_stage_id],
+            'ip_address' => $request->ip()
+        ]);
+
+        return back()->with('success', '🔄 Süreç başarıyla arşivden çıkarıldı ve Kanban tahtasına geri alındı.');
+    }
 }

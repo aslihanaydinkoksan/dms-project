@@ -45,6 +45,21 @@ class TaskService
                 $syncData[$creator->id] = ['role' => 'manager'];
             }
 
+            //Zorunlu Kullanıcı Grubu Kontrolü: Eğer şablonda atanmış bir zorunlu grup varsa, o grubun üyelerini de ekibe dahil et (Grup kuralları override eder)
+            if ($template->mandatory_user_group_id) {
+                // Şablona atanmış zorunlu grubu ve üyelerini çek
+                $mandatoryGroup = $template->mandatoryGroup()->with('members')->first();
+
+                if ($mandatoryGroup && $mandatoryGroup->is_active) {
+                    foreach ($mandatoryGroup->members as $mandatoryMember) {
+                        // Eğer kullanıcı arayüzden bu kişiyi 'member' seçtiyse ama grupta 'manager' ise,
+                        // Grup kuralı ezer (override). Sistem güvenliği sağlanır.
+                        $syncData[$mandatoryMember->id] = [
+                            'role' => $mandatoryMember->pivot->role
+                        ];
+                    }
+                }
+            }
             // Pivot tabloya yaz (task_user)
             $task->users()->sync($syncData);
 

@@ -12,7 +12,8 @@ class ProcessTemplate extends Model
         'name',
         'department_id',
         'fields',
-        'requires_document_on_closure'
+        'requires_document_on_closure',
+        'mandatory_user_group_id'
     ];
 
     // KRİTİK: fields sütununu otomatik array/object olarak işlemek için cast ediyoruz
@@ -43,5 +44,9 @@ class ProcessTemplate extends Model
     public function tasks(): HasMany
     {
         return $this->hasMany(Task::class);
+    }
+    public function mandatoryGroup()
+    {
+        return $this->belongsTo(UserGroup::class, 'mandatory_user_group_id');
     }
 }

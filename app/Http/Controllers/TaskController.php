@@ -190,12 +190,34 @@ class TaskController extends Controller
         return response()->json($users);
     }
     /**
-     * AJAX (Fetch API): Şablon seçildiğinde dinamik alanlarını döndürür
+     * AJAX (Fetch API): Şablon seçildiğinde dinamik alanlarını ve ZORUNLU GRUBU döndürür
      */
     public function getTemplateFields(int $id)
     {
-        $template = ProcessTemplate::findOrFail($id);
-        return response()->json($template->fields ?? []);
+        $template = ProcessTemplate::with(['mandatoryGroup.members.department'])->findOrFail($id);
+
+        // Zorunlu Grubu ve Üyelerini JSON Formatına Hazırla
+        $mandatoryGroupData = null;
+        if ($template->mandatoryGroup && $template->mandatoryGroup->is_active) {
+            $members = $template->mandatoryGroup->members->map(function ($m) {
+                return [
+                    'id' => $m->id,
+                    'name' => $m->name,
+                    'department' => $m->department->name ?? 'Birim Yok',
+                    'role' => $m->pivot->role
+                ];
+            });
+
+            $mandatoryGroupData = [
+                'name' => $template->mandatoryGroup->name,
+                'members' => $members
+            ];
+        }
+
+        return response()->json([
+            'fields' => $template->fields ?? [],
+            'mandatory_group' => $mandatoryGroupData
+        ]);
     }
     /**
      * BPM ARŞİV MERKEZİ: Tamamlanan İşlerin Listesi

@@ -28,6 +28,7 @@ class StoreProcessTemplateRequest extends FormRequest
             'name' => 'required|string|max:255',
             'department_id' => 'required|exists:departments,id',
             'requires_document_on_closure' => 'boolean',
+            'mandatory_user_group_id' => 'nullable|exists:user_groups,id',
 
             // JSON (No-Code Form) Validasyonu: Array gelmeli ve içindeki her elemanın asgari alanları olmalı
             'fields' => 'nullable|array',

@@ -70,6 +70,16 @@
             {{-- SAĞ SÜTUN: AD-HOC PROJE EKİBİ (TOM SELECT) --}}
             <div class="card glass-card"
                 style="border-radius: 12px; padding: 25px; border-top: 4px solid #f59e0b; position: sticky; top: 20px;">
+                {{-- ZORUNLU (KİLİTLİ) GRUP BÖLÜMÜ (JS İle Doldurulacak) --}}
+                <div id="mandatoryGroupSection" style="display: none; margin-bottom: 25px;">
+                    <h5
+                        style="margin: 0 0 10px 0; font-size: 0.85rem; color: var(--danger-color); display: flex; align-items: center; gap: 6px; text-transform: uppercase;">
+                        <i data-lucide="shield-check" style="width: 16px;"></i> <span id="mandatoryGroupName">Zorunlu
+                            Ekip</span>
+                    </h5>
+                    <div id="mandatoryMembersContainer" style="display: flex; flex-direction: column; gap: 8px;">
+                    </div>
+                </div>
                 <div class="flex-between mb-15" style="display: flex; justify-content: space-between; align-items: center;">
                     <h4 style="margin: 0; color: var(--secondary-color); display:flex; align-items:center; gap:8px;">
                         <i data-lucide="users" style="width: 20px; color: #f59e0b;"></i> {{ __('Proje Ekibi (Ad-Hoc)') }}
@@ -211,45 +221,92 @@
                 // AJAX İsteği
                 fetch(`{{ url('/api/process-templates') }}/${templateId}/fields`)
                     .then(response => response.json())
-                    .then(fields => {
+                    .then(data => {
+                        // Backend'den gelen yeni JSON yapısını ayrıştırıyoruz
+                        const fields = data.fields || [];
+                        const mandatoryGroup = data.mandatory_group;
+
                         dynamicFieldsContainer.innerHTML = '';
                         submitBtn.disabled = false;
                         submitBtn.style.opacity = '1';
 
+                        // =================================================================
+                        // 1. ZORUNLU KADRO (ANTI-BYPASS) ÇİZİM MANTIĞI
+                        // =================================================================
+                        const mandatorySection = document.getElementById('mandatoryGroupSection');
+                        const mandatoryContainer = document.getElementById('mandatoryMembersContainer');
+
+                        if (mandatoryGroup && mandatoryGroup.members.length > 0) {
+                            document.getElementById('mandatoryGroupName').innerText =
+                                `🛡️ ZORUNLU KADRO: ${mandatoryGroup.name}`;
+                            mandatoryContainer.innerHTML = '';
+
+                            mandatoryGroup.members.forEach(member => {
+                                const isManager = member.role === 'manager';
+                                mandatoryContainer.insertAdjacentHTML('beforeend', `
+                                    <div style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; opacity: 0.95;">
+                                        <div style="display:flex; align-items:center; gap:8px;">
+                                            <div style="width: 28px; height: 28px; border-radius: 50%; background: ${isManager ? '#eab308' : '#64748b'}; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: bold;">
+                                                ${member.name.substring(0,2).toUpperCase()}
+                                            </div>
+                                            <div style="line-height: 1.2;">
+                                                <div style="font-weight: 600; font-size: 0.85rem; color: var(--text-color);">${member.name}</div>
+                                                <div style="font-size: 0.7rem; color: var(--text-muted);">${member.department}</div>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <span style="font-size: 0.65rem; background: ${isManager ? '#fef3c7' : '#f1f5f9'}; color: ${isManager ? '#b45309' : '#475569'}; padding: 3px 6px; border-radius: 4px; font-weight: 700; border: 1px solid ${isManager ? '#fcd34d' : '#e2e8f0'};">
+                                                <i data-lucide="lock" style="width:10px; vertical-align:middle;"></i> ${isManager ? 'YÖNETİCİ' : 'ÜYE'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                `);
+                            });
+                            mandatorySection.style.display = 'block';
+                        } else {
+                            mandatorySection.style.display = 'none';
+                            mandatoryContainer.innerHTML = '';
+                        }
+
+                        // =================================================================
+                        // 2. DİNAMİK FORM ALANLARI (Senin Kodunun Birebir Aynısı)
+                        // =================================================================
                         if (fields.length === 0) {
                             dynamicFieldsContainer.innerHTML =
                                 `<div style="grid-column: 1 / -1; text-align: center; padding: 20px; color: var(--text-muted); font-style: italic;">Bu şablona ait dinamik bir alan (soru) bulunmuyor. Görev başlığını yazıp ilerleyebilirsiniz.</div>`;
-                            return;
+                        } else {
+                            // JSON'dan gelen her field için Input çiz
+                            fields.forEach(field => {
+                                const isRequired = field.required ?
+                                    '<span class="text-danger">*</span>' : '';
+                                const requiredAttr = field.required ? 'required' : '';
+                                let inputHtml = '';
+
+                                // Tipine göre Input HTML oluştur
+                                if (field.type === 'textarea') {
+                                    inputHtml =
+                                        `<textarea name="custom_data[${field.name}]" class="form-control dynamic-input" placeholder="${field.placeholder || ''}" ${requiredAttr} style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border-color); min-height:80px; resize:vertical;"></textarea>`;
+                                } else if (field.type === 'date') {
+                                    inputHtml =
+                                        `<input type="date" name="custom_data[${field.name}]" class="form-control dynamic-input" ${requiredAttr} style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border-color);">`;
+                                } else {
+                                    inputHtml =
+                                        `<input type="${field.type || 'text'}" name="custom_data[${field.name}]" class="form-control dynamic-input" placeholder="${field.placeholder || ''}" ${requiredAttr} style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border-color);">`;
+                                }
+
+                                // Satırı (Wrapper) oluştur ve ekle
+                                const fieldHtml = `
+                                    <div class="form-group" style="${field.type === 'textarea' ? 'grid-column: 1 / -1;' : ''}">
+                                        <label style="font-size:0.85rem; font-weight:600; color:var(--text-color); margin-bottom:6px; display:block;">${field.label} ${isRequired}</label>
+                                        ${inputHtml}
+                                    </div>
+                                `;
+                                dynamicFieldsContainer.insertAdjacentHTML('beforeend',
+                                    fieldHtml);
+                            });
                         }
 
-                        // JSON'dan gelen her field için Input çiz
-                        fields.forEach(field => {
-                            const isRequired = field.required ?
-                                '<span class="text-danger">*</span>' : '';
-                            const requiredAttr = field.required ? 'required' : '';
-                            let inputHtml = '';
-
-                            // Tipine göre Input HTML oluştur
-                            if (field.type === 'textarea') {
-                                inputHtml =
-                                    `<textarea name="custom_data[${field.name}]" class="form-control dynamic-input" placeholder="${field.placeholder || ''}" ${requiredAttr} style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border-color); min-height:80px; resize:vertical;"></textarea>`;
-                            } else if (field.type === 'date') {
-                                inputHtml =
-                                    `<input type="date" name="custom_data[${field.name}]" class="form-control dynamic-input" ${requiredAttr} style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border-color);">`;
-                            } else {
-                                inputHtml =
-                                    `<input type="${field.type || 'text'}" name="custom_data[${field.name}]" class="form-control dynamic-input" placeholder="${field.placeholder || ''}" ${requiredAttr} style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border-color);">`;
-                            }
-
-                            // Satırı (Wrapper) oluştur ve ekle
-                            const fieldHtml = `
-                        <div class="form-group" style="${field.type === 'textarea' ? 'grid-column: 1 / -1;' : ''}">
-                            <label style="font-size:0.85rem; font-weight:600; color:var(--text-color); margin-bottom:6px; display:block;">${field.label} ${isRequired}</label>
-                            ${inputHtml}
-                        </div>
-                    `;
-                            dynamicFieldsContainer.insertAdjacentHTML('beforeend', fieldHtml);
-                        });
+                        lucide.createIcons();
                     })
                     .catch(error => {
                         console.error("Şablon verisi çekilemedi:", error);

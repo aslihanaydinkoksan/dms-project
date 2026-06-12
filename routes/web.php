@@ -257,6 +257,9 @@ Route::middleware(['auth'])->group(function () {
         Route::post('tasks/{task}/reject-closure', [\App\Http\Controllers\TaskClosureController::class, 'rejectClosure'])->name('tasks.reject-closure');
         Route::get('tasks/{task}/closure-document', [\App\Http\Controllers\TaskClosureController::class, 'downloadDocument'])->name('tasks.closure-document');
         Route::resource('tasks', \App\Http\Controllers\TaskController::class);
+        Route::post('tasks/{task}/reopen', [\App\Http\Controllers\TaskClosureController::class, 'reopenTask'])
+            ->name('tasks.reopen')
+            ->middleware('can:menu.tasks');
     });
 
     // İŞ ARŞİVİ ROTASI
@@ -299,5 +302,9 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/notifications', [SystemSettingsController::class, 'updateNotificationSettings'])->name('notifications.update');
         Route::get('/mail', [MailSettingsController::class, 'index'])->name('mail');
         Route::match(['post', 'put'], '/mail', [MailSettingsController::class, 'update'])->name('mail.update');
+
+        // ZORUNLU KULLANICI GRUPLARI
+        Route::resource('user-groups', \App\Http\Controllers\UserGroupController::class)->except(['create', 'show', 'edit'])->middleware('can:menu.user_groups');
+        Route::post('user-groups/{userGroup}/sync', [\App\Http\Controllers\UserGroupController::class, 'syncMembers'])->name('user-groups.sync')->middleware('can:menu.user_groups');
     });
 });
