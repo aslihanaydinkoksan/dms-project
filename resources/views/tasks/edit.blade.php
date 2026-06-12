@@ -276,6 +276,26 @@
                         }
                     }
                 });
+                if (tsInstance) {
+                    // Zorunlu üyeleri ve Kurucuyu Seçim Listesinden Engelle
+                    mandatoryUserIds.forEach(id => {
+                        if (typeof tsInstance.disableOption === 'function') {
+                            tsInstance.disableOption(id);
+                        }
+                    });
+
+                    if (typeof tsInstance.disableOption === 'function') {
+                        tsInstance.disableOption(creatorId);
+                    }
+
+                    // Halihazırda var olan Ad-Hoc üyeleri sayfaya çiz
+                    existingAdHocMembers.forEach(member => {
+                        renderMemberHTML(member.id, member.name, member.department, member.role);
+                        if (typeof tsInstance.disableOption === 'function') {
+                            tsInstance.disableOption(member.id);
+                        }
+                    });
+                }
 
                 // Zorunlu üyeleri ve Kurucuyu Seçim Listesinden (TomSelect) Engelle
                 mandatoryUserIds.forEach(id => tsInstance.disableOption(id));
