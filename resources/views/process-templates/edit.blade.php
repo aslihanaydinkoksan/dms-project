@@ -176,7 +176,14 @@
                     <option value="number">Sayı</option>
                     <option value="date">Tarih</option>
                     <option value="textarea">Uzun Metin</option>
+                    <option value="select">Açılır Menü (Dropdown)</option>
                 </select>
+            </div>
+            <div class="options-wrapper" style="display: none; grid-column: span 2;">
+                <label style="font-size: 0.8rem; font-weight: 600; color: var(--accent-color);">Menü Seçenekleri (Virgülle
+                    ayırın) *</label>
+                <input type="text" name="fields[__INDEX__][options_raw]" class="form-control options-input"
+                    placeholder="Örn: Onaylandı, Reddedildi, Beklemede">
             </div>
             <div style="padding-top: 20px;">
                 <label style="font-size: 0.8rem; font-weight: 600;"><input type="checkbox"
@@ -199,26 +206,34 @@
             const template = document.getElementById('field-row-template').innerHTML;
             let fieldIndex = 0;
 
-            // Backend'den gelen mevcut fields verisi (JSON Decode edilmiş)
-            const existingFields = @json($processTemplate->fields ?? []);
-
-            function addRow(data = null) {
+            document.getElementById('addFieldBtn').addEventListener('click', function() {
+                // Şablonu al ve index'i değiştir
                 const html = template.replace(/__INDEX__/g, fieldIndex);
                 container.insertAdjacentHTML('beforeend', html);
 
+                // Yeni eklenen satırı yakala
                 const newRow = container.lastElementChild;
+
+                // Satır bazlı elementleri yakala (Hata giderildi: const yerine let veya scoping ile)
+                const typeSelect = newRow.querySelector('.type-select');
+                const optionsWrapper = newRow.querySelector('.options-wrapper');
+                const optionsInput = newRow.querySelector('.options-input');
                 const labelInput = newRow.querySelector('.label-input');
                 const keyInput = newRow.querySelector('.key-input');
-                const typeSelect = newRow.querySelector('.type-select');
-                const reqCheck = newRow.querySelector('.req-check');
 
-                if (data) {
-                    labelInput.value = data.label || '';
-                    keyInput.value = data.name || '';
-                    typeSelect.value = data.type || 'text';
-                    if (data.required) reqCheck.checked = true;
-                }
+                // 1. Dropdown (Select) tipi seçildiğinde seçenek kutusunu göster
+                typeSelect.addEventListener('change', function() {
+                    if (this.value === 'select') {
+                        optionsWrapper.style.display = 'block';
+                        optionsInput.required = true;
+                    } else {
+                        optionsWrapper.style.display = 'none';
+                        optionsInput.required = false;
+                        optionsInput.value = '';
+                    }
+                });
 
+                // 2. Label'dan Key'e otomatik Slug çevirici (Boşalan özellik geri geldi)
                 labelInput.addEventListener('keyup', function() {
                     if (!keyInput.value || keyInput.dataset.auto === 'true') {
                         keyInput.dataset.auto = 'true';
@@ -228,23 +243,47 @@
                             .replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
                     }
                 });
+
                 keyInput.addEventListener('input', () => keyInput.dataset.auto = 'false');
 
                 lucide.createIcons();
                 fieldIndex++;
-            }
-
-            // Sayfa açıldığında veritabanındaki verileri çiz
-            if (existingFields && existingFields.length > 0) {
-                existingFields.forEach(f => addRow(f));
-            }
-
-            document.getElementById('addFieldBtn').addEventListener('click', () => addRow());
+            });
 
             container.addEventListener('click', function(e) {
                 const btn = e.target.closest('.remove-field-btn');
-                if (btn) btn.closest('.field-row').remove();
+                if (btn) {
+                    btn.closest('.field-row').remove();
+                }
             });
+            // Mevcut alanları yükle (Sadece Edit sayfasına özel)
+            const existingFields = @json($processTemplate->fields ?? []);
+
+            function renderFieldRow(data = null) {
+                const html = template.replace(/__INDEX__/g, fieldIndex);
+                container.insertAdjacentHTML('beforeend', html);
+                const newRow = container.lastElementChild;
+
+                if (data) {
+                    newRow.querySelector('.label-input').value = data.label || '';
+                    newRow.querySelector('.key-input').value = data.name || '';
+                    newRow.querySelector('.type-select').value = data.type || 'text';
+                    if (data.required) newRow.querySelector('.req-check').checked = true;
+
+                    // Select tipi ise ve seçenekleri varsa göster
+                    if (data.type === 'select' && data.options) {
+                        newRow.querySelector('.options-wrapper').style.display = 'block';
+                        newRow.querySelector('.options-input').value = data.options.join(', ');
+                    }
+                }
+
+                // Satırın olay dinleyicilerini (Event Listeners) bağla
+                attachRowEvents(newRow);
+                fieldIndex++;
+            }
+
+            // Mevcutları çiz
+            existingFields.forEach(field => renderFieldRow(field));
         });
     </script>
 @endpush

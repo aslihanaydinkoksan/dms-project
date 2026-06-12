@@ -72,6 +72,22 @@
                                     <input type="date" name="custom_data[{{ $field['name'] }}]" class="form-control"
                                         value="{{ $val }}" {{ $required }}
                                         style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border-color);">
+                                @elseif($field['type'] === 'select')
+                                    {{-- YENİ EKLENEN: AÇILIR MENÜ (DROPDOWN) --}}
+                                    <select name="custom_data[{{ $field['name'] }}]" class="form-control"
+                                        {{ $required }}
+                                        style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border-color);">
+                                        <option value="">{{ __('-- Seçiniz --') }}</option>
+                                        @if (isset($field['options']) && is_array($field['options']))
+                                            @foreach ($field['options'] as $option)
+                                                {{-- Eğer önceden seçilmiş bir değer varsa (value), onu selected yapıyoruz --}}
+                                                <option value="{{ $option }}"
+                                                    {{ $val == $option ? 'selected' : '' }}>
+                                                    {{ $option }}
+                                                </option>
+                                            @endforeach
+                                        @endif
+                                    </select>
                                 @else
                                     <input type="{{ $field['type'] ?? 'text' }}" name="custom_data[{{ $field['name'] }}]"
                                         class="form-control" value="{{ $val }}"

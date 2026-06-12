@@ -350,6 +350,17 @@
                                 } else if (field.type === 'date') {
                                     inputHtml =
                                         `<input type="date" name="custom_data[${field.name}]" class="form-control dynamic-input" ${requiredAttr} style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border-color);">`;
+                                } else if (field.type === 'select') {
+                                    let optionsHtml =
+                                        '<option value="">-- Seçiniz --</option>';
+                                    if (field.options && Array.isArray(field.options)) {
+                                        field.options.forEach(opt => {
+                                            optionsHtml +=
+                                                `<option value="${opt}">${opt}</option>`;
+                                        });
+                                    }
+                                    inputHtml =
+                                        `<select name="custom_data[${field.name}]" class="form-control dynamic-input" ${requiredAttr} style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border-color);">${optionsHtml}</select>`;
                                 } else {
                                     inputHtml =
                                         `<input type="${field.type || 'text'}" name="custom_data[${field.name}]" class="form-control dynamic-input" placeholder="${field.placeholder || ''}" ${requiredAttr} style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border-color);">`;

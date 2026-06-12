@@ -138,12 +138,19 @@
             </div>
             <div>
                 <label style="font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; display: block;">Veri Tipi</label>
-                <select name="fields[__INDEX__][type]" class="form-control" style="width: 100%; border-radius: 6px;">
+                <select name="fields[__INDEX__][type]" class="form-control type-select" style="width: 100%; border-radius: 6px;">
                     <option value="text">Kısa Metin (Text)</option>
                     <option value="number">Sayısal (Number)</option>
                     <option value="date">Tarih (Date)</option>
                     <option value="textarea">Uzun Metin (Textarea)</option>
+                    <option value="select">Açılır Menü (Dropdown)</option>
                 </select>
+            </div>
+            <div class="options-wrapper" style="display: none; grid-column: span 2;">
+                <label style="font-size: 0.8rem; font-weight: 600; color: var(--accent-color);">Menü Seçenekleri (Virgülle
+                    ayırın) *</label>
+                <input type="text" name="fields[__INDEX__][options_raw]" class="form-control options-input"
+                    placeholder="Örn: Onaylandı, Reddedildi, Beklemede">
             </div>
             <div style="padding-top: 20px; text-align: center;">
                 <label
@@ -170,14 +177,33 @@
             let fieldIndex = 0;
 
             document.getElementById('addFieldBtn').addEventListener('click', function() {
+                // Şablonu al ve index'i değiştir
                 const html = template.replace(/__INDEX__/g, fieldIndex);
                 container.insertAdjacentHTML('beforeend', html);
 
+                // Yeni eklenen satırı yakala
                 const newRow = container.lastElementChild;
+
+                // Satır bazlı elementleri yakala (Hata giderildi: const yerine let veya scoping ile)
+                const typeSelect = newRow.querySelector('.type-select');
+                const optionsWrapper = newRow.querySelector('.options-wrapper');
+                const optionsInput = newRow.querySelector('.options-input');
                 const labelInput = newRow.querySelector('.label-input');
                 const keyInput = newRow.querySelector('.key-input');
 
-                // Label'dan Key'e otomatik Slug çevirici (UX iyileştirmesi)
+                // 1. Dropdown (Select) tipi seçildiğinde seçenek kutusunu göster
+                typeSelect.addEventListener('change', function() {
+                    if (this.value === 'select') {
+                        optionsWrapper.style.display = 'block';
+                        optionsInput.required = true;
+                    } else {
+                        optionsWrapper.style.display = 'none';
+                        optionsInput.required = false;
+                        optionsInput.value = '';
+                    }
+                });
+
+                // 2. Label'dan Key'e otomatik Slug çevirici (Boşalan özellik geri geldi)
                 labelInput.addEventListener('keyup', function() {
                     if (!keyInput.value || keyInput.dataset.auto === 'true') {
                         keyInput.dataset.auto = 'true';
@@ -187,6 +213,7 @@
                             .replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
                     }
                 });
+
                 keyInput.addEventListener('input', () => keyInput.dataset.auto = 'false');
 
                 lucide.createIcons();
