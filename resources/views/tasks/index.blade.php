@@ -21,39 +21,92 @@
 
             {{-- VIEW TOGGLE (KANBAN vs CALENDAR) --}}
             <div class="view-toggle"
-                style="display: flex; background: #e2e8f0; padding: 4px; border-radius: 8px; border: 1px solid var(--border-color);">
-                <a href="{{ route('tasks.index', ['template_id' => $selectedTemplate->id ?? '', 'view' => 'kanban']) }}"
+                style="display: flex; background: #e2e8f0; padding: 4px; border-radius: 8px; border: 1px solid var(--border-color); flex-shrink: 0;">
+                <a href="{{ route('tasks.index', array_merge(request()->query(), ['view' => 'kanban'])) }}"
                     class="btn btn-sm"
                     style="border-radius: 6px; font-weight: 600; {{ $currentView === 'kanban' ? 'background: #fff; color: var(--primary-color); box-shadow: 0 2px 4px rgba(0,0,0,0.05);' : 'background: transparent; color: var(--text-muted);' }}">
                     <i data-lucide="layout-kanban" style="width: 16px; vertical-align: middle;"></i> Kanban
                 </a>
-                <a href="{{ route('tasks.index', ['template_id' => $selectedTemplate->id ?? '', 'view' => 'calendar']) }}"
+                <a href="{{ route('tasks.index', array_merge(request()->query(), ['view' => 'calendar'])) }}"
                     class="btn btn-sm"
                     style="border-radius: 6px; font-weight: 600; {{ $currentView === 'calendar' ? 'background: #fff; color: var(--primary-color); box-shadow: 0 2px 4px rgba(0,0,0,0.05);' : 'background: transparent; color: var(--text-muted);' }}">
                     <i data-lucide="calendar" style="width: 16px; vertical-align: middle;"></i> Ajanda
                 </a>
             </div>
 
+            {{-- ==================================================================== --}}
+            {{-- GENİŞLETİLMİŞ FORM: GLASSMORPHISM FILTRE ÇUBUĞU                    --}}
+            {{-- ==================================================================== --}}
             @if ($templates->isNotEmpty())
-                <form method="GET" action="{{ route('tasks.index') }}" id="templateFilterForm"
-                    style="margin: 0; display: flex; align-items: center; gap: 10px; background: var(--surface-color); padding: 6px 15px; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: var(--card-shadow);">
+                <form method="GET" action="{{ route('tasks.index') }}" id="advancedFilterForm"
+                    style="margin: 0; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: var(--surface-color); padding: 8px 16px; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: var(--card-shadow); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);">
+
+                    {{-- Mevcut görünüm modunu kaybetmemek için gizli tutuyoruz --}}
                     <input type="hidden" name="view" value="{{ $currentView }}">
-                    <label style="font-weight: 700; font-size: 0.85rem; color: var(--text-muted);"><i data-lucide="filter"
-                            style="width:14px;"></i> Süreç:</label>
-                    <select name="template_id" onchange="document.getElementById('templateFilterForm').submit();"
-                        class="form-control form-control-sm"
-                        style="font-weight: 600; color: var(--primary-color); border: none; background: transparent; cursor: pointer;">
-                        @foreach ($templates as $tpl)
-                            <option value="{{ $tpl->id }}"
-                                {{ ($selectedTemplate->id ?? 0) == $tpl->id ? 'selected' : '' }}>{{ $tpl->name }}
-                            </option>
-                        @endforeach
-                    </select>
+
+                    {{-- Eleman 1: Süreç Şablon Seçici --}}
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <label
+                            style="font-weight: 700; font-size: 0.8rem; color: var(--text-muted); white-space: nowrap; margin: 0;">
+                            <i data-lucide="layers" style="width:14px; vertical-align: middle; margin-right: 2px;"></i>
+                            Süreç:
+                        </label>
+                        <select name="template_id" class="form-control form-control-sm"
+                            style="font-weight: 600; color: var(--primary-color); border: 1px solid var(--border-color); border-radius: 6px; padding: 4px 8px; background: #fff; cursor: pointer; height: 32px; font-size: 0.85rem;">
+                            @foreach ($templates as $tpl)
+                                <option value="{{ $tpl->id }}"
+                                    {{ ($selectedTemplate->id ?? 0) == $tpl->id ? 'selected' : '' }}>
+                                    {{ $tpl->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    {{-- Eleman 2: Arama Kutusu --}}
+                    <div style="display: flex; align-items: center; position: relative;">
+                        <i data-lucide="search"
+                            style="width: 14px; position: absolute; left: 10px; color: var(--text-muted); top: 50%; transform: translateY(-50%);"></i>
+                        <input type="text" name="search" value="{{ $filters['search'] ?? '' }}"
+                            placeholder="Görev veya veri ara..." class="form-control form-control-sm"
+                            style="padding: 4px 10px 4px 30px; border-radius: 6px; border: 1px solid var(--border-color); width: 170px; height: 32px; font-size: 0.85rem;">
+                    </div>
+
+                    {{-- Eleman 3: Tarih Aralığı (Başlangıç) --}}
+                    <div style="display: flex; align-items: center; gap: 5px;">
+                        <label
+                            style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin: 0;">Tarih:</label>
+                        <input type="date" name="date_start" value="{{ $filters['date_start'] ?? '' }}"
+                            class="form-control form-control-sm"
+                            style="border-radius: 6px; border: 1px solid var(--border-color); padding: 2px 6px; height: 32px; font-size: 0.85rem; background: #fff;">
+                    </div>
+
+                    {{-- Eleman 4: Tarih Aralığı (Bitiş) --}}
+                    <div style="display: flex; align-items: center; gap: 5px;">
+                        <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin: 0;">-</label>
+                        <input type="date" name="date_end" value="{{ $filters['date_end'] ?? '' }}"
+                            class="form-control form-control-sm"
+                            style="border-radius: 6px; border: 1px solid var(--border-color); padding: 2px 6px; height: 32px; font-size: 0.85rem; background: #fff;">
+                    </div>
+
+                    {{-- Aksiyon Butonu: Filtrele --}}
+                    <button type="submit" class="btn btn-sm btn-primary"
+                        style="display: inline-flex; align-items: center; gap: 4px; font-weight: 600; padding: 0 12px; border-radius: 6px; height: 32px; font-size: 0.85rem; border: none; background: var(--primary-color); color: #fff;">
+                        <i data-lucide="filter" style="width: 14px;"></i> Filtrele
+                    </button>
+
+                    {{-- Aksiyon Butonu: Temizle (Koşullu Gösterim) --}}
+                    @if (request()->anyFilled(['search', 'date_start', 'date_end']))
+                        <a href="{{ route('tasks.index', ['template_id' => $selectedTemplate->id ?? '', 'view' => $currentView]) }}"
+                            class="btn btn-sm"
+                            style="display: inline-flex; align-items: center; gap: 4px; font-weight: 600; padding: 0 12px; border-radius: 6px; height: 32px; font-size: 0.85rem; background: #f1f5f9; color: var(--text-color); border: 1px solid var(--border-color); text-decoration: none;">
+                            <i data-lucide="x" style="width: 14px;"></i> Temizle
+                        </a>
+                    @endif
                 </form>
             @endif
 
             <a href="{{ route('tasks.create') }}" class="btn btn-primary"
-                style="display: flex; align-items: center; gap: 8px; font-weight: 600;">
+                style="display: flex; align-items: center; gap: 8px; font-weight: 600; flex-shrink: 0;">
                 <i data-lucide="plus-circle" style="width: 18px;"></i> {{ __('Yeni İş Başlat') }}
             </a>
         </div>
@@ -477,6 +530,7 @@
                 cursor: default;
             }
         </style>
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
         <script>
             document.addEventListener('DOMContentLoaded', function() {
                 lucide.createIcons();
@@ -497,43 +551,137 @@
                         },
                         onEnd: function(evt) {
                             const cardEl = evt.item;
-                            if (evt.from === evt.to && evt.oldIndex === evt.newIndex) return;
+                            const originalList = evt.from;
+                            const targetList = evt.to;
+                            const oldIndex = evt.oldIndex;
 
-                            cardEl.style.opacity = '0.5';
-                            fetch(`{{ url('/tasks') }}/${cardEl.dataset.taskId}/stage`, {
-                                method: 'PATCH',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'X-CSRF-TOKEN': csrfToken,
-                                    'Accept': 'application/json'
-                                },
-                                body: JSON.stringify({
-                                    current_stage_id: evt.to.dataset.stageId
-                                })
-                            }).then(async r => {
-                                const resData = await r.json();
-                                cardEl.style.opacity = '1';
-                                if (!r.ok) throw new Error(resData.message);
+                            // Aynı sütunda sadece yer değiştirdiyse işlem yapma
+                            if (originalList === targetList && oldIndex === evt.newIndex) return;
 
-                                const oldCounter = evt.from.closest('.kanban-column')
-                                    .querySelector('.card-count');
-                                const newCounter = evt.to.closest('.kanban-column')
-                                    .querySelector('.card-count');
-                                if (oldCounter) oldCounter.textContent = evt.from
-                                    .children.length;
-                                if (newCounter) newCounter.textContent = evt.to.children
-                                    .length;
+                            const targetStageName = targetList.closest('.kanban-column')
+                                .querySelector('h3').innerText.trim();
 
-                                showKanbanToast(resData.message, 'success');
-                            }).catch(err => {
-                                cardEl.style.opacity = '1';
-                                if (evt.oldIndex !== undefined) {
-                                    if (evt.oldIndex === evt.from.children.length) evt.from
-                                        .appendChild(cardEl);
-                                    else evt.from.insertBefore(cardEl, evt.from.children[evt
-                                        .oldIndex]);
+                            const revertCard = () => {
+                                if (originalList.children.length > oldIndex) {
+                                    originalList.insertBefore(cardEl, originalList.children[
+                                        oldIndex]);
+                                } else {
+                                    originalList.appendChild(cardEl);
                                 }
-                                showKanbanToast(err.message || 'Taşıma başarısız', 'error');
+                            };
+
+                            // =======================================================
+                            // STAGE-GATE: KULLANICI ONAYI, GEÇİŞ NOTU VE DOSYA YÜKLEME
+                            // =======================================================
+                            Swal.fire({
+                                title: 'Aşama Geçiş Onayı',
+                                html: `
+                                    <div style="font-size: 0.95rem; margin-bottom: 15px; color: var(--text-color);">
+                                        Bu süreci <strong>${targetStageName}</strong> aşamasına taşıyorsunuz. Devam etmek istediğinize emin misiniz?
+                                    </div>
+                                    <div style="text-align: left;">
+                                        <label style="font-size: 0.8rem; font-weight: 600; margin-bottom: 5px; display: block; color:var(--text-color);">Geçiş Notu (Opsiyonel)</label>
+                                        <textarea id="swal-transition-note" class="form-control" placeholder="Örn: Evraklar kontrol edildi, uygundur..." style="width: 100%; border-radius: 8px; padding: 12px; min-height: 80px; border: 1px solid #cbd5e1; outline: none; margin-bottom: 15px;"></textarea>
+                                        
+                                        <label style="font-size: 0.8rem; font-weight: 600; margin-bottom: 5px; display: block; color:var(--text-color);">Ek Belge Yükle (PDF, Excel, JPG, UDF - Max 20MB)</label>
+                                        <input type="file" id="swal-attachment-file" class="form-control" accept=".pdf,.xls,.xlsx,.jpg,.jpeg,.udf" style="width: 100%; border-radius: 8px; padding: 8px; border: 1px dashed #94a3b8; background: #f8fafc; font-size: 0.85rem;">
+                                    </div>
+                                `,
+                                icon: 'question',
+                                showCancelButton: true,
+                                confirmButtonColor: '#10b981',
+                                cancelButtonColor: '#64748b',
+                                confirmButtonText: '<i data-lucide="check" style="width:16px; margin-right:4px;"></i> Evet, Taşı',
+                                cancelButtonText: 'İptal',
+                                focusConfirm: false,
+                                didOpen: () => {
+                                    if (typeof lucide !== 'undefined') lucide
+                                        .createIcons();
+                                    document.getElementById('swal-transition-note')
+                                        .focus();
+                                },
+                                preConfirm: () => {
+                                    return {
+                                        note: document.getElementById(
+                                            'swal-transition-note').value.trim(),
+                                        file: document.getElementById(
+                                            'swal-attachment-file').files[0]
+                                    };
+                                }
+                            }).then((result) => {
+                                if (result.isConfirmed) {
+                                    cardEl.style.opacity = '0.5';
+
+                                    // 1. JSON YERİNE FORMDATA KULLANIMI (DOSYA TAŞIMAK İÇİN ŞART)
+                                    const formData = new FormData();
+                                    formData.append('current_stage_id', targetList.dataset
+                                        .stageId);
+
+                                    // Laravel REST mimarisini kandırmak için (Method Spoofing)
+                                    formData.append('_method', 'PATCH');
+
+                                    if (result.value.note) {
+                                        formData.append('transition_note', result.value
+                                            .note);
+                                    }
+                                    if (result.value.file) {
+                                        formData.append('attachment', result.value.file);
+                                    }
+
+                                    // 2. FETCH İSTEĞİ
+                                    fetch(`{{ url('/tasks') }}/${cardEl.dataset.taskId}/stage`, {
+                                        method: 'POST', // POST Atıyoruz ama _method=PATCH sayesinde Backend bunu PATCH görecek
+                                        headers: {
+                                            'X-CSRF-TOKEN': csrfToken,
+                                            'Accept': 'application/json'
+                                            // 'Content-Type' KESİNLİKLE EKLENMİYOR! Tarayıcı "multipart/form-data" sınırını kendisi çizecek.
+                                        },
+                                        body: formData
+                                    }).then(async r => {
+                                        const resData = await r.json();
+                                        cardEl.style.opacity = '1';
+
+                                        // ANTI-SKIP VEYA VALIDASYON HATASI (Örn: Dosya 20MB'den büyük)
+                                        if (r.status === 422) {
+                                            const errorMsg = resData.error ||
+                                                resData.message;
+                                            showKanbanToast(errorMsg, 'error');
+                                            revertCard();
+                                            throw new Error(
+                                                'İşlem reddedildi.');
+                                        }
+
+                                        if (!r.ok) throw new Error(resData
+                                            .message ||
+                                            'Sunucu hatası oluştu');
+
+                                        // BAŞARILI TAŞIMA VE DOM SAYAÇ GÜNCELLEMESİ
+                                        const oldCounter = originalList.closest(
+                                            '.kanban-column').querySelector(
+                                            '.card-count');
+                                        const newCounter = targetList.closest(
+                                            '.kanban-column').querySelector(
+                                            '.card-count');
+                                        if (oldCounter) oldCounter.textContent =
+                                            originalList.children.length;
+                                        if (newCounter) newCounter.textContent =
+                                            targetList.children.length;
+
+                                        showKanbanToast(resData.message,
+                                            'success');
+
+                                    }).catch(err => {
+                                        cardEl.style.opacity = '1';
+                                        if (err.message !== 'İşlem reddedildi.') {
+                                            revertCard();
+                                            showKanbanToast(err.message ||
+                                                'Taşıma başarısız', 'error');
+                                        }
+                                    });
+                                } else {
+                                    // KULLANICI İPTAL ETTİ
+                                    revertCard();
+                                }
                             });
                         }
                     });

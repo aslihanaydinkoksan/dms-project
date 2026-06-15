@@ -70,7 +70,7 @@ class Task extends Model
         return $this->hasMany(TaskLog::class);
     }
     // --- GÖREV DURUM YARDIMCILARI (UI İÇİN) ---
-    
+
     public function isCompleted(): bool
     {
         return $this->status === 'completed';
@@ -84,5 +84,32 @@ class Task extends Model
     public function isLocked(): bool
     {
         return $this->isCompleted() || $this->isPendingApproval();
+    }
+    /**
+     * Local Scope: Gelişmiş Süreç ve JSON Veri Filtreleme Kalkanı
+     */
+    public function scopeFilter(\Illuminate\Database\Eloquent\Builder $query, array $filters): \Illuminate\Database\Eloquent\Builder
+    {
+        // 1. Title Veya JSON Sütunlarında Metin Araması (Arama Filtresi)
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                    // custom_data sütunundaki JSON text veriler içinde de akıllı arama yapar
+                    ->orWhere('custom_data', 'like', "%{$search}%");
+            });
+        }
+
+        // 2. Başlangıç Tarihi Sınırı
+        if (!empty($filters['date_start'])) {
+            $query->whereDate('created_at', '>=', $filters['date_start']);
+        }
+
+        // 3. Bitiş Tarihi Sınırı
+        if (!empty($filters['date_end'])) {
+            $query->whereDate('created_at', '<=', $filters['date_end']);
+        }
+
+        return $query;
     }
 }

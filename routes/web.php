@@ -107,6 +107,11 @@ Route::controller(\App\Http\Controllers\Auth\SsoController::class)->prefix('sso'
 // ==========================================================================
 Route::middleware(['auth'])->group(function () {
 
+    // Güvenli Belge İndirme Rotası
+    Route::get('/tasks/attachments/{attachment}/download', [\App\Http\Controllers\TaskController::class, 'downloadAttachment'])
+        ->name('tasks.attachments.download')
+        ->middleware('auth');
+
     Route::get('/notifications/{id}/read', [App\Http\Controllers\ProfileController::class, 'readAndRedirect'])->name('notifications.read');
 
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');

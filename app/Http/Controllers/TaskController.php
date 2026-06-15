@@ -21,18 +21,21 @@ class TaskController extends Controller
     }
     /**
      * BPM OPERASYON MERKEZİ: Dinamik Kanban Tahtası (Index)
+     * ENTEGRE: Local Scopes ile Gelişmiş Filtreleme Mimarisi
      */
     public function index(Request $request)
     {
         $templates = ProcessTemplate::orderBy('name')->get();
 
+        // Şablon yoksa boş sayfayı bas
         if ($templates->isEmpty()) {
             return view('tasks.index', [
                 'templates' => collect(),
                 'selectedTemplate' => null,
                 'stages' => collect(),
                 'calendarEvents' => [],
-                'currentView' => 'kanban'
+                'currentView' => 'kanban',
+                'filters' => [] // YENİ: Boş filtre dizisi gönderiyoruz
             ]);
         }
 
@@ -42,10 +45,16 @@ class TaskController extends Controller
         // Kullanıcının tercih ettiği görünüm (kanban veya calendar)
         $currentView = $request->query('view', 'kanban');
 
-        // Kanban İçin Aşamalar ve Veriler
+        // ====================================================================
+        // YENİ: Gelişmiş Filtre Verilerini Yakala
+        // ====================================================================
+        $filters = $request->only(['search', 'date_start', 'date_end']);
+
+        // Kanban İçin Aşamalar ve Veriler (Filtre Entegreli)
         $stages = \App\Models\ProcessStage::where('process_template_id', $selectedTemplate->id)
-            ->with(['tasks' => function ($query) {
+            ->with(['tasks' => function ($query) use ($filters) { // YENİ: use ($filters) eklendi
                 $query->with(['creator', 'users'])
+                    ->filter($filters) // YENİ: Local Scope Buraya Enjekte Edildi!
                     ->where(function ($q) {
                         // Aktif ve Onay Bekleyenleri her zaman getir
                         $q->whereIn('status', ['active', 'pending_closure_approval'])
@@ -57,7 +66,8 @@ class TaskController extends Controller
                     })
                     ->orderBy('updated_at', 'desc');
             }])->orderBy('sort_order')->get();
-        // AJANDA (CALENDAR) İÇİN DİNAMİK EVENT ÜRETİCİ
+
+        // AJANDA (CALENDAR) İÇİN DİNAMİK EVENT ÜRETİCİ (Dokunulmadı, orijinal)
         $calendarEvents = [];
         if ($currentView === 'calendar') {
             foreach ($stages as $stage) {
@@ -88,7 +98,8 @@ class TaskController extends Controller
             }
         }
 
-        return view('tasks.index', compact('templates', 'selectedTemplate', 'stages', 'currentView', 'calendarEvents'));
+        // YENİ: compact içine 'filters' eklendi
+        return view('tasks.index', compact('templates', 'selectedTemplate', 'stages', 'currentView', 'calendarEvents', 'filters'));
     }
     /**
      * GÖREV DETAY EKRANI (Arşivden veya Kanban'dan tıklanınca açılır)
@@ -102,26 +113,95 @@ class TaskController extends Controller
 
         return view('tasks.show', compact('task', 'logs'));
     }
+
     /**
      * AJAX ENDPOINT: Kartı sürükleyip bıraktığımızda veritabanını günceller
+     * ENTEGRE: Anti-Skip, Stage-Gate Notları ve GÜVENLİ Dosya Yükleme
      */
     public function updateStage(Request $request, \App\Models\Task $task): \Illuminate\Http\JsonResponse
     {
-        // Güvenlik: Gelen aşama (sütun) ID'si gerçekten mevcut mu?
+        // 1. Zenginleştirilmiş Validasyon
         $validated = $request->validate([
-            'current_stage_id' => 'required|exists:process_stages,id'
+            'current_stage_id' => 'required|exists:process_stages,id',
+            'transition_note'  => 'nullable|string|max:500',
+            'attachment'       => 'nullable|file|extensions:pdf,xls,xlsx,jpg,jpeg,udf|max:20480' // Max 20MB
         ]);
 
         try {
-            // Zırh: Kullanıcı kartı başka bir sürecin sütununa fırlatmaya çalışırsa engelle
             $targetStage = \App\Models\ProcessStage::findOrFail($validated['current_stage_id']);
+
+            // Zırh 1: Başka sürecin aşamasına fırlatmayı engelle
             if ($targetStage->process_template_id !== $task->process_template_id) {
                 return response()->json(['success' => false, 'message' => 'Geçersiz süreç aşaması eşleşmesi!'], 400);
             }
 
-            // Veritabanını sessizce (Observer'ları tetiklemeden veya loglayarak) güncelle
-            $task->update([
-                'current_stage_id' => $targetStage->id
+            // ZIRH 2: DOĞRUSAL AKIŞ KALKANI (ANTI-SKIP SHIELD)
+            $stages = \App\Models\ProcessStage::where('process_template_id', $task->process_template_id)
+                ->orderBy('sort_order', 'asc')->pluck('id')->toArray();
+
+            $originalIndex = array_search($task->current_stage_id, $stages);
+            $targetIndex = array_search($targetStage->id, $stages);
+
+            if ($originalIndex !== false && $targetIndex !== false && abs($targetIndex - $originalIndex) > 1) {
+                return response()->json(['error' => 'Kurumsal iş akışı kuralları gereği aşama atlanamaz. Lütfen süreci adım adım ilerletin.'], 422);
+            }
+
+            // Eski aşamayı log için hafızaya al
+            $oldStageName = $task->stage->name ?? 'Bilinmeyen Aşama';
+
+            // ====================================================================
+            // GÜVENLİ DOSYA İŞLEME (SECURE FILE UPLOAD)
+            // ====================================================================
+            $attachmentLogText = ''; // Dışarıda sadece boş bir metin tanımlıyoruz
+
+            if ($request->hasFile('attachment')) {
+                $file = $request->file('attachment');
+                $originalName = $file->getClientOriginalName();
+                $extension = $file->getClientOriginalExtension();
+                $safeName = time() . '_' . \Illuminate\Support\Str::slug(pathinfo($originalName, PATHINFO_FILENAME)) . '.' . $extension;
+
+                // DİKKAT: 'local' (Gizli) diske kaydediyoruz!
+                $path = $file->storeAs("tasks/attachments/{$task->id}", $safeName, 'local');
+
+                // DİKKAT: $attachment değişkeni SADECE bu IF bloğunun içinde yaşar!
+                $attachment = \App\Models\TaskAttachment::create([
+                    'task_id'          => $task->id,
+                    'process_stage_id' => $targetStage->id,
+                    'user_id'          => Auth::id(),
+                    'file_name'        => $originalName,
+                    'file_path'        => $path,
+                    'file_size'        => $file->getSize(),
+                    'extension'        => $extension,
+                ]);
+
+                // Rota ve Link üretme işlemi de bu bloğun içinde olmalıdır
+                $fileUrl = route('tasks.attachments.download', $attachment->id);
+                $attachmentLogText = "<br><br><span style='color: #0284c7; font-size: 0.85rem; font-weight:600; display:flex; align-items:center; gap:5px;'><i data-lucide='paperclip' style='width:14px;'></i> Ek Belge Yüklendi: <a href='{$fileUrl}' target='_blank' style='color:#2563eb; text-decoration:underline;'>{$originalName}</a></span>";
+            }
+
+            // Kurallara uyuyorsa veritabanını sessizce güncelle
+            $task->update(['current_stage_id' => $targetStage->id]);
+
+            // ====================================================================
+            // DENETİM İZİNE YAZ
+            // ====================================================================
+            $logDescription = "İşlem yeni aşamaya taşındı: <strong>{$targetStage->name}</strong>.";
+
+            if (!empty($validated['transition_note'])) {
+                $logDescription .= "<br><br><span style='color: var(--text-muted); font-style: italic;'>Kullanıcı Notu: " . strip_tags($validated['transition_note']) . "</span>";
+            }
+
+            // Eğer dosya yüklendiyse, hazırladığımız HTML şablonu loga eklenir. Yüklenmediyse boş metin ('') eklenir, hata vermez.
+            $logDescription .= $attachmentLogText;
+
+            \App\Models\TaskLog::create([
+                'task_id'     => $task->id,
+                'user_id'     => Auth::id(),
+                'action'      => 'stage_transition',
+                'description' => $logDescription,
+                'old_data'    => ['stage' => $oldStageName],
+                'new_data'    => ['stage' => $targetStage->name],
+                'ip_address'  => $request->ip()
             ]);
 
             return response()->json([
@@ -322,5 +402,32 @@ class TaskController extends Controller
         $this->taskService->updateTask($task, $validatedData);
 
         return redirect()->route('tasks.show', $task->id)->with('success', '✨ Süreç bilgileri başarıyla güncellendi.');
+    }
+    /**
+     * GÜVENLİ DOSYA İNDİRME MERKEZİ (Secure File Serve)
+     */
+    public function downloadAttachment(\App\Models\TaskAttachment $attachment)
+    {
+        $task = $attachment->task;
+
+        // Güvenlik: Sadece işi başlatan, projede görevi olan (manager/member) veya Yönetici kadrosu görebilir
+        $isAuthorized = $task->creator_id === Auth::id()
+            || \Illuminate\Support\Facades\DB::table('task_user')->where('task_id', $task->id)->where('user_id', Auth::id())->exists()
+            || Auth::user()->hasRole('Super Admin')
+            || Auth::user()->hasRole('Admin');
+
+        if (!$isAuthorized) {
+            abort(403, '🛑 Güvenlik İhlali: Bu dosyayı görüntüleme yetkiniz bulunmamaktadır.');
+        }
+
+        // Dosya 'local' diskte (storage/app/...) olduğu için gerçek fiziksel yolu alıyoruz
+        $filePath = storage_path('app/' . $attachment->file_path);
+
+        if (!file_exists($filePath)) {
+            abort(404, 'Dosya sunucuda bulunamadı veya silinmiş.');
+        }
+
+        // Kullanıcıya dosyayı orijinal adıyla güvenle teslim et
+        return response()->download($filePath, $attachment->file_name);
     }
 }
