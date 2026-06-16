@@ -30,14 +30,14 @@ class TaskObserver
                 'task_id' => $task->id,
                 'user_id' => $userId,
                 'action' => 'stage_changed',
-                'description' => "Görev aşaması '{$oldStage}' sütunundan '{$newStage}' sütununa taşındı.",
+                'description' => "Süreç aşaması '{$oldStage}' sütunundan '{$newStage}' sütununa taşındı.",
                 'old_data' => ['stage_id' => $oldStageId, 'stage_name' => $oldStage],
                 'new_data' => ['stage_id' => $newStageId, 'stage_name' => $newStage],
                 'ip_address' => $ipAddress
             ]);
         }
 
-        // 2. GÖREV DURUMU (STATUS) DEĞİŞTİYSE (Örn: Onaya Sunuldu, Tamamlandı)
+        // 2. SÜREÇ DURUMU (STATUS) DEĞİŞTİYSE (Örn: Onaya Sunuldu, Tamamlandı)
         if ($task->isDirty('status')) {
             $oldStatus = $task->getOriginal('status');
             $newStatus = $task->status;
@@ -52,7 +52,7 @@ class TaskObserver
                 'task_id' => $task->id,
                 'user_id' => $userId,
                 'action' => 'status_changed',
-                'description' => "Görev durumu '{$statusLabels[$oldStatus]}' statüsünden '{$statusLabels[$newStatus]}' statüsüne geçirildi.",
+                'description' => "Süreç durumu '{$statusLabels[$oldStatus]}' statüsünden '{$statusLabels[$newStatus]}' statüsüne geçirildi.",
                 'old_data' => ['status' => $oldStatus],
                 'new_data' => ['status' => $newStatus],
                 'ip_address' => $ipAddress

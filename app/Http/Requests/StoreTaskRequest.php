@@ -7,21 +7,24 @@ use App\Models\ProcessTemplate;
 
 class StoreTaskRequest extends FormRequest
 {
+    /**
+     * DİNAMİK YETKİ KALKANI
+     */
     public function authorize(): bool
     {
-        return true; // Yetki Policy veya Controller'da kontrol edilecek
+        return $this->user()->can('task.create') || $this->user()->hasAnyRole(['Super Admin', 'Admin']);
     }
 
     public function rules(): array
     {
         // 1. Sabit Kurallar (Görev başlığı, şablon ID ve Ekip Üyeleri)
         $rules = [
-            'process_template_id' => 'required|exists:process_templates,id',
-            'title'               => 'required|string|max:255',
-            'team_members'        => 'nullable|array',
+            'process_template_id'    => 'required|exists:process_templates,id',
+            'title'                  => 'required|string|max:255',
+            'team_members'           => 'nullable|array',
             'team_members.*.user_id' => 'required_with:team_members|exists:users,id',
-            'team_members.*.role' => 'required_with:team_members|in:manager,member',
-            'custom_data'         => 'nullable|array',
+            'team_members.*.role'    => 'required_with:team_members|in:manager,member',
+            'custom_data'            => 'nullable|array',
         ];
 
         // 2. DİNAMİK KURALLAR (No-Code Form Validation)

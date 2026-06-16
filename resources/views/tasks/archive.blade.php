@@ -8,7 +8,7 @@
                 <div style="background: #f0fdf4; color: #166534; padding: 10px; border-radius: 12px; display:flex;">
                     <i data-lucide="archive" style="width: 28px; height: 28px;"></i>
                 </div>
-                {{ __('BPM İş Arşivi ve Geçmişi') }}
+                {{ __('Süreçler Arşivi') }}
             </h1>
             <p class="text-muted" style="font-size: 0.95rem; margin-top: 5px;">
                 {{ __('Başarıyla tamamlanıp yönetici onayıyla kapatılmış tüm süreçlerin geçmişini buradan inceleyebilirsiniz.') }}
@@ -38,8 +38,8 @@
             <table class="table modern-table" style="width: 100%; margin: 0;">
                 <thead style="background: #f8fafc;">
                     <tr>
-                        <th style="padding: 15px;">{{ __('Görev No & Başlık') }}</th>
-                        <th style="padding: 15px;">{{ __('Süreç (Şablon)') }}</th>
+                        <th style="padding: 15px;">{{ __('Süreç No & Başlık') }}</th>
+                        <th style="padding: 15px;">{{ __('Şablon') }}</th>
                         <th style="padding: 15px;">{{ __('Başlatan') }}</th>
                         <th style="padding: 15px;">{{ __('Kapanış Notu') }}</th>
                         <th style="padding: 15px;">{{ __('Kapanış Tarihi') }}</th>

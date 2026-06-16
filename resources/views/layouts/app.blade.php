@@ -399,21 +399,77 @@
             /* Açık mavi ikon */
         }
 
-        /* Analitik İçin Özel Gradient Buton (Eski inline stili CSS'e taşıdık) */
+
+        /* Alt Menü (Submenu) Stilleri */
+        .nav-item.has-submenu {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .nav-submenu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: none;
+            /* Varsayılan olarak kapalı */
+            padding-left: 2rem;
+            /* Girinti */
+            margin-top: 0.25rem;
+        }
+
+        .nav-submenu.open {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            animation: slideDown 0.2s ease-out forwards;
+        }
+
+        .submenu-icon {
+            width: 1rem;
+            height: 1rem;
+            margin-left: auto;
+            /* Sağa yasla */
+            transition: transform 0.2s ease;
+        }
+
+        .nav-group-toggle.open .submenu-icon {
+            transform: rotate(180deg);
+            /* Açılınca oku yukarı çevir */
+        }
+
+        /* ========================================== */
+        /* SİSTEM ANALİTİĞİ BUTONU STİLLERİ           */
+        /* ========================================== */
+
+        /* 1. Normal (Seçili Olmayan) Durum */
         .nav-link-special {
-            background: rgba(243, 244, 246, 0.5);
-            border: 1px solid #e5e7eb;
+            background: transparent !important;
+            /* Eski gri rengi kesin olarak eziyoruz */
+            border: 1px dashed rgba(139, 92, 246, 0.4);
+            transition: all 0.3s ease;
         }
 
         .nav-link-special .nav-icon {
             color: #8b5cf6;
-            /* Vurgu rengi */
         }
 
-        .nav-link-special.active {
-            background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 100%);
+        /* 2. Üzerine Gelindiğinde (Hover) */
+        .nav-link-special:hover {
+            background: rgba(139, 92, 246, 0.1) !important;
+            /* Koyu temaya uygun çok hafif mor bir parlama */
+            border-color: rgba(139, 92, 246, 0.6);
             color: #ffffff;
-            border: none;
+        }
+
+        .nav-link-special:hover .nav-icon {
+            color: #a78bfa;
+        }
+
+        /* 3. Seçili (Active) Durum */
+        .nav-link-special.active {
+            background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 100%) !important;
+            color: #ffffff;
+            border: 1px solid transparent;
             box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.4);
         }
 
@@ -440,7 +496,7 @@
                         </li>
                     @endcan
 
-                    {{-- DOKÜMANLAR VE SÜREÇLER BAŞLIĞI (İçindeki tüm yetkiler buraya yazıldı) --}}
+                    {{-- DOKÜMANLAR VE SÜREÇLER BAŞLIĞI --}}
                     @canany(['menu.documents', 'menu.folders', 'menu.tasks', 'menu.tasks_archive'])
                         <li class="nav-section">{{ __('DOKÜMANLAR & SÜREÇLER') }}</li>
                     @endcanany
@@ -451,6 +507,13 @@
                                 class="nav-link {{ request()->routeIs('documents.index', 'documents.show') ? 'active' : '' }}">
                                 <i data-lucide="folder-search" class="nav-icon"></i>
                                 <span class="nav-text">{{ __('Tüm Belgeler') }}</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ route('documents.create') }}"
+                                class="nav-link {{ request()->routeIs('documents.create') ? 'active' : '' }}">
+                                <i data-lucide="upload-cloud" class="nav-icon"></i>
+                                <span class="nav-text">{{ __('Yeni Belge Yükle') }}</span>
                             </a>
                         </li>
                     @endcan
@@ -465,120 +528,138 @@
                         </li>
                     @endcan
 
-                    @can('menu.documents')
-                        <li class="nav-item">
-                            <a href="{{ route('documents.create') }}"
-                                class="nav-link {{ request()->routeIs('documents.create') ? 'active' : '' }}">
-                                <i data-lucide="upload-cloud" class="nav-icon"></i>
-                                <span class="nav-text">{{ __('Yeni Belge Yükle') }}</span>
+                    {{-- GRUPLAMA: GÖREVLER VE SÜREÇLER --}}
+                    @canany(['menu.tasks', 'menu.tasks_archive'])
+                        <li class="nav-item has-submenu">
+                            <a href="#"
+                                class="nav-link nav-group-toggle {{ request()->routeIs('tasks.*') ? 'active open' : '' }}">
+                                <i data-lucide="kanban" class="nav-icon"></i>
+                                <span class="nav-text">{{ __('Süreçler') }}</span>
+                                <i data-lucide="chevron-down" class="submenu-icon"></i>
                             </a>
+                            <ul class="nav-submenu {{ request()->routeIs('tasks.*') ? 'open' : '' }}">
+                                @can('menu.tasks')
+                                    <li>
+                                        <a href="{{ route('tasks.index') }}"
+                                            class="nav-link {{ request()->routeIs('tasks.index') ? 'active' : '' }}">
+                                            <span class="nav-text">{{ __('Süreç Panosu') }}</span>
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="{{ route('tasks.create') }}"
+                                            class="nav-link {{ request()->routeIs('tasks.create') ? 'active' : '' }}">
+                                            <span class="nav-text">{{ __('Yeni Süreç Başlat') }}</span>
+                                        </a>
+                                    </li>
+                                @endcan
+                                @can('menu.tasks_archive')
+                                    <li>
+                                        <a href="{{ route('tasks.archive') }}"
+                                            class="nav-link {{ request()->routeIs('tasks.archive') ? 'active' : '' }}">
+                                            <span class="nav-text">{{ __('Süreç Arşivi') }}</span>
+                                        </a>
+                                    </li>
+                                @endcan
+                            </ul>
                         </li>
-                    @endcan
+                    @endcanany
 
-                    {{-- GÖREV OPERASYONLARI EKLENTİSİ --}}
-                    @can('menu.tasks')
-                        <li class="nav-item">
-                            <a href="{{ route('tasks.index') }}"
-                                class="nav-link {{ request()->routeIs('tasks.index') ? 'active' : '' }}">
-                                <i data-lucide="kanban"></i>
-                                <span class="nav-text">{{ __('Kanban/Ajanda') }}</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="{{ route('tasks.create') }}"
-                                class="nav-link {{ request()->routeIs('tasks.create') ? 'active' : '' }}">
-                                <i data-lucide="rocket" class="nav-icon"></i>
-                                <span class="nav-text">{{ __('Yeni Süreç Başlat') }}</span>
-                            </a>
-                        </li>
-                    @endcan
-
-                    @can('menu.tasks_archive')
-                        <li class="nav-item">
-                            <a href="{{ route('tasks.archive') }}"
-                                class="nav-link {{ request()->routeIs('tasks.archive') ? 'active' : '' }}">
-                                <i data-lucide="archive" class="nav-icon"></i>
-                                <span class="nav-text">{{ __('Süreçler İş Arşivi') }}</span>
-                            </a>
-                        </li>
-                    @endcan
-
-                    {{-- SİSTEM YÖNETİMİ BAŞLIĞI (İçindeki tüm alt yetkiler tam eşleşmeyle yazıldı) --}}
+                    {{-- SİSTEM YÖNETİMİ BAŞLIĞI --}}
                     @canany(['menu.analytics', 'menu.users', 'menu.settings', 'menu.process_templates'])
                         <li class="nav-section">{{ __('SİSTEM YÖNETİMİ') }}</li>
 
                         @can('menu.analytics')
                             <li class="nav-item">
                                 <a href="{{ route('analytics.index') }}"
-                                    class="nav-link nav-link-special {{ request()->routeIs('analytics.*') ? 'active' : '' }}">
+                                    class="nav-link  {{ request()->routeIs('analytics.*') ? 'active' : '' }}">
                                     <i data-lucide="pie-chart" class="nav-icon"></i>
                                     <span class="nav-text">{{ __('Sistem Analitiği') }}</span>
                                 </a>
                             </li>
                         @endcan
 
-                        @can('menu.users')
-                            <li class="nav-item">
-                                <a href="{{ route('users.index') }}"
-                                    class="nav-link {{ request()->routeIs('users.*') && !request()->routeIs('users.onay_bekleyenler') ? 'active' : '' }}">
+                        {{-- GRUPLAMA: KULLANICI İŞLEMLERİ --}}
+                        @canany(['menu.users', 'menu.user_groups'])
+                            <li class="nav-item has-submenu">
+                                <a href="#"
+                                    class="nav-link nav-group-toggle {{ request()->routeIs('users.*', 'settings.user-groups.*') ? 'active open' : '' }}">
                                     <i data-lucide="users" class="nav-icon"></i>
-                                    <span class="nav-text">{{ __('Kullanıcı Yönetimi') }}</span>
+                                    <span class="nav-text">{{ __('Kullanıcı İşlemleri') }}</span>
+                                    <i data-lucide="chevron-down" class="submenu-icon"></i>
                                 </a>
+                                <ul
+                                    class="nav-submenu {{ request()->routeIs('users.*', 'settings.user-groups.*') ? 'open' : '' }}">
+                                    @can('menu.users')
+                                        <li>
+                                            <a href="{{ route('users.index') }}"
+                                                class="nav-link {{ request()->routeIs('users.index') ? 'active' : '' }}">
+                                                <span class="nav-text">{{ __('Kullanıcı Listesi') }}</span>
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a href="{{ route('users.onay_bekleyenler') }}"
+                                                class="nav-link {{ request()->routeIs('users.onay_bekleyenler') ? 'active' : '' }}">
+                                                <span class="nav-text">{{ __('Onay Bekleyenler') }}</span>
+                                            </a>
+                                        </li>
+                                    @endcan
+                                    @can('menu.user_groups')
+                                        <li>
+                                            <a href="{{ route('settings.user-groups.index') }}"
+                                                class="nav-link {{ request()->routeIs('settings.user-groups.*') ? 'active' : '' }}">
+                                                <span class="nav-text">{{ __('Zorunlu Gruplar') }}</span>
+                                            </a>
+                                        </li>
+                                    @endcan
+                                </ul>
                             </li>
-                            <li class="nav-item">
-                                <a href="{{ route('users.onay_bekleyenler') }}"
-                                    class="nav-link {{ request()->routeIs('users.onay_bekleyenler') ? 'active' : '' }}">
-                                    <i data-lucide="webhook" class="nav-icon"></i>
-                                    <span class="nav-text">{{ __('Onay Bekleyenler') }}</span>
+                        @endcanany
+
+                        {{-- GRUPLAMA: SİSTEM AYARLARI --}}
+                        @can('menu.settings')
+                            <li class="nav-item has-submenu">
+                                <a href="#"
+                                    class="nav-link nav-group-toggle {{ request()->routeIs('settings.*') && !request()->routeIs('settings.user-groups.*') ? 'active open' : '' }}">
+                                    <i data-lucide="settings" class="nav-icon"></i>
+                                    <span class="nav-text">{{ __('Sistem Ayarları') }}</span>
+                                    <i data-lucide="chevron-down" class="submenu-icon"></i>
                                 </a>
+                                <ul
+                                    class="nav-submenu {{ request()->routeIs('settings.*') && !request()->routeIs('settings.user-groups.*') ? 'open' : '' }}">
+                                    <li>
+                                        <a href="{{ route('settings.permissions') }}"
+                                            class="nav-link {{ request()->routeIs('settings.permissions') ? 'active' : '' }}">
+                                            <span class="nav-text">{{ __('Genel Ayarlar') }}</span>
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="{{ route('settings.notifications') }}"
+                                            class="nav-link {{ request()->routeIs('settings.notifications') ? 'active' : '' }}">
+                                            <span class="nav-text">{{ __('Otomatik Raporlar') }}</span>
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="{{ route('settings.mail') }}"
+                                            class="nav-link {{ request()->routeIs('settings.mail') ? 'active' : '' }}">
+                                            <span class="nav-text">{{ __('Mail Şablonları') }}</span>
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="{{ route('settings.intents.index') }}"
+                                            class="nav-link {{ request()->routeIs('settings.intents.*') ? 'active' : '' }}">
+                                            <span class="nav-text">{{ __('Asistan Eğitimi') }}</span>
+                                        </a>
+                                    </li>
+                                </ul>
                             </li>
                         @endcan
-                        @can('menu.user_groups')
-                            <li class="nav-item">
-                                <a href="{{ route('settings.user-groups.index') }}"
-                                    class="nav-link {{ request()->routeIs('settings.user-groups.*') ? 'active' : '' }}">
-                                    <i data-lucide="network" class="nav-icon"></i>
-                                    <span class="nav-text">{{ __('Zorunlu Gruplar') }}</span>
-                                </a>
-                            </li>
-                        @endcan
+
                         @can('menu.process_templates')
                             <li class="nav-item">
                                 <a href="{{ route('process-templates.index') }}"
                                     class="nav-link {{ request()->routeIs('process-templates.*') ? 'active' : '' }}">
                                     <i data-lucide="layout-template" class="nav-icon"></i>
                                     <span class="nav-text">{{ __('Süreç Şablonları') }}</span>
-                                </a>
-                            </li>
-                        @endcan
-
-                        @can('menu.settings')
-                            <li class="nav-item">
-                                <a href="{{ route('settings.permissions') }}"
-                                    class="nav-link {{ request()->routeIs('settings.permissions') ? 'active' : '' }}">
-                                    <i data-lucide="shield-alert" class="nav-icon"></i>
-                                    <span class="nav-text">{{ __('Sistem Ayarları') }}</span>
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="{{ route('settings.notifications') }}"
-                                    class="nav-link {{ request()->routeIs('settings.notifications') ? 'active' : '' }}">
-                                    <i data-lucide="printer" class="nav-icon"></i>
-                                    <span class="nav-text">{{ __('Otomatik Rapor Ayarları') }}</span>
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="{{ route('settings.mail') }}"
-                                    class="nav-link {{ request()->routeIs('settings.mail') ? 'active' : '' }}">
-                                    <i data-lucide="mail" class="nav-icon"></i>
-                                    <span class="nav-text">{{ __('Mail Şablonları ve Ayarlar') }}</span>
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a href="{{ route('settings.intents.index') }}"
-                                    class="nav-link {{ request()->routeIs('settings.intents.*') ? 'active' : '' }}">
-                                    <i data-lucide="bot" class="nav-icon"></i>
-                                    <span class="nav-text">{{ __('Asistan Eğitimi') }}</span>
                                 </a>
                             </li>
                         @endcan
@@ -1551,6 +1632,37 @@
                         e.preventDefault();
                         sendMessage();
                     }
+                });
+                // --- SIDEBAR SUBMENU TOGGLE (AKORDİYON) ---
+                const groupToggles = document.querySelectorAll('.nav-group-toggle');
+
+                groupToggles.forEach(toggle => {
+                    toggle.addEventListener('click', function(e) {
+                        e.preventDefault(); // # linke tıklamayı engelle
+
+                        const parentLi = this.parentElement;
+                        const submenu = parentLi.querySelector('.nav-submenu');
+                        const isOpen = submenu.classList.contains('open');
+
+                        // Opsiyonel: Diğer açık menüleri kapatmak istersen (Akordiyon mantığı)
+                        
+                        document.querySelectorAll('.nav-submenu.open').forEach(menu => {
+                            if(menu !== submenu) {
+                                menu.classList.remove('open');
+                                menu.previousElementSibling.classList.remove('open');
+                            }
+                        });
+                        
+
+                        // Tıklananı aç/kapat
+                        if (isOpen) {
+                            submenu.classList.remove('open');
+                            this.classList.remove('open');
+                        } else {
+                            submenu.classList.add('open');
+                            this.classList.add('open');
+                        }
+                    });
                 });
             });
         </script>

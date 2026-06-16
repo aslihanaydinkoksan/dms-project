@@ -35,7 +35,7 @@
                 </div>
 
                 <div class="form-group mb-20">
-                    <label style="font-weight: 600; margin-bottom: 8px; display: block;">{{ __('Görev Başlığı / Konusu') }}
+                    <label style="font-weight: 600; margin-bottom: 8px; display: block;">{{ __('Süreç Başlığı / Konusu') }}
                         <span class="text-danger">*</span></label>
                     <input type="text" name="title" class="form-control" value="{{ old('title', $task->title) }}"
                         required

@@ -67,7 +67,7 @@
                         <i data-lucide="search"
                             style="width: 14px; position: absolute; left: 10px; color: var(--text-muted); top: 50%; transform: translateY(-50%);"></i>
                         <input type="text" name="search" value="{{ $filters['search'] ?? '' }}"
-                            placeholder="Görev veya veri ara..." class="form-control form-control-sm"
+                            placeholder="Süreç veya veri ara..." class="form-control form-control-sm"
                             style="padding: 4px 10px 4px 30px; border-radius: 6px; border: 1px solid var(--border-color); width: 170px; height: 32px; font-size: 0.85rem;">
                     </div>
 
@@ -254,7 +254,7 @@
                                         <div style="text-align: center;">
                                             <span
                                                 style="font-size: 0.7rem; color: #15803d; font-weight: 600; display: block; margin-bottom: 5px;">Bu
-                                                iş kapatıldı ve arşivlendi.</span>
+                                                süreç kapatıldı ve arşivlendi.</span>
                                             <a href="{{ route('tasks.show', $task->id) }}" class="btn btn-sm btn-success"
                                                 style="width: 100%; border-radius: 6px; font-weight: 600;">
                                                 Arşiv Detayını İncele
@@ -362,7 +362,7 @@
                                             class="btn btn-sm btn-outline-success"
                                             style="width: 100%; border-radius: 6px; font-weight: 600; display: flex; justify-content: center; align-items: center; gap: 6px;">
                                             <i data-lucide="check-circle" style="width: 16px;"></i>
-                                            {{ __('İşi Kapat / Onaya Sun') }}
+                                            {{ __('Süreci Kapat / Onaya Sun') }}
                                         </button>
                                     @endif
                                 </div>
@@ -393,7 +393,7 @@
                     style="padding: 20px 25px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: #f0fdf4;">
                     <h2
                         style="margin: 0; font-size: 1.25rem; display: flex; align-items: center; gap: 8px; color: #166534;">
-                        <i data-lucide="check-circle-2" style="color: #10b981;"></i> {{ __('İşi Kapat / Onaya Sun') }}
+                        <i data-lucide="check-circle-2" style="color: #10b981;"></i> {{ __('Süreci Kapat / Onaya Sun') }}
                     </h2>
                     <button type="button" onclick="closeClosureModal()"
                         style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #166534;">&times;</button>
@@ -405,7 +405,7 @@
                         <div class="alert alert-info mb-20"
                             style="font-size: 0.85rem; padding: 12px; background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; border-radius: 8px;">
                             <i data-lucide="info" style="width: 16px; vertical-align: text-bottom;"></i> Bu işlemi
-                            yaptığınızda görev Kanban tahtasında kilitlenir ve projenin <strong>Yönetici (Manager)</strong>
+                            yaptığınızda süreç Kanban tahtasında kilitlenir ve projenin <strong>Yönetici (Manager)</strong>
                             rolündeki kişilerin nihai onayı beklenir.
                         </div>
                         <div class="form-group mb-20">

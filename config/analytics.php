@@ -29,7 +29,7 @@ return [
             'date_column' => 'created_at',
             'groupings' => [
                 'status' => [
-                    'label' => 'Görev Durumuna Göre',
+                    'label' => 'Süreç Durumuna Göre',
                     'col' => 'status'
                 ],
                 'template' => [

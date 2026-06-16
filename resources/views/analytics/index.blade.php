@@ -3,7 +3,7 @@
 @section('content')
     <div class="page-header mb-20">
         <h1 class="page-title" style="font-size: 1.8rem; color: var(--primary-color);">
-            📊 {{ __('Self-Servis Analitik Motoru') }}
+            📊 {{ __('Sistem Analizi') }}
         </h1>
         <p class="text-muted">Tüm modüllerdeki verilerinizi istediğiniz formatta, anında görselleştirin.</p>
     </div>
@@ -63,11 +63,29 @@
 
     {{-- EVRENSEL GRAFİK ALANI --}}
     <div class="card glass-card" style="border-radius: 12px; padding: 25px; min-height: 450px;">
-        <div id="universalChartContainer"
-            style="min-height: 400px; display: flex; align-items: center; justify-content: center;">
-            <div class="text-muted text-center" id="emptyStateMsg">
-                <i data-lucide="pie-chart" style="width: 48px; height: 48px; opacity: 0.5; margin-bottom: 15px;"></i>
-                <p>Verilerinizi görselleştirmek için yukarıdan kriterleri belirleyip "Raporu Çiz" butonuna tıklayın.</p>
+
+        {{-- YENİ: DIŞA AKTAR BUTONLARI (Başlangıçta Gizli) --}}
+        <div id="exportButtons" style="display: none; justify-content: flex-end; gap: 10px; margin-bottom: 20px;">
+            <button onclick="downloadExcel()" class="btn btn-sm"
+                style="background: #10b981; color: white; font-weight: 600; border-radius: 6px; display: flex; align-items: center; gap: 6px; border: none; padding: 8px 15px;">
+                <i data-lucide="file-spreadsheet" style="width: 16px;"></i> Excel İndir
+            </button>
+            <button onclick="downloadPDF()" class="btn btn-sm"
+                style="background: #ef4444; color: white; font-weight: 600; border-radius: 6px; display: flex; align-items: center; gap: 6px; border: none; padding: 8px 15px;">
+                <i data-lucide="file-text" style="width: 16px;"></i> PDF İndir
+            </button>
+        </div>
+
+        {{-- Yazdırılacak Çerçeve --}}
+        <div id="printableReportArea" style="background: #fff; padding: 10px; border-radius: 8px;">
+            <h3 id="reportTitle"
+                style="display: none; text-align: center; margin-bottom: 20px; color: var(--primary-color);"></h3>
+            <div id="universalChartContainer"
+                style="min-height: 400px; display: flex; align-items: center; justify-content: center;">
+                <div class="text-muted text-center" id="emptyStateMsg">
+                    <i data-lucide="pie-chart" style="width: 48px; height: 48px; opacity: 0.5; margin-bottom: 15px;"></i>
+                    <p>Verilerinizi görselleştirmek için yukarıdan kriterleri belirleyip "Raporu Çiz" butonuna tıklayın.</p>
+                </div>
             </div>
         </div>
     </div>
@@ -75,6 +93,8 @@
 
 @push('scripts')
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    {{-- YENİ: PDF Çıktısı Almak İçin Kütüphane --}}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
     <style>
         /* Yükleniyor ikonu için küçük bir dönme animasyonu */
@@ -86,6 +106,10 @@
     </style>
 
     <script>
+        // Dışa aktarma fonksiyonlarında kullanmak üzere veriyi global tutuyoruz
+        let globalChartData = null;
+        let globalReportName = "";
+
         document.addEventListener('DOMContentLoaded', function() {
             lucide.createIcons();
 
@@ -110,6 +134,10 @@
                 } else {
                     groupSelect.disabled = true;
                 }
+
+                // Yeni modül seçilirse butonları ve başlığı gizle
+                const exportBtns = document.getElementById('exportButtons');
+                if (exportBtns) exportBtns.style.display = 'none';
             });
 
             // Form Submit -> Fetch API
@@ -127,19 +155,25 @@
                     return;
                 }
 
-                // HATA ÇÖZÜMÜ: Element silinmemişse (null değilse) gizle
-                const emptyMsg = document.getElementById('emptyStateMsg');
-                if (emptyMsg) {
-                    emptyMsg.style.display = 'none';
-                }
+                // Rapor Başlığını Oluştur
+                const moduleName = moduleSelect.options[moduleSelect.selectedIndex].text;
+                const groupName = groupSelect.options[groupSelect.selectedIndex].text;
+                globalReportName = `${moduleName} - ${groupName} Raporu`;
 
-                // Ekranda halihazırda çizilmiş bir grafik varsa, hafıza sızıntısını önlemek için önce onu yok et (destroy)
+                const emptyMsg = document.getElementById('emptyStateMsg');
+                if (emptyMsg) emptyMsg.style.display = 'none';
+
+                const exportBtns = document.getElementById('exportButtons');
+                if (exportBtns) exportBtns.style.display = 'none';
+
+                const reportTitle = document.getElementById('reportTitle');
+                if (reportTitle) reportTitle.style.display = 'none';
+
                 if (currentChart) {
                     currentChart.destroy();
                     currentChart = null;
                 }
 
-                // Grafik alanına şık bir yükleniyor durumu bas
                 document.getElementById('universalChartContainer').innerHTML =
                     '<div style="margin:auto; font-weight:600; color:var(--text-muted); display:flex; align-items:center; gap:8px;"><i data-lucide="loader-2" style="animation: spin 1s linear infinite;"></i> Veriler Analiz Ediliyor...</div>';
                 lucide.createIcons();
@@ -161,7 +195,16 @@
                     .then(res => res.json())
                     .then(data => {
                         if (data.error) throw new Error(data.error);
+
+                        globalChartData = data; // Excel için hafızaya al
                         renderApexChart(data, type);
+
+                        // Grafik çizildi, Butonları ve Başlığı Göster
+                        if (exportBtns) exportBtns.style.display = 'flex';
+                        if (reportTitle) {
+                            reportTitle.innerText = globalReportName;
+                            reportTitle.style.display = 'block';
+                        }
                     })
                     .catch(err => {
                         document.getElementById('universalChartContainer').innerHTML =
@@ -172,16 +215,17 @@
 
             // ApexCharts Çizim Motoru
             function renderApexChart(apiData, chartType) {
-                document.getElementById('universalChartContainer').innerHTML = ''; // Yükleniyor yazısını temizle
+                document.getElementById('universalChartContainer').innerHTML = '';
 
                 const options = {
                     chart: {
                         type: chartType,
                         height: 400,
                         toolbar: {
-                            show: true
-                        },
-                        fontFamily: 'inherit'
+                            show: false
+                        }, // PDF'te çirkin çıkmaması için gizledik
+                        fontFamily: 'inherit',
+                        background: '#fff' // PDF arka planı için beyaz yaptık
                     },
                     colors: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6'],
                     dataLabels: {
@@ -189,7 +233,6 @@
                     }
                 };
 
-                // ApexCharts; Pie/Donut için ayrı, Bar/Line için ayrı veri yapısı ister
                 if (chartType === 'pie' || chartType === 'donut') {
                     options.series = apiData.data;
                     options.labels = apiData.labels;
@@ -207,5 +250,64 @@
                 currentChart.render();
             }
         });
+
+        // ==========================================
+        // EXCEL (CSV) DIŞA AKTARMA MOTORU
+        // ==========================================
+        function downloadExcel() {
+            if (!globalChartData) return;
+
+            // Türkçe karakter sorunu olmaması için BOM (Byte Order Mark) ekliyoruz
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+
+            // Başlıklar
+            csvContent += "Kriter,Kayıt Sayısı\n";
+
+            // Veriler
+            globalChartData.labels.forEach((label, index) => {
+                let row = `"${label}",${globalChartData.data[index]}`;
+                csvContent += row + "\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+
+            const dateStr = new Date().toISOString().slice(0, 10);
+            link.setAttribute("download", `${globalReportName.replace(/ /g, "_")}_${dateStr}.csv`);
+
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // ==========================================
+        // PDF DIŞA AKTARMA MOTORU (Ekran Görüntüsü)
+        // ==========================================
+        function downloadPDF() {
+            const element = document.getElementById('printableReportArea');
+            const dateStr = new Date().toISOString().slice(0, 10);
+
+            const opt = {
+                margin: 0.5,
+                filename: `${globalReportName.replace(/ /g, "_")}_${dateStr}.pdf`,
+                image: {
+                    type: 'jpeg',
+                    quality: 1
+                },
+                html2canvas: {
+                    scale: 2,
+                    useCORS: true,
+                    backgroundColor: '#ffffff'
+                },
+                jsPDF: {
+                    unit: 'in',
+                    format: 'letter',
+                    orientation: 'landscape'
+                }
+            };
+
+            html2pdf().set(opt).from(element).save();
+        }
     </script>
 @endpush

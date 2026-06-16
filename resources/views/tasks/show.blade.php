@@ -392,7 +392,7 @@ if ($task->template->mandatoryGroup) {
                     style="padding: 20px 25px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: #f0fdf4;">
                     <h2
                         style="margin: 0; font-size: 1.25rem; display: flex; align-items: center; gap: 8px; color: #166534;">
-                        <i data-lucide="check-circle-2" style="color: #10b981;"></i> {{ __('İşi Kapat / Onaya Sun') }}
+                        <i data-lucide="check-circle-2" style="color: #10b981;"></i> {{ __('Süreci Kapat / Onaya Sun') }}
                     </h2>
                     <button type="button" onclick="closeClosureModal()"
                         style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #166534;">&times;</button>
@@ -404,7 +404,7 @@ if ($task->template->mandatoryGroup) {
                         <div class="alert alert-info mb-20"
                             style="font-size: 0.85rem; padding: 12px; background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; border-radius: 8px;">
                             <i data-lucide="info" style="width: 16px; vertical-align: text-bottom;"></i> Bu işlemi
-                            yaptığınızda görev Kanban tahtasında kilitlenir ve projenin <strong>Yönetici (Manager)</strong>
+                            yaptığınızda süreç Kanban tahtasında kilitlenir ve projenin <strong>Yönetici (Manager)</strong>
                             rolündeki kişilerin nihai onayı beklenir.
                         </div>
 
@@ -447,7 +447,7 @@ if ($task->template->mandatoryGroup) {
         <div class="flex-between mb-20">
             <h4 style="margin: 0; color: var(--secondary-color); display:flex; align-items:center; gap:8px;">
                 <i data-lucide="fingerprint" style="width: 22px; color: var(--danger-color);"></i>
-                {{ __('Süreç Denetim İzi (Audit Log)') }}
+                {{ __('Süreç Denetim İzi') }}
             </h4>
             <span class="badge"
                 style="background: #fef2f2; color: #991b1b; padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; border: 1px solid #fecaca;">

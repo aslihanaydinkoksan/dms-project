@@ -14,6 +14,19 @@ return [
         'document.manage_all',        // Tüm belgeleri yönetme
         'document.force_unlock',      // Kilitli belgeleri zorla açma
         'notify.global',              // Tüm departmanlara bildirim gönderebilme
+
+
+        // --- BPM (SÜREÇ/GÖREV) YETKİLERİ ---
+        'task' => [
+            'label' => 'Süreç Yönetimi (BPM)',
+            'permissions' => [
+                'task.view_all' => 'Tüm Şirket Süreçlerini Görüntüleme (Global Departman Kalkanı Bypass Yetkisi)',
+                'task.create'   => 'Yeni Süreç Başlatma Yetkisi',
+                'task.edit'     => 'Proje Bilgilerini Düzenleme Yetkisi',
+                'task.delete'   => 'Süreç Silme / Kalıcı Arşivleme Yetkisi',
+                'task.restrict_department' => 'Süreçleri SADECE kendi departmanıyla sınırlandırma',
+            ]
+        ],
     ],
 
     /*

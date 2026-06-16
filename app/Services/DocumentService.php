@@ -34,7 +34,7 @@ class DocumentService
             $expireAt = !empty($data['is_indefinite']) ? null : ($data['expire_at'] ?? null);
             
             // 1. Ana Dokümanı Oluştur (Değişmeyen üst veri - Metadata)
-            /** @var \App\Models\Document $document */
+            /** @var Document $document */
             $document = Document::create([
                 'folder_id' => $data['folder_id'],
                 'title' => $data['title'],
@@ -323,7 +323,7 @@ class DocumentService
         $usersToNotify = collect();
 
         foreach ($validUsers as $targetUser) {
-            /** @var \App\Models\User|\Spatie\Permission\Traits\HasRoles $targetUser */
+            /** @var User|\Spatie\Permission\Traits\HasRoles $targetUser */
             // GÜVENLİK DUVARI: Belge "Çok Gizli" ise ve yöneticinin bunu görme yetkisi yoksa, formu bypass etmiş olsa bile atla!
             if ($document->privacy_level === 'strictly_confidential') {
                 $hasClearance = false;
@@ -418,7 +418,7 @@ class DocumentService
             $allowedDocs = collect();
 
             foreach ($documents as $doc) {
-                /** @var \App\Models\User|\Spatie\Permission\Traits\HasRoles $targetUser */
+                /** @var User|\Spatie\Permission\Traits\HasRoles $targetUser */
                 if ($doc->privacy_level === 'strictly_confidential') {
                     try {
                         if ($targetUser->hasPermissionTo('document.view_strictly_confidential')) {

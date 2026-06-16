@@ -58,7 +58,7 @@ class DocumentPolicy
      */
     public function view(User $user, Document $document): bool
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $delegatorIds = $user->getActiveDelegatorIds();
         $allUserIds = array_merge([$user->id], $delegatorIds);
 
@@ -144,30 +144,36 @@ class DocumentPolicy
         // =========================================================
 
         // Herkese Açık (Public) ise geç (Zaten departman duvarını çoktan geçtiği için güvenli)
-        if ($document->privacy_level === 'public') {
-            return true;
-        }
+        if ($document->privacy_level !== 'public' && !empty($document->privacy_level)) {
 
-        // Çok Gizli Kalkanı
-        if ($document->privacy_level === 'strictly_confidential') {
-            $hasStrictClearance = false;
+            // Dinamik Gizlilik İzin Adı (Örn: document.view_confidential, document.view_top_secret)
+            $dynamicPermissionName = 'document.view_' . strtolower($document->privacy_level);
+            $hasPrivacyClearance = false;
+
+            // 1. Kullanıcının kendi bireysel iznini kontrol et
             try {
-                $hasStrictClearance = $user->hasPermissionTo('document.view_strictly_confidential');
+                $hasPrivacyClearance = $user->hasPermissionTo($dynamicPermissionName);
             } catch (\Exception $e) {
             }
 
-            if (!$hasStrictClearance && !empty($delegatorIds)) {
-                $delegatorsList = User::whereIn('id', $delegatorIds)->get();
-                $hasStrictClearance = $delegatorsList->contains(function (User $d) {
+            // 2. Kendisinde yoksa, aktif vekalet verenlerin (delegators) bu izne sahip olup olmadığına bak
+            if (!$hasPrivacyClearance && !empty($delegatorIds)) {
+                if (!isset($delegators)) {
+                    $delegators = User::whereIn('id', $delegatorIds)->get();
+                }
+                $hasPrivacyClearance = $delegators->contains(function (User $d) use ($dynamicPermissionName) {
                     try {
-                        return $d->hasPermissionTo('document.view_strictly_confidential');
+                        return $d->hasPermissionTo($dynamicPermissionName);
                     } catch (\Exception $e) {
                         return false;
                     }
                 });
             }
 
-            if (!$hasStrictClearance) return false;
+            // Eğer ne kendisi ne de vekalet verenleri bu dinamik gizlilik seviyesini aşamıyorsa: ANINDA RET!
+            if (!$hasPrivacyClearance) {
+                return false;
+            }
         }
 
         // Son Kapı: 3D Matris Kontrolü

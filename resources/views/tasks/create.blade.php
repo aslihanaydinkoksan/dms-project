@@ -334,7 +334,7 @@
                         // =================================================================
                         if (fields.length === 0) {
                             dynamicFieldsContainer.innerHTML =
-                                `<div style="grid-column: 1 / -1; text-align: center; padding: 20px; color: var(--text-muted); font-style: italic;">Bu şablona ait dinamik bir alan (soru) bulunmuyor. Görev başlığını yazıp ilerleyebilirsiniz.</div>`;
+                                `<div style="grid-column: 1 / -1; text-align: center; padding: 20px; color: var(--text-muted); font-style: italic;">Bu şablona ait dinamik bir alan (soru) bulunmuyor. Süreç başlığını yazıp ilerleyebilirsiniz.</div>`;
                         } else {
                             // JSON'dan gelen her field için Input çiz
                             fields.forEach(field => {

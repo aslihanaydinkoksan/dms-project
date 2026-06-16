@@ -54,11 +54,11 @@ class TaskClosureRequested extends Notification implements ShouldQueue
             ->subject("KÖKSAN BPM - Kapanış Onayı Talebi: TASK-{$this->task->id}")
             ->greeting("Merhaba " . $notifiable->name . ",")
             ->line("Sorumlusu veya yöneticisi olduğunuz bir iş akışında yeni bir onay talebi bulunmaktadır.")
-            ->line("**Görevi Kapatmak İsteyen:** " . $this->requester->name)
-            ->line("**Görev Numarası:** TASK-" . str_pad($this->task->id, 4, '0', STR_PAD_LEFT))
-            ->line("**Görev Başlığı:** " . $this->task->title)
+            ->line("**Süreci Kapatmak İsteyen:** " . $this->requester->name)
+            ->line("**Süreç Numarası:** TASK-" . str_pad($this->task->id, 4, '0', STR_PAD_LEFT))
+            ->line("**Süreç Başlığı:** " . $this->task->title)
             ->line("**Personel Kapanış Notu:** " . ($this->task->closure_note ?? 'Açıklama belirtilmedi.'))
-            ->action('Görevi İncele & Onayla', route('tasks.index') . '?view=kanban')
+            ->action('Süreci İncele & Onayla', route('tasks.index') . '?view=kanban')
             ->line('Eğer süreç tasarımında "Evrak Zorunluluğu" tanımlanmışsa, yukarıdaki butona tıklayarak personelin yüklediği kanıt belgesini de inceleyebilirsiniz.')
             ->salutation('KÖKSAN Süreç Yönetim Sistemi (BPM)');
     }

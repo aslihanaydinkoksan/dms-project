@@ -41,10 +41,25 @@ class PermissionSettingsService
             }
         }
 
-        // DÜZELTME 1: config() dönüşünü (array) olarak zorluyoruz (Type Casting)
-        $corePermissions = (array) config('dms.core_permissions', []);
+        // ====================================================================
+        // Config Dizi Düzleştirme (Flatten) Mantığı
+        // ====================================================================
+        $corePermissionsConfig = (array) config('dms.core_permissions', []);
+        $flatCorePermissions = [];
 
-        $specialPermissions = Permission::whereIn('name', array_merge($corePermissions, $dynamicPrivacyPermissions))->get();
+        foreach ($corePermissionsConfig as $moduleKey => $moduleData) {
+            // Eğer config 2 boyutluysa (Örn: 'task' => ['permissions' => ['task.view' => '...']])
+            if (is_array($moduleData) && isset($moduleData['permissions']) && is_array($moduleData['permissions'])) {
+                // Sadece anahtarları (task.view vb.) alıp düz diziye ekle
+                $flatCorePermissions = array_merge($flatCorePermissions, array_keys($moduleData['permissions']));
+            } else {
+                // Eğer config eski düz usulde yazılmışsa (Geriye Dönük Uyumluluk)
+                $flatCorePermissions = array_merge($flatCorePermissions, is_array($moduleData) ? $moduleData : [$moduleData]);
+            }
+        }
+        $specialPermissions = Permission::whereIn('name', array_merge($flatCorePermissions, $dynamicPrivacyPermissions))->get();
+
+
         $expectedMenus = [];
         $routes = \Illuminate\Support\Facades\Route::getRoutes()->getRoutes();
 

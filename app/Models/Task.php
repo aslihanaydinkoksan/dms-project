@@ -112,4 +112,44 @@ class Task extends Model
 
         return $query;
     }
+    /**
+     * Local Scope: Dinamik BPM Departman İzolasyonu ve ABAC Güvenlik Kalkanı
+     * IDE (Intelephense) uyarılarını engellemek için tam tiplendirme yapılmıştır.
+     */
+    public function scopeVisibleTo(\Illuminate\Database\Eloquent\Builder $query, \App\Models\User $user): \Illuminate\Database\Eloquent\Builder
+    {
+        // Global Kalkanı Bypass: Super Admin veya tüm işleri görme yetkisi olanlar filtresiz görür
+        if ($user->hasRole('Super Admin') || $user->can('task.view_all')) {
+            return $query;
+        }
+
+        // ABAC Koşullu OR Mantığı: Sorguyu güvenli bir alt paranteze alıyoruz (where closure)
+        return $query->where(function (\Illuminate\Database\Eloquent\Builder $q) use ($user) {
+            $q->where('creator_id', $user->id) // a) Süreci başlatan kişiyse görsün
+
+                // b) Task'ın şablon departmanı ile kullanıcının departmanı aynıysa görsün
+                ->orWhereHas('template', function (\Illuminate\Database\Eloquent\Builder $t) use ($user) {
+                    $t->where('department_id', $user->department_id);
+                })
+
+                // c) Ad-Hoc Proje Ekibinde (users ilişkisinde) kullanıcının ID'si varsa görsün
+                ->orWhereHas('users', function (\Illuminate\Database\Eloquent\Builder $u) use ($user) {
+                    $u->where('users.id', $user->id);
+                })
+
+                // d) Şablona atanmış Zorunlu Grupların üyeleri arasında kullanıcı varsa görsün
+                ->orWhereHas('template.mandatoryGroup.members', function (\Illuminate\Database\Eloquent\Builder $m) use ($user) {
+                    $m->where('users.id', $user->id);
+                });
+
+            // Opsiyonel Ek Kalkan: Eğer Task modeline direkt bağlı bir 'groups' ilişkisi de tanımlandıysa:
+            if (method_exists($this, 'groups')) {
+                $q->orWhereHas('groups', function (\Illuminate\Database\Eloquent\Builder $g) use ($user) {
+                    $g->whereHas('members', function (\Illuminate\Database\Eloquent\Builder $m) use ($user) {
+                        $m->where('users.id', $user->id);
+                    });
+                });
+            }
+        });
+    }
 }

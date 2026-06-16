@@ -55,9 +55,18 @@ class TaskClosureController extends Controller
     {
         $this->authorizeManager($task);
 
-        $task->update(['status' => 'completed']);
+        $lastStage = $task->template->stages()->orderBy('sort_order', 'desc')->first();
 
-        return back()->with('success', '🏆 Görev onaylandı ve başarıyla kapatılarak arşive kaldırıldı.');
+        $updateData = ['status' => 'completed'];
+
+        // Eğer bir son aşama tanımlıysa, görevi otomatik olarak oraya konumlandır
+        if ($lastStage) {
+            $updateData['current_stage_id'] = $lastStage->id;
+        }
+
+        $task->update($updateData);
+
+        return back()->with('success', '🏆 Süreç onaylandı, son sütuna taşındı ve başarıyla arşive kaldırıldı.');
     }
 
     /**
@@ -72,7 +81,7 @@ class TaskClosureController extends Controller
             // İsteğe bağlı: Kapanış evraklarını sıfırlayabilirsin -> 'closure_document_path' => null
         ]);
 
-        return back()->with('success', '⛔ Kapatma talebi reddedildi. Görev tekrar Kanban tahtasına (Aktif) alındı.');
+        return back()->with('success', '⛔ Kapatma talebi reddedildi. Süreç tekrar Kanban tahtasına (Aktif) alındı.');
     }
 
     /**
