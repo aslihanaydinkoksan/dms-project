@@ -130,6 +130,8 @@ Route::middleware(['auth'])->group(function () {
 
     // YENİ: Analitik sayfasına Menü Kalkanı eklendi
     Route::get('/analytics', [\App\Http\Controllers\AnalyticsController::class, 'index'])->name('analytics.index')->middleware('can:menu.analytics');
+    Route::get('/analytics', [\App\Http\Controllers\AnalyticsController::class, 'index'])->name('analytics.index');
+    Route::post('/analytics/generate', [\App\Http\Controllers\AnalyticsController::class, 'getChartData'])->name('analytics.generate');
 
     // --- KULLANICI & PROFİL YÖNETİMİ ---
     Route::prefix('profile')->name('profile.')->group(function () {

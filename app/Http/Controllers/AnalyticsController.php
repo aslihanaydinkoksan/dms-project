@@ -3,36 +3,43 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Services\AnalyticsService;
-use App\Models\User;
+use App\Services\UniversalAnalyticsService;
 
 class AnalyticsController extends Controller
 {
-    protected AnalyticsService $analyticsService;
+    protected UniversalAnalyticsService $universalService;
 
-    public function __construct(AnalyticsService $analyticsService)
+    public function __construct(UniversalAnalyticsService $universalService)
     {
-        $this->analyticsService = $analyticsService;
+        $this->universalService = $universalService;
     }
 
-    public function index(Request $request)
+    public function index()
     {
-        /** @var User $user */
-        $user = $request->user();
+        $modulesConfig = $this->universalService->getAvailableModules();
+        return view('analytics.index', compact('modulesConfig'));
+    }
 
-        // YENİ GÜVENLİK ZIRHI: Sadece 'menu.analytics' yetkisi olanlar veya Super Admin görebilir
-        if (!$user->hasRole('Super Admin') && !$user->can('menu.analytics')) {
-            abort(403, 'Sistem Analitiği ekranını görüntüleme yetkiniz bulunmuyor.');
+    public function getChartData(Request $request)
+    {
+        $validated = $request->validate([
+            'module' => 'required|string',
+            'group' => 'required|string',
+            'date_start' => 'nullable|date',
+            'date_end' => 'nullable|date',
+        ]);
+
+        try {
+            $chartData = $this->universalService->generateChartData(
+                $validated['module'],
+                $validated['group'],
+                $validated['date_start'],
+                $validated['date_end']
+            );
+
+            return response()->json($chartData);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
         }
-        // Güvenlik Zırhı
-        \Illuminate\Support\Facades\Gate::authorize('viewAny', \App\Models\Document::class);
-
-        $startDate = $request->query('start_date');
-        $endDate = $request->query('end_date');
-
-        // Tüm karmaşık işi Servis'e devrediyoruz!
-        $analyticsData = $this->analyticsService->getExecutiveData($startDate, $endDate);
-
-        return view('analytics.index', compact('analyticsData', 'startDate', 'endDate'));
     }
 }
