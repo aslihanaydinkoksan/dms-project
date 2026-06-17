@@ -557,67 +557,32 @@
 
                 {{-- 1. KIRMIZI ÇİZGİ: GLOBAL KALKANLAR --}}
                 <div style="padding: 20px; background: #fff5f5; border-bottom: 1px solid #fecaca;">
-                    <h4 style="margin: 0 0 10px 0; color: #b91c1c; font-size: 1rem;"><i data-lucide="alert-octagon"
-                            style="width: 16px;"></i> {{ __('1. Kırmızı Çizgi: Global Kalkanlar') }}</h4>
+                    <h4 style="margin: 0 0 10px 0; color: #b91c1c; font-size: 1rem;">
+                        <i data-lucide="alert-octagon" style="width: 16px;"></i>
+                        {{ __('1. Kırmızı Çizgi: Global Kalkanlar') }}
+                    </h4>
                     <div class="table-responsive" style="border: 1px solid #fca5a5; border-radius: 8px;">
-                        <table class="table modern-table" style="margin: 0;">
+                        <table class="table modern-table" style="margin: 0; width: 100%; table-layout: fixed;">
+                            {{-- table-layout: fixed eklendi --}}
                             <thead style="background: #fef2f2; border-bottom: 2px solid #fecaca;">
                                 <tr>
-                                    <th style="width: 180px; padding: 15px; vertical-align: top;">
-                                        <div style="font-weight: 700; color: #991b1b;">{{ __('Sistem Rolü') }}</div>
-                                    </th>
+                                    <th style="width: 200px; padding: 15px;">{{ __('Sistem Rolü') }}</th>
                                     @foreach ($specialPermissions as $sp)
-                                        <th class="text-center" style="padding: 15px; vertical-align: top; width: 20%;">
-                                            @if ($sp->name == 'document.view_strictly_confidential')
-                                                <div
-                                                    style="font-weight: 700; color: #b91c1c; margin-bottom: 6px; font-size: 0.9rem;">
-                                                    🕵️ {{ __('"Çok Gizli" Erişimi') }}
-                                                </div>
-                                            @elseif($sp->name == 'document.view_all')
-                                                <div
-                                                    style="font-weight: 700; color: #1d4ed8; margin-bottom: 6px; font-size: 0.9rem;">
-                                                    🌍 {{ __('Tüm Belgeleri Görüntüleme') }}
-                                                </div>
-                                            @elseif($sp->name == 'document.manage_all')
-                                                <div
-                                                    style="font-weight: 700; color: #047857; margin-bottom: 6px; font-size: 0.9rem;">
-                                                    👑 {{ __('Tüm Belgeleri Yönetme') }}
-                                                </div>
-                                            @elseif($sp->name == 'document.force_unlock')
-                                                <div
-                                                    style="font-weight: 700; color: #b45309; margin-bottom: 6px; font-size: 0.9rem;">
-                                                    ⚠️ {{ __('Kilit Açma Yetkisi') }}
-                                                </div>
+                                        <th class="text-center" style="width: 120px; padding: 10px;">
+                                            @php
+                                                $uiMeta = config("dms.permissions_ui.{$sp->name}");
+                                                // ... (Mantıksal kontroller aynı kalabilir) ...
 
-                                                {{-- YENİ EKLENEN DİNAMİK UI BLOĞU --}}
-                                            @elseif(str_starts_with($sp->name, 'document.view_'))
-                                                @php
-                                                    // Yetki adından (örn: document.view_board_only) -> 'board_only' kısmını ayır
-                                                    $privacyKey = str_replace('document.view_', '', $sp->name);
+                                                // ÇEVİRİ SORUNU İÇİN GÜNCELLEME:
+                                                // Eğer config'de label yoksa, veritabanındaki ismi temizleyip çeviriyoruz.
+$label = $uiMeta['label'] ?? __($sp->name);
+                                            @endphp
 
-                                                    // Controller'dan gelen $privacyLevels dizisinden gerçek adını bul, bulamazsa key'i yaz
-                                                    $privacyLabel =
-                                                        isset($privacyLevels) && isset($privacyLevels[$privacyKey])
-                                                            ? $privacyLevels[$privacyKey]
-                                                            : $privacyKey;
-                                                @endphp
-                                                <div
-                                                    style="font-weight: 700; color: #6d28d9; margin-bottom: 6px; font-size: 0.9rem;">
-                                                    🛡️ {{ __($privacyLabel) }} {{ __('Erişimi') }}
-                                                </div>
-
-                                                {{-- EĞER SİSTEME BAŞKA BİR YETKİ EKLENİRSE (FALLBACK) --}}
-                                            @elseif($sp->name == 'notify.global')
-                                                <div
-                                                    style="font-weight: 700; color: #0284c7; margin-bottom: 6px; font-size: 0.9rem;">
-                                                    🌐 {{ __('Küresel Bildirim Yetkisi') }}
-                                                </div>
-                                            @else
-                                                <div
-                                                    style="font-weight: 700; color: #475569; margin-bottom: 6px; font-size: 0.85rem; font-family: monospace;">
-                                                    {{ $sp->name }}
-                                                </div>
-                                            @endif
+                                            <div style="font-size: 0.7rem; color: #475569; word-wrap: break-word;">
+                                                <span
+                                                    style="display: block; font-size: 1.2rem;">{{ $uiMeta['icon'] ?? '⚙️' }}</span>
+                                                {{ mb_strtoupper($label) }}
+                                            </div>
                                         </th>
                                     @endforeach
                                 </tr>
@@ -626,15 +591,12 @@
                                 @foreach ($roles as $role)
                                     @if ($role->name !== 'Super Admin')
                                         <tr>
-                                            <td style="font-weight: bold; color: var(--primary-color); padding: 12px;">
-                                                {{ $role->name }}</td>
+                                            <td style="padding: 12px; font-weight: bold;">{{ $role->name }}</td>
                                             @foreach ($specialPermissions as $sp)
-                                                <td class="text-center">
+                                                <td class="text-center" style="padding: 12px; width: 120px;">
                                                     <input type="checkbox"
-                                                        name="special_permissions[{{ $role->id }}][]"
-                                                        value="{{ $sp->name }}"
                                                         {{ $role->hasPermissionTo($sp->name) ? 'checked' : '' }}
-                                                        style="accent-color: var(--danger-color); width: 18px; height: 18px; cursor: pointer;">
+                                                        style="width: 18px; height: 18px; accent-color: #b91c1c;">
                                                 </td>
                                             @endforeach
                                         </tr>

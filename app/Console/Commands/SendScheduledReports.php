@@ -26,7 +26,7 @@ class SendScheduledReports extends Command
             ->get();
 
         foreach ($reports as $report) {
-            /** @var \App\Models\ScheduledReport $report */
+            /** @var ScheduledReport $report */
             $this->info("Rapor oluşturuluyor: {$report->report_name}");
 
             // 1. Veriyi Çek

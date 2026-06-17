@@ -72,5 +72,27 @@ return [
     'audit' => [
         'retention_days' => 365, // Loglar kaç gün saklanacak?
     ],
+    /*
+    |--------------------------------------------------------------------------
+    | Yetki Arayüzü (UI Metadata)
+    |--------------------------------------------------------------------------
+    | Blade dosyalarında spagetti kod oluşmasını engellemek için, 
+    | sistemdeki çekirdek yetkilerin renk, ikon ve etiket tanımları burada tutulur.
+    */
+    'permissions_ui' => [
+        // DOKÜMAN YETKİLERİ
+        'document.view_strictly_confidential' => ['icon' => '🕵️', 'color' => '#b91c1c', 'label' => '"ÇOK GİZLİ" ERİŞİMİ'],
+        'document.view_all'                   => ['icon' => '🌍', 'color' => '#1d4ed8', 'label' => 'TÜM BELGELERİ GÖRÜNTÜLEME'],
+        'document.manage_all'                 => ['icon' => '👑', 'color' => '#047857', 'label' => 'TÜM BELGELERİ YÖNETME'],
+        'document.force_unlock'               => ['icon' => '⚠️', 'color' => '#b45309', 'label' => 'KİLİT AÇMA YETKİSİ'],
+        'notify.global'                       => ['icon' => '🌐', 'color' => '#0284c7', 'label' => 'KÜRESEL BİLDİRİM YETKİSİ'],
+        
+        // SÜREÇ (BPM) YETKİLERİ
+        'task.view_all'                       => ['icon' => '👁️', 'color' => '#6366f1', 'label' => 'TÜM SÜREÇLERİ GÖRME (GOD MODE)'],
+        'task.create'                         => ['icon' => '✨', 'color' => '#10b981', 'label' => 'YENİ SÜREÇ BAŞLATMA'],
+        'task.edit'                           => ['icon' => '✏️', 'color' => '#f59e0b', 'label' => 'SÜREÇLERİ DÜZENLEME'],
+        'task.delete'                         => ['icon' => '🗑️', 'color' => '#ef4444', 'label' => 'SÜREÇ SİLME / İPTAL'],
+        'task.restrict_department'            => ['icon' => '🏢', 'color' => '#475569', 'label' => 'SADECE KENDİ DEPARTMANI'],
+    ],
 
 ];

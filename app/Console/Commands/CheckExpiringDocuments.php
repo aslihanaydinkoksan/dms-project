@@ -40,7 +40,7 @@ class CheckExpiringDocuments extends Command
                 ->get();
 
             // IDE'nin $document değişkenini tanıması için PHPDoc ekliyoruz
-            /** @var \App\Models\Document $document */
+            /** @var Document $document */
             foreach ($expiringDocs as $document) {
 
                 // Belgenin güncel versiyonunu yükleyen kişiyi (Sahibini) bul

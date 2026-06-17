@@ -18,7 +18,7 @@ class SyncDocumentDepartments extends Command
         // RAM şişmesini önlemek için chunk(100) kullanıyoruz
         Document::with('folder')->chunkById(100, function ($documents) use (&$count) {
             foreach ($documents as $document) {
-                /** @var \App\Models\Document $document */
+                /** @var Document $document */
                 // Eğer belgenin klasörü varsa ve o klasör bir departmana bağlıysa
                 if ($document->folder && $document->folder->department_id) {
                     // Belgenin departmanı, klasörden farklıysa GÜNCELLE

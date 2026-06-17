@@ -42,6 +42,9 @@ Route::middleware(['auth', 'role:Super Admin'])->group(function () {
 // KYS'nin atacağı her türlü (GET/POST/OPTIONS) isteği yakalayan "Sünger" Rota
 Route::any('/', function (\Illuminate\Http\Request $request) {
     if (Auth::check()) {
+        if (Auth::user()->can('menu.executive_cockpit')) {
+            return redirect()->route('executive.cockpit');
+        }
         return redirect()->route('dashboard');
     }
 
@@ -117,7 +120,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
     // YENİ: Dashboard'a Menü Kalkanı eklendi
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard')->middleware('can:menu.dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     Route::post('/assistant/chat', [\App\Http\Controllers\AssistantController::class, 'chat'])->name('assistant.chat');
 
@@ -314,4 +317,10 @@ Route::middleware(['auth'])->group(function () {
         Route::resource('user-groups', \App\Http\Controllers\UserGroupController::class)->except(['create', 'show', 'edit'])->middleware('can:menu.user_groups');
         Route::post('user-groups/{userGroup}/sync', [\App\Http\Controllers\UserGroupController::class, 'syncMembers'])->name('user-groups.sync')->middleware('can:menu.user_groups');
     });
+});
+
+
+// Middleware ile hem giriş yapılmış olması hem de yetki kontrolü sağlanır.
+Route::middleware(['auth', 'can:menu.executive_cockpit'])->group(function () {
+    Route::get('/executive-cockpit', [\App\Http\Controllers\ExecutiveCockpitController::class, 'index'])->name('executive.cockpit');
 });

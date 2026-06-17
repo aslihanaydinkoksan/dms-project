@@ -31,6 +31,18 @@ class DashboardController extends Controller
         /** @var User $user */
         $user = Auth::user();
 
+        // 1. KYS/SSO VIP INTERCEPTOR (Yönetim Kurulu Yönlendirmesi)
+        // Eğer kullanıcı Cockpit yetkisine sahipse, Dashboard'u çizmeden VİP rotaya fırlat.
+        if ($user->can('menu.executive_cockpit')) {
+            return redirect()->route('executive.cockpit');
+        }
+
+        // 2. STANDART GÜVENLİK KALKANI (Rotadan buraya taşındı)
+        // Eğer Super Admin değilse ve normal Dashboard menü yetkisi de yoksa izinsiz giriş uyarısı ver.
+        if (!$user->hasRole('Super Admin') && !$user->can('menu.dashboard')) {
+            abort(403, 'Ana sayfayı (Dashboard) görüntüleme yetkiniz bulunmuyor.');
+        }
+
         // Favori arama (AJAX kontrolünü en başta yaparak gereksiz DB sorgularından kaçınıyoruz)
         $keyword = $request->input('fav_search');
 

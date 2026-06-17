@@ -57,8 +57,20 @@ class PermissionSettingsService
                 $flatCorePermissions = array_merge($flatCorePermissions, is_array($moduleData) ? $moduleData : [$moduleData]);
             }
         }
-        $specialPermissions = Permission::whereIn('name', array_merge($flatCorePermissions, $dynamicPrivacyPermissions))->get();
 
+        // ====================================================================
+        // Çekirdek İzinlerin Otomatik Aktivasyonu (Initialization)
+        // ====================================================================
+        // config/dms.php dosyasına eklenen yeni yetkiler DB'de yoksa otomatik oluşturulur.
+        // Bu sayede sistem yöneticisi sayfayı açtığında matriste kör nokta oluşmaz.
+        foreach ($flatCorePermissions as $permName) {
+            Permission::firstOrCreate([
+                'name' => $permName,
+                'guard_name' => 'web'
+            ]);
+        }
+
+        $specialPermissions = Permission::whereIn('name', array_merge($flatCorePermissions, $dynamicPrivacyPermissions))->get();
 
         $expectedMenus = [];
         $routes = \Illuminate\Support\Facades\Route::getRoutes()->getRoutes();
