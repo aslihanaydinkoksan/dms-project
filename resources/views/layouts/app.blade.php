@@ -819,10 +819,10 @@
                             </button>
                             <div id="userDropdownMenu" class="dropdown-menu glass-card"
                                 style="display: none; position: absolute; top: 110%; right: 0; min-width: 220px; z-index: 1000; padding: 8px; border: 1px solid var(--border-color); border-radius: 12px;">
-                                <a href="{{ route('profile.edit') }}"
+                                <a href="https://kys.koksan.com/merkezi_yonetim_sistemi/profile" target="_blank"
                                     style="display: flex; align-items: center; gap: 10px; padding: 12px; color: var(--text-color); text-decoration: none; border-bottom: 1px solid var(--border-color); border-radius: 6px; transition: background 0.2s;">
-                                    <i data-lucide="settings" style="width: 18px; height: 18px;"></i>
-                                    {{ __('Profilimi Düzenle') }}
+                                    <i data-lucide="user-cog" style="width: 18px; height: 18px;"></i>
+                                    {{ __('Profilimi Düzenle (KYS)') }}
                                 </a>
                                 <a href="{{ route('profile.show') }}"
                                     style="display: flex; align-items: center; gap: 10px; padding: 12px; color: var(--text-color); text-decoration: none; border-bottom: 1px solid var(--border-color); border-radius: 6px; transition: background 0.2s;">
@@ -1645,14 +1645,14 @@
                         const isOpen = submenu.classList.contains('open');
 
                         // Opsiyonel: Diğer açık menüleri kapatmak istersen (Akordiyon mantığı)
-                        
+
                         document.querySelectorAll('.nav-submenu.open').forEach(menu => {
-                            if(menu !== submenu) {
+                            if (menu !== submenu) {
                                 menu.classList.remove('open');
                                 menu.previousElementSibling.classList.remove('open');
                             }
                         });
-                        
+
 
                         // Tıklananı aç/kapat
                         if (isOpen) {
