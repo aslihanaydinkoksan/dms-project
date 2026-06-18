@@ -824,6 +824,11 @@
                                     <i data-lucide="user-cog" style="width: 18px; height: 18px;"></i>
                                     {{ __('Profilimi Düzenle (KYS)') }}
                                 </a>
+                                <a href="{{ route('profile.vault.security') }}"
+                                    style="display: flex; align-items: center; gap: 10px; padding: 12px; color: var(--text-color); text-decoration: none; border-bottom: 1px solid var(--border-color); border-radius: 6px; transition: background 0.2s;">
+                                    <i data-lucide="shield-alert" style="width: 18px; height: 18px; color: #dc2626;"></i>
+                                    {{ __('Özel Kasa Şifresi Belirle') }}
+                                </a>
                                 <a href="{{ route('profile.show') }}"
                                     style="display: flex; align-items: center; gap: 10px; padding: 12px; color: var(--text-color); text-decoration: none; border-bottom: 1px solid var(--border-color); border-radius: 6px; transition: background 0.2s;">
                                     <i data-lucide="chart-area" style="width: 18px; height: 18px;"></i>

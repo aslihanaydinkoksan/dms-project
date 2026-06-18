@@ -3,8 +3,7 @@
 @section('content')
     <div class="form-container">
         <div class="page-header">
-            <h1 class="page-title">⚙️ {{ __('Profil Ayarları') }}</h1>
-            <p class="text-muted">{{ __('Kişisel bilgilerinizi ve güvenlik seçeneklerinizi buradan yönetebilirsiniz.') }}</p>
+            <h1 class="page-title">⚙️ {{ __('Özel Kasa Şifresi Ayarları') }}</h1>
         </div>
 
         @if (session('success'))
@@ -16,7 +15,7 @@
 
         <div class="grid-dashboard" style="grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); align-items: start;">
 
-            <div class="card glass-card">
+            {{-- <div class="card glass-card">
                 <div class="card-header">👤 {{ __('Genel Bilgiler') }}</div>
                 <div class="card-body">
                     <form action="{{ route('profile.update') }}" method="POST" class="modern-form">
@@ -64,7 +63,7 @@
                             class="btn btn-primary btn-block mt-20">{{ __('Değişiklikleri Kaydet') }}</button>
                     </form>
                 </div>
-            </div>
+            </div> --}}
 
             <div class="card glass-card" style="border-top: 4px solid var(--danger-color);">
                 <div class="card-header flex-between" style="color: var(--danger-color);">

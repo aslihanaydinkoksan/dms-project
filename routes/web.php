@@ -143,10 +143,8 @@ Route::middleware(['auth'])->group(function () {
             return redirect()->away('https://kys.koksan.com/merkezi_yonetim_sistemi/profile');
         })->name('edit');
         Route::post('/', [ProfileController::class, 'update'])->name('update');
-        Route::get('/show/{id?}', function () {
-            return redirect()->away('https://kys.koksan.com/merkezi_yonetim_sistemi/profile');
-        })->name('show');
-
+        Route::get('/show/{id?}', [ProfileController::class, 'show'])->name('show');
+        Route::get('/vault-security', [ProfileController::class, 'edit'])->name('vault.security');
         Route::put('/vault-password', [ProfileController::class, 'updateVaultPassword'])->name('vault-password.update');
         Route::delete('/vault-password', [ProfileController::class, 'resetVaultPassword'])->name('vault-password.destroy');
 
