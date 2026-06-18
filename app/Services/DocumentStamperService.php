@@ -30,7 +30,6 @@ class DocumentStamperService
 
             $pdf->AddPage($size['orientation'], $size);
 
-            // --- 1. MÜHENDİSLİK HARİKASI: KÜÇÜLT VE AŞAĞI KAYDIR ---
             $scale = 0.88; // Orijinal belgeyi %88 oranında küçült
             $newW = $size['width'] * $scale;
             $newH = $size['height'] * $scale;

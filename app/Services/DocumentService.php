@@ -14,6 +14,7 @@ use Exception;
 use Illuminate\Support\Facades\Auth;
 use App\Notifications\DocumentRevisionAlert;
 use App\Notifications\WorkflowActionRequired;
+use App\Services\PdfGeneratorService;
 
 class DocumentService
 {
@@ -349,17 +350,19 @@ class DocumentService
             );
         }
     }
+    
     /**
-     * Kurumsal Toplu Belge Yükleme Motoru (Batch Upload)
+     * Kurumsal Toplu Belge Yükleme ve Akıllı Form Belge Üretim Motoru (Batch/Smart Store)
      */
-    public function batchStore(array $globalData, array $files, array $documentsMeta, array $approvers, array $notifiedUserIds, User $user, ?string $ip, ?string $userAgent): array
+    public function batchStore(array $globalData, ?array $files, array $documentsMeta, array $approvers, array $notifiedUserIds, User $user, ?string $ip, ?string $userAgent): array
     {
         $createdDocuments = [];
+        $isFormBased = filter_var($globalData['is_form_based_submission'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
-        // DB::transaction ile ya hepsi ya hiçbiri (Veri Bütünlüğü Kalkanı)
-        DB::transaction(function () use ($globalData, $files, $documentsMeta, $approvers, $user, $ip, $userAgent, &$createdDocuments) {
+        // DB::transaction ile Atomik Güvence Kalkanı
+        DB::transaction(function () use ($globalData, $files, $documentsMeta, $approvers, $user, $ip, $userAgent, $isFormBased, &$createdDocuments) {
 
-            // Hukuk / Departman Onay Mantığı
+            // Hukuk / Departman Onay Hiyerarşi Mantığı
             if ($user->department && $user->department->requires_approval_on_upload) {
                 $deptAdmin = User::role('Admin')->where('department_id', $user->department_id)->first() ?? User::role('Super Admin')->first();
                 if ($deptAdmin) {
@@ -370,18 +373,79 @@ class DocumentService
                 }
             }
 
-            foreach ($files as $index => $file) {
-                $docMeta = $documentsMeta[$index];
+            // Sürücü Array Seçimi (Form bazlıysa metadata kartlarını, değilse fiziksel dosyaları baz al)
+            $loopTarget = $isFormBased ? $documentsMeta : $files;
 
-                // Her dosya için global ve spesifik datayı birleştir
+            foreach ($loopTarget as $index => $item) {
+                $docMeta = $documentsMeta[$index];
                 $singleData = array_merge($globalData, $docMeta);
 
-                // Numaratörü çalıştır (Her evraka özel no)
+                // Numaratörü çalıştır (Her evraka özel kurumsal numara)
                 $singleData['document_number'] = app(\App\Services\DocumentNumberService::class)->generateNextNumber($globalData['folder_id']);
 
-                // Klasik store işlemini çağır
-                $document = $this->storeDocument($singleData, $file);
+                if ($isFormBased) {
+                    // --- SMART FORM BELGE ÜRETİM ALTYAPISI ---
+                    $documentType = \App\Models\DocumentType::findOrFail($docMeta['document_type_id']);
+                    
+                    // 1. Ham PDF Çıktısını Al
+                    $pdfBinary = app(PdfGeneratorService::class)->generateHtmlDocument(
+                        $docMeta['title'],
+                        $docMeta['metadata'] ?? [],
+                        $documentType->custom_fields ?? []
+                    );
 
+                    // 2. Adapter Yaklaşımı: Binary veriyi geçici bir dosyaya yaz ve UploadedFile'a simüle et
+                    $tmpFilePath = tempnam(sys_get_temp_dir(), 'koksan_dms_');
+                    file_put_contents($tmpFilePath, $pdfBinary);
+
+                    $virtualFile = new UploadedFile(
+                        $tmpFilePath,
+                        Str::slug($docMeta['title']) . '.pdf',
+                        'application/pdf',
+                        null,
+                        true // Test/Sanal yükleme modu aktif
+                    );
+
+                    try {
+                        // Mevcut güvenli store motorunu çalıştır
+                        $document = $this->storeDocument($singleData, $virtualFile);
+                    } finally {
+                        // Performans ve çöp birikimini önlemek amacıyla geçici dosyayı imha et
+                        if (file_exists($tmpFilePath)) {
+                            @unlink($tmpFilePath);
+                        }
+                    }
+
+                } else {
+                    // --- STANDART FİZİKSEL DOSYA YÜKLEME AKIŞI ---
+                    $file = $files[$index];
+                    $document = $this->storeDocument($singleData, $file);
+                }
+
+                // --- DİNAMİK ISO ANTET BASMA ENTEGRASYONU ---
+                // Eğer üretilen belge form tabanlıysa veya yüklenen dosya ham bir PDF ise resmi KÖKSAN Antetini basıyoruz
+                $currentVersion = $document->currentVersion;
+                if ($currentVersion && $currentVersion->mime_type === 'application/pdf') {
+                    try {
+                        // Mevcut kararlı stasmpPdf servisini tetikle
+                        $stampedPdfContent = app(\App\Services\DocumentStamperService::class)->stampPdf($document);
+                        
+                        // Orijinal dosyanın üzerine antetli halini ez
+                        Storage::disk('local')->put($currentVersion->file_path, $stampedPdfContent);
+                        
+                        // Dosya boyutunu yeniden hesapla ve veritabanını güncelle
+                        $currentVersion->updateQuietly([
+                            'file_size' => strlen($stampedPdfContent)
+                        ]);
+                    } catch (Exception $stamperException) {
+                        // Kritik kurumsal sistemlerde antet basılamadı diye transaction patlatılmamalı, loglanmalı
+                        \Illuminate\Support\Facades\Log::error('KÖKSAN ISO Antet Basım Hatası: ' . $stamperException->getMessage(), [
+                            'document_id' => $document->id
+                        ]);
+                    }
+                }
+
+                // İş Akışı (Workflow) Yönetimi Tetiği
                 if (count($approvers) > 0) {
                     app(\App\Services\DocumentApprovalService::class)->startWorkflow($document, $approvers, $user->id, $ip ?? '0.0.0.0', $userAgent ?? 'Unknown');
                 } else {
@@ -392,7 +456,7 @@ class DocumentService
             }
         });
 
-        // Tüm işlem bitince Toplu Bildirim at
+        // Toplu Bildirim ve Arşiv Dağıtım Motorunu Tetikle
         $this->notifySuperiorsBatch($createdDocuments, $notifiedUserIds, $user);
 
         return $createdDocuments;

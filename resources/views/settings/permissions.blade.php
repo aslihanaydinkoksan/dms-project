@@ -48,12 +48,12 @@
 
             <div class="card-body p-0">
                 <div style="display: flex; flex-wrap: wrap;">
-
                     <div
                         style="flex: 1 1 50%; min-width: 400px; padding: 24px; border-right: 1px solid var(--border-color);">
                         <h5
                             style="margin-top: 0; margin-bottom: 15px; color: var(--text-muted); font-size: 0.95rem; font-weight: 600;">
-                            {{ __('Kayıtlı Tipler') }}</h5>
+                            {{ __('Kayıtlı Tipler') }}
+                        </h5>
                         <div class="table-responsive custom-scrollbar"
                             style="max-height: 420px; border: 1px solid var(--border-color); border-radius: 8px;">
                             <table class="table modern-table" style="margin: 0; font-size: 0.9rem;">
@@ -69,14 +69,36 @@
                                     @foreach ($documentTypes->sortBy('category') as $type)
                                         <tr class="hover-row">
                                             <td style="padding: 12px 15px; vertical-align: middle;">
-                                                <div
-                                                    style="font-weight: 600; color: var(--primary-color); font-size: 0.95rem;">
-                                                    {{ $type->name }}</div>
+                                                {{-- İSİM VE ROZET İÇİN FLEX CONTAINER --}}
+                                                <div style="display: flex; flex-direction: column; gap: 6px;">
+                                                    <span
+                                                        style="font-weight: 600; color: var(--primary-color); font-size: 0.95rem;">
+                                                        {{ $type->name }}
+                                                    </span>
+                                                    <div>
+                                                        {{-- DİNAMİK ROZET (BADGE) ALANI --}}
+                                                        @if ($type->is_form_based)
+                                                            <span
+                                                                style="display: inline-flex; align-items: center; background: #ede9fe; color: #7c3aed; padding: 3px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: bold; white-space: nowrap;">
+                                                                <i data-lucide="zap"
+                                                                    style="width: 12px; height: 12px; margin-right: 3px; fill: #7c3aed;"></i>
+                                                                Akıllı Form
+                                                            </span>
+                                                        @else
+                                                            <span
+                                                                style="display: inline-flex; align-items: center; background: #f1f5f9; color: #64748b; padding: 3px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: bold; white-space: nowrap;">
+                                                                <i data-lucide="file-up"
+                                                                    style="width: 12px; height: 12px; margin-right: 3px;"></i>
+                                                                Fiziksel Belge
+                                                            </span>
+                                                        @endif
+                                                    </div>
+                                                </div>
                                             </td>
                                             <td style="padding: 12px 15px; vertical-align: middle;">
                                                 <div style="display: flex; gap: 8px; justify-content: flex-end;">
                                                     <button type="button" class="btn btn-sm btn-outline-primary action-btn"
-                                                        onclick="editDocType({{ $type->id }}, '{{ $type->name }}', {{ json_encode($type->custom_fields ?? []) }}, {{ $type->requires_expiration_date ? 'true' : 'false' }})"
+                                                        onclick="editDocType({{ $type->id }}, '{{ addslashes($type->name) }}', {{ json_encode($type->custom_fields ?? []) }}, {{ $type->requires_expiration_date ? 'true' : 'false' }}, {{ $type->is_form_based ? 'true' : 'false' }})"
                                                         title="{{ __('Düzenle') }}">
                                                         <i data-lucide="edit"></i>
                                                     </button>
@@ -138,6 +160,23 @@
                                             style="width: 18px; height: 18px; accent-color: var(--primary-color);">
                                         {{ __('Geçerlilik Tarihi Zorunlu Olsun') }}
                                     </label>
+                                </div>
+                                <div class="form-group"
+                                    style="margin-top: 15px; padding: 15px; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px;">
+                                    <label
+                                        style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600; color: var(--primary-color); margin-bottom: 0;">
+                                        <input type="checkbox" name="is_form_based" value="1"
+                                            style="width: 18px; height: 18px; accent-color: #8b5cf6;"
+                                            {{ isset($documentType) && $documentType->is_form_based ? 'checked' : '' }}>
+                                        <i data-lucide="form-input" style="width: 18px; color: #8b5cf6;"></i>
+                                        {{ __('Akıllı Form Şablonu (Smart Form)') }}
+                                    </label>
+                                    <p class="text-muted"
+                                        style="font-size: 0.8rem; margin: 5px 0 0 26px; line-height: 1.4;">
+                                        Bu seçenek işaretlenirse, kullanıcılar bu belgeyi dışarıdan PDF olarak yükleyemez.
+                                        Sadece belirlenen dinamik form alanlarını doldururlar ve sistem PDF'i
+                                        otomatik üretir.
+                                    </p>
                                 </div>
                             </div>
 
@@ -896,23 +935,34 @@ $label = $uiMeta['label'] ?? __($sp->name);
                 addBtn.addEventListener('click', () => addFieldRow());
             }
 
-            window.editDocType = function(id, name, customFieldsJson, requiresExp) {
+            window.editDocType = function(id, name, customFieldsJson, requiresExp, isFormBased) {
                 document.getElementById('dtName').value = name || '';
                 document.getElementById('dtRequiresExp').checked = requiresExp;
+                const formBasedInput = document.querySelector('input[name="is_form_based"]');
+                if (formBasedInput) {
+                    formBasedInput.checked = isFormBased;
+                }
+
                 const form = document.getElementById('docTypeForm');
                 form.action = `{{ url('/settings/document-types') }}/${id}`;
                 document.getElementById('methodSpoofer').innerHTML =
                     '<input type="hidden" name="_method" value="PUT">';
+
                 document.getElementById('formTitle').innerHTML = `✏️ ${name} {{ __('Düzenleniyor') }}`;
+
                 const submitBtn = document.getElementById('submitDocTypeBtn');
                 submitBtn.innerHTML = '<i data-lucide="refresh-cw"></i> {{ __('Güncelle') }}';
                 submitBtn.classList.replace('btn-primary', 'btn-warning');
+
                 document.getElementById('cancelEditBtn').style.display = 'inline-block';
+
                 wrapper.innerHTML = '';
                 fieldIndex = 0;
+
                 if (customFieldsJson && Array.isArray(customFieldsJson)) {
                     customFieldsJson.forEach(field => addFieldRow(field));
                 }
+
                 lucide.createIcons();
             };
 

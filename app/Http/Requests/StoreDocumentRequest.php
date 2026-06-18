@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use App\Models\DocumentType;
 
 class StoreDocumentRequest extends FormRequest
 {
@@ -14,7 +15,7 @@ class StoreDocumentRequest extends FormRequest
 
     public function rules(): array
     {
-        return [
+        $rules = [
             // =========================================================
             // 1. GLOBAL BELGE BİLGİLERİ (Tüm seçili dosyalar için ortak)
             // =========================================================
@@ -24,8 +25,6 @@ class StoreDocumentRequest extends FormRequest
             // --- KURUMSAL METADATA VE İMHA POLİTİKASI ---
             'related_department_id' => ['nullable', 'integer', 'exists:departments,id'],
             'system_article_no' => ['nullable', 'string', 'max:255'],
-            // 'department_retention_years' => ['nullable', 'integer', 'min:0'],
-            // 'archive_retention_years' => ['nullable', 'integer', 'min:0'],
 
             // --- ETİKETLER ---
             'tags' => ['nullable', 'array'],
@@ -36,14 +35,16 @@ class StoreDocumentRequest extends FormRequest
             'approvers.*.step_order' => ['required_with:approvers', 'integer', 'min:1'],
             'notified_user_ids' => ['nullable', 'array'],
 
+            // --- SMART FORM / GEÇİCİ KONTROL BAYRAĞI ---
+            'is_form_based_submission' => ['nullable', 'boolean'],
+
             // =========================================================
             // 2. ÇOKLU DOSYA (BATCH UPLOAD) KONTROLLERİ
             // =========================================================
-
-            // Eski 'file' => [...] kısmı, 'files.*' şeklinde çoklandı
-            'files' => ['required', 'array', 'min:1'],
+            // Akıllı form tabanlı gönderimlerde (is_form_based_submission = true) fiziksel dosya zorunluluğu kalkar
+            'files' => ['required_unless:is_form_based_submission,true', 'array', 'min:1'],
             'files.*' => [
-                'required',
+                'required_unless:is_form_based_submission,true',
                 'file',
                 'mimes:pdf,doc,docx,jpg,jpeg,png,html',
                 'mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png,text/html',
@@ -56,6 +57,8 @@ class StoreDocumentRequest extends FormRequest
             'documents.*.title' => ['required', 'string', 'max:255'],
             'documents.*.document_type_id' => ['required', 'exists:document_types,id'],
             'documents.*.is_indefinite' => ['nullable'], // Checkbox değeri
+
+            // KORUNAN KRİTİK İŞ MANTIĞI: Belge tipine göre dinamik tarih kontrolü yapan fonksiyon
             'documents.*.expire_at' => [
                 'nullable', // Checkbox seçiliyse null gelebilir
                 'date',
@@ -67,7 +70,7 @@ class StoreDocumentRequest extends FormRequest
                     $isIndefinite = $this->boolean("documents.{$index}.is_indefinite");
 
                     if ($docTypeId && !$isIndefinite && empty($value)) {
-                        $docType = \App\Models\DocumentType::find($docTypeId);
+                        $docType = DocumentType::find($docTypeId);
                         // Eğer belge tipi tarih gerektiriyorsa ve Süresiz seçilmemişse, tarih boş olamaz
                         if ($docType && $docType->requires_expiration_date) {
                             $fail('Belge tipi süreli olduğu için geçerlilik tarihi girmeli VEYA "Süresiz" seçeneğini işaretlemelisiniz.');
@@ -77,6 +80,63 @@ class StoreDocumentRequest extends FormRequest
             ],
             'documents.*.metadata' => ['nullable', 'array'],
         ];
+
+        // =========================================================
+        // 3. SMART FORMS / DİNAMİK METADATA VALİDASYON MOTORU
+        // =========================================================
+        if ($this->has('documents') && is_array($this->input('documents'))) {
+            foreach ($this->input('documents') as $index => $doc) {
+                $typeId = $doc['document_type_id'] ?? null;
+                if (!$typeId) continue;
+
+                // İlgili doküman tipinin custom_fields şablon mimarisini çekiyoruz
+                $documentType = DocumentType::find($typeId);
+
+                // Eğer döküman tipi form tabanlıysa ve içinde tanımlanmış dinamik alanlar varsa kuralları enjekte et
+                if ($documentType && $documentType->is_form_based && !empty($documentType->custom_fields)) {
+                    $fields = is_string($documentType->custom_fields)
+                        ? json_decode($documentType->custom_fields, true)
+                        : $documentType->custom_fields;
+
+                    foreach ($fields as $field) {
+                        $fieldName = $field['name'] ?? null;
+                        if (!$fieldName) continue;
+
+                        $dynamicRules = [];
+
+                        // Alanın zorunluluk (Required) kontrolü şablondan okunur
+                        if (!empty($field['required'])) {
+                            $dynamicRules[] = 'required';
+                        } else {
+                            $dynamicRules[] = 'nullable';
+                        }
+
+                        // Veri Tipi Eşleştirmesi (Data Type Strategy Mapping)
+                        switch ($field['type'] ?? 'text') {
+                            case 'number':
+                            case 'integer':
+                                $dynamicRules[] = 'numeric';
+                                break;
+                            case 'date':
+                                $dynamicRules[] = 'date';
+                                break;
+                            case 'boolean':
+                                $dynamicRules[] = 'boolean';
+                                break;
+                            default:
+                                $dynamicRules[] = 'string';
+                                $dynamicRules[] = 'max:65000';
+                        }
+
+                        // Noktasal array dot-notation hedeflemesi ile kural anahtarı oluşturulur:
+                        // Örn: rules['documents.0.metadata.vardiya'] = ['required', 'string']
+                        $rules["documents.{$index}.metadata.{$fieldName}"] = $dynamicRules;
+                    }
+                }
+            }
+        }
+
+        return $rules;
     }
 
     public function messages(): array

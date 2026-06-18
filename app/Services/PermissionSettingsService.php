@@ -157,7 +157,8 @@ class PermissionSettingsService
         DocumentType::create([
             'name' => $data['name'],
             'custom_fields' => empty($fields) ? null : $fields,
-            'requires_expiration_date' => $data['requires_expiration_date'] ?? false
+            'requires_expiration_date' => $data['requires_expiration_date'] ?? false,
+            'is_form_based' => $data['is_form_based'] ?? false
         ]);
     }
 
@@ -171,7 +172,8 @@ class PermissionSettingsService
         $documentType->update([
             'name' => $data['name'],
             'custom_fields' => empty($fields) ? null : $fields,
-            'requires_expiration_date' => $data['requires_expiration_date'] ?? false
+            'requires_expiration_date' => $data['requires_expiration_date'] ?? false,
+            'is_form_based' => $data['is_form_based'] ?? false
         ]);
     }
 

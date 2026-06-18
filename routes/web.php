@@ -42,7 +42,7 @@ Route::middleware(['auth', 'role:Super Admin'])->group(function () {
 // KYS'nin atacağı her türlü (GET/POST/OPTIONS) isteği yakalayan "Sünger" Rota
 Route::any('/', function (\Illuminate\Http\Request $request) {
     if (Auth::check()) {
-        if (Auth::user()->can('menu.executive_cockpit')) {
+        if (Auth::user()->hasRole('Yönetim Kurulu')) {
             return redirect()->route('executive.cockpit');
         }
         return redirect()->route('dashboard');

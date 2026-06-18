@@ -33,7 +33,7 @@ class DashboardController extends Controller
 
         // 1. KYS/SSO VIP INTERCEPTOR (Yönetim Kurulu Yönlendirmesi)
         // Eğer kullanıcı Cockpit yetkisine sahipse, Dashboard'u çizmeden VİP rotaya fırlat.
-        if ($user->can('menu.executive_cockpit')) {
+        if ($user->hasRole('Yönetim Kurulu')) {
             return redirect()->route('executive.cockpit');
         }
 

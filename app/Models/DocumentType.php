@@ -8,10 +8,12 @@ use Spatie\Permission\Models\Permission;
 
 class DocumentType extends Model
 {
-    protected $fillable = ['name', 'slug',  'description', 'is_active', 'custom_fields', 'requires_expiration_date'];
+    protected $fillable = ['name', 'slug',  'description', 'is_active', 'custom_fields', 'requires_expiration_date','is_form_based',];
     protected $casts = [
         'custom_fields' => 'array', // Veritabanından çıkarken diziye çevirir
         'requires_expiration_date' => 'boolean',
+        'is_active' => 'boolean',
+        'is_form_based' => 'boolean',
     ];
 
     // İsim girildiğinde slug otomatik dolsun
@@ -40,7 +42,7 @@ class DocumentType extends Model
         static::deleted(function ($documentType) {
             $actions = ['view', 'create', 'edit', 'delete'];
             foreach ($actions as $action) {
-                /** @var \Spatie\Permission\Models\Permission|null $permission */
+                /** @var Permission|null $permission */
                 $permission = Permission::where('name', $documentType->slug . '.' . $action)->first();
                 if ($permission) {
                     $permission->delete();

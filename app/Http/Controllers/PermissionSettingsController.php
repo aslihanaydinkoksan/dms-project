@@ -9,6 +9,7 @@ use App\Models\DocumentType;
 use App\Models\Department;
 use Illuminate\Support\Facades\Log;
 use Exception;
+use Illuminate\Http\RedirectResponse;
 
 class PermissionSettingsController extends Controller
 {
@@ -97,33 +98,50 @@ class PermissionSettingsController extends Controller
         ]);
     }
 
-    public function storeDocumentType(Request $request)
+    /**
+     * Yeni doküman tipi ve şablonunu sisteme kaydeder.
+     */
+    public function storeDocumentType(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:document_types,name',
             'custom_fields' => 'nullable|array',
-            'requires_expiration_date' => 'nullable|boolean'
+            'requires_expiration_date' => 'nullable|boolean',
+            'is_form_based' => 'nullable|boolean' // YENİ: Validasyon kuralı enjeksiyonu
         ]);
+
+        // Checkbox güvenliği: Gönderilmediyse false (0) olmasını garanti altına alıyoruz
+        $validated['is_form_based'] = $request->boolean('is_form_based');
 
         $this->settingsService->createDocumentType($validated);
 
         return back()->with('success', '📄 Yeni doküman tipi ve özel form alanları başarıyla oluşturuldu.');
     }
 
-    public function updateDocumentType(Request $request, DocumentType $documentType)
+    /**
+     * Mevcut doküman tipini ve şablon özelliklerini günceller.
+     */
+    public function updateDocumentType(Request $request, DocumentType $documentType): RedirectResponse
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:document_types,name,' . $documentType->id,
             'custom_fields' => 'nullable|array',
-            'requires_expiration_date' => 'nullable|boolean'
+            'requires_expiration_date' => 'nullable|boolean',
+            'is_form_based' => 'nullable|boolean' // YENİ: Validasyon kuralı enjeksiyonu
         ]);
+
+        // Checkbox güvenliği: Gönderilmediyse false (0) olmasını garanti altına alıyoruz
+        $validated['is_form_based'] = $request->boolean('is_form_based');
 
         $this->settingsService->updateDocumentType($documentType, $validated);
 
         return back()->with('success', 'Doküman tipi ve özel form alanları başarıyla güncellendi.');
     }
 
-    public function destroyDocumentType(DocumentType $documentType)
+    /**
+     * Doküman tipini kalıcı olarak siler.
+     */
+    public function destroyDocumentType(DocumentType $documentType): RedirectResponse
     {
         $documentType->delete();
         return back()->with('success', 'Doküman tipi ve buna bağlı tüm sistem yetkileri kalıcı olarak silindi.');
