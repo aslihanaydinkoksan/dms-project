@@ -105,6 +105,7 @@ class PermissionSettingsController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:document_types,name',
+            'department_id' => 'nullable|integer|exists:departments,id',
             'custom_fields' => 'nullable|array',
             'requires_expiration_date' => 'nullable|boolean',
             'is_form_based' => 'nullable|boolean' // YENİ: Validasyon kuralı enjeksiyonu
@@ -125,6 +126,7 @@ class PermissionSettingsController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:document_types,name,' . $documentType->id,
+            'department_id' => 'nullable|integer|exists:departments,id',
             'custom_fields' => 'nullable|array',
             'requires_expiration_date' => 'nullable|boolean',
             'is_form_based' => 'nullable|boolean' // YENİ: Validasyon kuralı enjeksiyonu

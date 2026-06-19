@@ -8,7 +8,7 @@ use Spatie\Permission\Models\Permission;
 
 class DocumentType extends Model
 {
-    protected $fillable = ['name', 'slug',  'description', 'is_active', 'custom_fields', 'requires_expiration_date','is_form_based',];
+    protected $fillable = ['department_id', 'name', 'slug',  'description', 'is_active', 'custom_fields', 'requires_expiration_date', 'is_form_based',];
     protected $casts = [
         'custom_fields' => 'array', // Veritabanından çıkarken diziye çevirir
         'requires_expiration_date' => 'boolean',
@@ -54,5 +54,33 @@ class DocumentType extends Model
     public function documents()
     {
         return $this->hasMany(Document::class);
+    }
+    // 2. Department İlişkisi
+    public function department()
+    {
+        return $this->belongsTo(Department::class);
+    }
+
+    // 3. Dinamik Yetki Kalkanı (Local Scope)
+    /**
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param \App\Models\User $user
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeVisibleToUser($query, $user)
+    {
+        // Eğer kullanıcı Super Admin ise her şeyi görebilir (Opsiyonel Kurumsal Kural)
+        if ($user && $user->hasRole('Super Admin')) {
+            return $query;
+        }
+
+        // Global şablonlar (Null) VEYA kullanıcının kendi departmanına atanmış şablonlar
+        return $query->where(function ($q) use ($user) {
+            $q->whereNull('department_id');
+
+            if ($user && $user->department_id) {
+                $q->orWhere('department_id', $user->department_id);
+            }
+        });
     }
 }

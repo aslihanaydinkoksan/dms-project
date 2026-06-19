@@ -193,30 +193,30 @@ class DocumentPolicy
      */
     public function create(User $user): bool
     {
-        if ($user->hasAnyRole(['Super Admin', 'Admin'])) {
-            return true;
-        }
+        // if ($user->hasAnyRole(['Super Admin', 'Admin'])) {
+        //     return true;
+        // }
 
-        // Matriste HERHANGİ BİR kategoride belge yükleme (can_create) yetkisi var mı?
-        $roleIds = $user->roles->pluck('id');
-        if ($roleIds->isNotEmpty()) {
-            $hasAnyMatrixCreate = DB::table('role_category_permissions')
-                ->whereIn('role_id', $roleIds)
-                ->where('can_create', 1)
-                ->exists();
+        // // Matriste HERHANGİ BİR kategoride belge yükleme (can_create) yetkisi var mı?
+        // $roleIds = $user->roles->pluck('id');
+        // if ($roleIds->isNotEmpty()) {
+        //     $hasAnyMatrixCreate = DB::table('role_category_permissions')
+        //         ->whereIn('role_id', $roleIds)
+        //         ->where('can_create', 1)
+        //         ->exists();
 
-            if ($hasAnyMatrixCreate) {
-                return true;
-            }
-        }
+        //     if ($hasAnyMatrixCreate) {
+        //         return true;
+        //     }
+        // }
 
-        // Matris yetkisi yoksa klasik create yetkisine bak
-        try {
-            if ($user->hasPermissionTo('document.create')) return true;
-        } catch (PermissionDoesNotExist $e) {
-        }
+        // // Matris yetkisi yoksa klasik create yetkisine bak
+        // try {
+        //     if ($user->hasPermissionTo('document.create')) return true;
+        // } catch (PermissionDoesNotExist $e) {
+        // }
 
-        return false;
+        return true; // Herkese açık bırakıyoruz, çünkü yükleme ekranında kategori seçimi yapılacak ve matris kontrolü orada yapılacak.
     }
 
     /**

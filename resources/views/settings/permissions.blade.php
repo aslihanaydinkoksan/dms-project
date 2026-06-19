@@ -92,13 +92,28 @@
                                                                 Fiziksel Belge
                                                             </span>
                                                         @endif
+                                                        @if ($type->department_id)
+                                                            <span
+                                                                style="display: inline-flex; align-items: center; background: #fee2e2; color: #b91c1c; padding: 3px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: bold; white-space: nowrap; margin-left: 5px;">
+                                                                <i data-lucide="shield"
+                                                                    style="width: 12px; height: 12px; margin-right: 3px;"></i>
+                                                                {{ $type->department->name }} Özel
+                                                            </span>
+                                                        @else
+                                                            <span
+                                                                style="display: inline-flex; align-items: center; background: #dcfce7; color: #15803d; padding: 3px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: bold; white-space: nowrap; margin-left: 5px;">
+                                                                <i data-lucide="globe"
+                                                                    style="width: 12px; height: 12px; margin-right: 3px;"></i>
+                                                                Global
+                                                            </span>
+                                                        @endif
                                                     </div>
                                                 </div>
                                             </td>
                                             <td style="padding: 12px 15px; vertical-align: middle;">
                                                 <div style="display: flex; gap: 8px; justify-content: flex-end;">
                                                     <button type="button" class="btn btn-sm btn-outline-primary action-btn"
-                                                        onclick="editDocType({{ $type->id }}, '{{ addslashes($type->name) }}', {{ json_encode($type->custom_fields ?? []) }}, {{ $type->requires_expiration_date ? 'true' : 'false' }}, {{ $type->is_form_based ? 'true' : 'false' }})"
+                                                        onclick="editDocType({{ $type->id }}, '{{ addslashes($type->name) }}', {{ $type->department_id ?? 'null' }}, {{ json_encode($type->custom_fields ?? []) }}, {{ $type->requires_expiration_date ? 'true' : 'false' }}, {{ $type->is_form_based ? 'true' : 'false' }})"
                                                         title="{{ __('Düzenle') }}">
                                                         <i data-lucide="edit"></i>
                                                     </button>
@@ -151,6 +166,24 @@
                                     <input type="text" name="name" id="dtName" class="form-control"
                                         placeholder="{{ __('Örn: Sözleşme') }}" required
                                         style="padding: 10px; border-radius: 6px;">
+                                </div>
+                                <div class="col-md-12 mt-3">
+                                    <label
+                                        style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; display: block;">
+                                        {{ __('Yetkili Departman (İzolasyon)') }}
+                                    </label>
+                                    <select name="department_id" id="dtDepartment" class="form-control"
+                                        style="padding: 10px; border-radius: 6px; border: 1px solid var(--border-color);">
+                                        <option value="">-- {{ __('Tüm Şirkete Açık (Global Şablon)') }} --</option>
+                                        @foreach ($departments as $dept)
+                                            <option value="{{ $dept->id }}">
+                                                {{ $dept->unit ? "[$dept->unit] " : '' }}{{ $dept->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    <small class="text-muted" style="font-size: 0.75rem;">
+                                        Seçim yapılmazsa bu form şablonu şirketteki tüm departmanlar tarafından
+                                        kullanılabilir.
+                                    </small>
                                 </div>
                                 <div class="col-md-6" style="display: flex; align-items: flex-end; padding-bottom: 5px;">
                                     <label
@@ -935,8 +968,9 @@ $label = $uiMeta['label'] ?? __($sp->name);
                 addBtn.addEventListener('click', () => addFieldRow());
             }
 
-            window.editDocType = function(id, name, customFieldsJson, requiresExp, isFormBased) {
+            window.editDocType = function(id, name, departmentId, customFieldsJson, requiresExp, isFormBased) {
                 document.getElementById('dtName').value = name || '';
+                document.getElementById('dtDepartment').value = departmentId || '';
                 document.getElementById('dtRequiresExp').checked = requiresExp;
                 const formBasedInput = document.querySelector('input[name="is_form_based"]');
                 if (formBasedInput) {

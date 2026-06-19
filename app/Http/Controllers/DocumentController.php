@@ -211,6 +211,10 @@ class DocumentController extends Controller
 
         /** @var User $user */
         $user = Auth::user();
+        $documentTypes = DocumentType::where('is_active', true)
+            ->visibleToUser($user) 
+            ->orderBy('name')
+            ->get();
         $notifiableSuperiors = $this->documentService->getNotifiableSuperiors($user);
 
         return view('documents.create', compact('flatFolders', 'privacyLevels', 'tags', 'users', 'departments', 'documentTypes', 'notifiableSuperiors'));
