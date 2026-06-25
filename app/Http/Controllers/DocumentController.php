@@ -30,10 +30,12 @@ use App\Models\Department;
 use App\Http\Requests\CheckinDocumentRequest;
 use App\Models\DocumentType;
 use App\Services\DocumentNumberService;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use App\Services\DocumentStamperService;
 
 class DocumentController extends Controller
 {
+    use AuthorizesRequests;
     /**
      * @var DocumentSearchService
      */
@@ -672,6 +674,41 @@ class DocumentController extends Controller
                 'success' => false,
                 'message' => $e->getMessage()
             ], 400); // 400 Bad Request
+        }
+    }
+    /**
+     * Belgeyi Dış Paydaşlarla Paylaşır
+     */
+    public function shareExternal(Request $request,Document $document, DocumentService $documentService)
+    {
+        // 1. Yetki Kontrolü (Belgeyi düzenleyebilen/silebilen paylaşabilsin)
+        $this->authorize('update', $document);
+
+        // 2. Form Validasyonu
+        $request->validate([
+            'external_emails' => ['required', 'array', 'min:1'],
+            'external_emails.*' => ['email'], // Dizi içindeki her bir eleman geçerli bir e-posta olmalı
+            'external_note' => ['nullable', 'string', 'max:1000'],
+            'external_expires_at' => ['nullable', 'date', 'after:today'],
+        ], [
+            'external_emails.required' => __('Lütfen en az bir geçerli e-posta adresi girin.'),
+            'external_emails.*.email' => __('Girdiğiniz değerlerden biri geçerli bir e-posta adresi değil.'),
+            'external_expires_at.after' => __('Geçerlilik tarihi bugünden sonraki bir tarih olmalıdır.')
+        ]);
+
+        // 3. Service'e Paslama
+        try {
+            $documentService->shareWithExternalStakeholders(
+                $document,
+                $request->external_emails,
+                $request->external_note,
+                $request->external_expires_at,
+                Auth::id()
+            );
+
+            return back()->with('success', __('Belge, içindeki ek dosyalarla birlikte başarıyla dış paydaş(lar) ile paylaşıldı.'));
+        } catch (Exception $e) {
+            return back()->with('error', $e->getMessage());
         }
     }
 }

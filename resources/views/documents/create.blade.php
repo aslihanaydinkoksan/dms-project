@@ -108,7 +108,7 @@
                             <i data-lucide="file-up" style="width: 18px;"></i> Fiziksel Dosya Yükle
                         </button>
                         <button type="button" class="mode-btn" data-mode="1">
-                            <i data-lucide="form-input" style="width: 18px;"></i> Form Doldur 
+                            <i data-lucide="form-input" style="width: 18px;"></i> Form Doldur
                         </button>
                     </div>
 
@@ -218,6 +218,40 @@
                             @endforeach
                         </select>
                     </div>
+                    {{-- <div class="form-group"
+                        style="margin-bottom: 20px; border-top: 1px dashed #e2e8f0; padding-top: 15px;">
+                        <label class="form-label" style="font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                            {{ __('Sistem Dışı Bilgilendirme (Harici E-Posta)') }}
+                            <i data-lucide="mail-plus" style="width: 15px; color: #ce1126;"></i>
+                        </label>
+                        <select name="external_emails[]" id="externalEmailsSelect" class="form-control"
+                            multiple="multiple" style="width: 100%;">
+                        </select>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label class="form-label" style="font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                            {{ __('Dış Paydaş Link Son Geçerlilik Tarihi') }}
+                            <i data-lucide="calendar-clock" style="width: 15px; color: var(--accent-color);"></i>
+                        </label>
+                        <input type="datetime-local" name="external_expires_at" class="form-control"
+                            min="{{ now()->format('Y-m-d\TH:i') }}" style="max-width: 300px;">
+                        <small class="text-muted" style="font-size: 11px; display: block; margin-top: 4px;">
+                            Belgeye dışarıdan erişecek kişilerin bağlantısının ne zaman kesileceğini seçiniz.
+                            <span style="color: #ce1126; font-weight: 600;">Boş bırakırsanız, şirket politikası aksi
+                                belirtilmedikçe süresiz aktif kalır.</span>
+                        </small>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label class="form-label" style="font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                            {{ __('Not') }}
+                            <i data-lucide="file-text" style="width: 15px; color: #718096;"></i>
+                        </label>
+                        <textarea name="external_note" class="form-control" rows="3" style="resize: none;"
+                            placeholder="Harici kullanıcılara gidecek e-posta içerisine eklenecek özel not yazabilirsiniz..."></textarea>
+                    </div> --}}
+
 
                     <div class="form-group">
                         <label class="form-label"
@@ -371,7 +405,7 @@
                     if (cardsContainer.innerHTML.trim() !== "") {
                         if (!confirm(
                                 "Yükleme modunu değiştirirseniz eklediğiniz belgeler sıfırlanacaktır. Devam etmek istiyor musunuz?"
-                                )) return;
+                            )) return;
                     }
 
                     modeBtns.forEach(b => b.classList.remove('active'));
@@ -438,7 +472,7 @@
                             <input type="text" name="documents[${currentIdx}][title]" class="form-control" required value="${defaultTitle}" style="width:100%; padding:10px; border:1px solid var(--border-color); border-radius:6px;">
                         </div>
                         <div>
-                            <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:5px;">Form Tipi*</label>
+                            <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:5px;">Doküman/Form Tipi*</label>
                             <select name="documents[${currentIdx}][document_type_id]" class="form-control doc-type-selector" data-index="${currentIdx}" required style="width:100%; padding:10px; border:1px solid var(--border-color); border-radius:6px;">
                                 ${options}
                             </select>
@@ -506,7 +540,7 @@
                         submitBtn.disabled = false;
                         cardsContainer.innerHTML = '';
                         globalCardIndex =
-                        0; // Fizikselde her seçimde yeniden sıfırlayıp tam liste basıyoruz
+                            0; // Fizikselde her seçimde yeniden sıfırlayıp tam liste basıyoruz
 
                         if (allFiles.length > 0) {
                             fileNameDisplay.textContent = allFiles.length +
@@ -625,6 +659,26 @@
                     }
                 });
             }
+            // if (typeof $.fn.select2 !== 'undefined') {
+            //     $('#externalEmailsSelect').select2({
+            //         tags: true,
+            //         tokenSeparators: [',', ' '],
+            //         placeholder: "ornek@firma.com şeklinde e-posta giriniz",
+            //         allowClear: true,
+            //         createTag: function(params) {
+            //             // E-posta validasyon kontrolü (Yanlış girdileri tag yapmaz)
+            //             var pattern = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
+            //             if (pattern.test(params.term)) {
+            //                 return {
+            //                     id: params.term,
+            //                     text: params.term,
+            //                     isNew: true
+            //                 };
+            //             }
+            //             return null;
+            //         }
+            //     });
+            // }
         });
 
         document.addEventListener('change', function(e) {

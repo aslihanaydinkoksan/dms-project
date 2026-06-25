@@ -136,6 +136,14 @@ class StoreDocumentRequest extends FormRequest
             }
         }
 
+        // =========================================================
+        // 1. GLOBAL BELGE BİLGİLERİ (Eklenen Yeni Alanlar)
+        // =========================================================
+        $rules['external_emails'] = ['nullable', 'array'];
+        $rules['external_emails.*'] = ['required_with:external_emails', 'email'];
+        $rules['external_note'] = ['nullable', 'string', 'max:1000'];
+        $rules['external_expires_at'] = ['nullable', 'date', 'after:now'];
+
         return $rules;
     }
 

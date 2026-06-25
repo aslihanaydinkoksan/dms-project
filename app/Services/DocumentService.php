@@ -71,6 +71,7 @@ class DocumentService
                     // DİKKAT: $document->id() değil, $document->id kullanıyoruz!
                     'document_id' => $document->id,
                     'version_number' => '1.0',
+                    'original_file_name' => $file->getClientOriginalName(),
                     'file_path' => $savedPath,
                     'mime_type' => $file->getClientMimeType(),
                     'file_size' => $file->getSize(),
@@ -200,6 +201,7 @@ class DocumentService
 
             $document->versions()->create([
                 'version_number' => $newVersionNumber,
+                'original_file_name' => $file->getClientOriginalName(),
                 'file_path' => $filePath,
                 'mime_type' => $file->getClientMimeType(),
                 'file_size' => $file->getSize(),
@@ -350,7 +352,7 @@ class DocumentService
             );
         }
     }
-    
+
     /**
      * Kurumsal Toplu Belge Yükleme ve Akıllı Form Belge Üretim Motoru (Batch/Smart Store)
      */
@@ -386,7 +388,7 @@ class DocumentService
                 if ($isFormBased) {
                     // --- SMART FORM BELGE ÜRETİM ALTYAPISI ---
                     $documentType = \App\Models\DocumentType::findOrFail($docMeta['document_type_id']);
-                    
+
                     // 1. Ham PDF Çıktısını Al
                     $pdfBinary = app(PdfGeneratorService::class)->generateHtmlDocument(
                         $docMeta['title'],
@@ -415,7 +417,6 @@ class DocumentService
                             @unlink($tmpFilePath);
                         }
                     }
-
                 } else {
                     // --- STANDART FİZİKSEL DOSYA YÜKLEME AKIŞI ---
                     $file = $files[$index];
@@ -429,10 +430,10 @@ class DocumentService
                     try {
                         // Mevcut kararlı stasmpPdf servisini tetikle
                         $stampedPdfContent = app(\App\Services\DocumentStamperService::class)->stampPdf($document);
-                        
+
                         // Orijinal dosyanın üzerine antetli halini ez
                         Storage::disk('local')->put($currentVersion->file_path, $stampedPdfContent);
-                        
+
                         // Dosya boyutunu yeniden hesapla ve veritabanını güncelle
                         $currentVersion->updateQuietly([
                             'file_size' => strlen($stampedPdfContent)
@@ -451,7 +452,16 @@ class DocumentService
                 } else {
                     $document->updateQuietly(['status' => 'published']);
                 }
-
+                // --- KÖKSAN SECURE GUEST TOKEN MOTORU (DİNAMİK TARİHLİ) ---
+                // if (!empty($globalData['external_emails'])) {
+                //     $this->processExternalShares(
+                //         $document,
+                //         $globalData['external_emails'],
+                //         $globalData['external_note'] ?? null,
+                //         $globalData['external_expires_at'] ?? null, // Formdan gelen dinamik tarih paslanıyor
+                //         $user->id
+                //     );
+                // }
                 $createdDocuments[] = $document;
             }
         });
@@ -568,5 +578,48 @@ class DocumentService
                 'user_agent' => $userAgent,
             ]);
         });
+    }
+    /**
+     * Harici dış paydaşlar için güvenli erişim jetonu üretir ve bildirim fırlatır.
+     */
+    /**
+     * Harici dış paydaşlar için kullanıcı seçimli esnek erişim jetonu üretir.
+     */
+    private function processExternalShares(Document $document, array $emails, ?string $note, ?string $expiresAt, int $creatorId): void
+    {
+        // PHP 8.3 Tip Güvenliği ile string gelen tarihi güvenli bir şekilde Carbon nesnesine dönüştürüyoruz.
+        // Eğer Gizem Hanım tarihi boş bıraktıysa (is_indefinite mantığı), null kalır ve süresiz olur.
+        $parsedExpiry = $expiresAt ? \Illuminate\Support\Carbon::parse($expiresAt) : null;
+
+        foreach ($emails as $email) {
+            // Kriptografik güvenli benzersiz token
+            $token = Str::random(64);
+
+            \App\Models\DocumentExternalShare::create([
+                'document_id' => $document->id,
+                'email' => $email,
+                'token' => $token,
+                'personal_note' => $note,
+                'expires_at' => $parsedExpiry, // Artık tamamen dinamik!
+                'created_by' => $creatorId
+            ]);
+
+            // Asenkron e-posta bildirimi fırlatılıyor
+            \Illuminate\Support\Facades\Notification::route('mail', $email)
+                ->notify(new \App\Notifications\ExternalDocumentSharedNotification($document, $token, $note));
+        }
+    }
+    /**
+     * Dış Paydaşlar İçin Bağımsız Paylaşım Tetikleyicisi
+     */
+    public function shareWithExternalStakeholders(Document $document, array $emails, ?string $note, ?string $expiresAt, int $userId): void
+    {
+        // Yetki veya statü kalkanları eklenebilir (Örn: Sadece yayınlanmış belgeler paylaşılabilir vb.)
+        // if ($document->privacy_level === 'strictly_confidential') {
+        //     throw new Exception("Çok gizli statüsündeki belgeler sistem dışına paylaşılamaz.");
+        // }
+
+        // Mevcut mükemmel token ve mail motorumuzu tetikliyoruz
+        $this->processExternalShares($document, $emails, $note, $expiresAt, $userId);
     }
 }

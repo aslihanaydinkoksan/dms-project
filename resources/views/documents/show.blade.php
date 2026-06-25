@@ -199,6 +199,12 @@
                     </button>
                 </form>
             @endcan
+            @can('update', $document)
+                <button type="button" id="openShareModal" class="btn btn-outline-info"
+                    style="display: flex; gap: 8px; background: #f0f9ff; border-color: #0ea5e9; color: #0ea5e9;">
+                    <i data-lucide="share-2" style="width: 18px;"></i> {{ __('Bilgilendirmede Bulun') }}
+                </button>
+            @endcan
         </div>
     </div>
 
@@ -222,6 +228,16 @@
                 <li class="tab-item" data-target="tab-versions"
                     style="padding: 12px 20px; cursor: pointer; display: flex; align-items: center; gap: 10px; border-left: 3px solid transparent; color: var(--text-muted);">
                     <i data-lucide="history" style="width: 18px;"></i> {{ __('Revizyon Geçmişi') }}
+                </li>
+                <li class="tab-item" data-target="tab-attachments"
+                    style="padding: 12px 20px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 10px; border-left: 3px solid transparent; color: var(--text-muted);">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <i data-lucide="paperclip" style="width: 18px;"></i> {{ __('Ek Belgeler') }}
+                    </div>
+                    @if ($document->attachments->count() > 0)
+                        <span class="badge badge-secondary"
+                            style="font-size: 0.7rem; background: #e2e8f0; color: #475569;">{{ $document->attachments->count() }}</span>
+                    @endif
                 </li>
                 <li class="tab-item" data-target="tab-approvals"
                     style="padding: 12px 20px; cursor: pointer; display: flex; align-items: center; gap: 10px; border-left: 3px solid transparent; color: var(--text-muted);">
@@ -503,7 +519,15 @@
                                         {{ $version->created_at->format('d.m.Y H:i') }}</span>
                                 </div>
                             </div>
-
+                            <div
+                                style="margin-bottom: 15px; display: inline-flex; align-items: center; gap: 8px; background: #f8fafc; padding: 6px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.85rem;">
+                                <i data-lucide="paperclip" style="width: 14px; color: var(--primary-color);"></i>
+                                <span style="color: var(--text-muted); font-weight: 600;">{{ __('Dosya:') }}</span>
+                                <span
+                                    style="color: var(--text-color); font-style: {{ $version->original_file_name ? 'normal' : 'italic' }};">
+                                    {{ $version->original_file_name ?? __('Sistemde kayıtlı isim bulunamadı.') }}
+                                </span>
+                            </div>
                             @if ($version->revision_reason)
                                 <div
                                     style="background: var(--surface-color); border: 1px dashed var(--border-color); padding: 12px; border-radius: 6px; font-size: 0.9rem; color: var(--text-color);">
@@ -1306,7 +1330,98 @@
                     </div>
                 </div>
             @endif
+            <div id="tab-attachments" class="tab-pane" style="display: none; opacity: 0; transition: opacity 0.3s;">
+                <div class="tab-header flex-between" style="margin-bottom: 25px;">
+                    <div>
+                        <h2 style="font-size: 1.25rem; margin-bottom: 5px;">{{ __('Belge Ekleri') }}</h2>
+                        <p class="text-muted" style="font-size: 0.9rem;">
+                            {{ __('Bu dokümanla ilişkili ek formlar, sözleşmeler veya görsel kanıtlar.') }}
+                        </p>
+                    </div>
 
+                    @can('update', $document)
+                        <button id="openUploadAttachmentModal" class="btn btn-primary"
+                            style="display: flex; align-items: center; gap: 8px;">
+                            <i data-lucide="upload" style="width: 16px;"></i> {{ __('Yeni Ek Yükle') }}
+                        </button>
+                    @endcan
+                </div>
+
+                @if ($document->attachments->isEmpty())
+                    <div
+                        style="text-align: center; padding: 40px; background: #f8fafc; border-radius: 12px; border: 2px dashed #cbd5e1;">
+                        <div
+                            style="width: 64px; height: 64px; background: #e2e8f0; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px;">
+                            <i data-lucide="paperclip" style="width: 32px; height: 32px; color: #94a3b8;"></i>
+                        </div>
+                        <h4 style="margin: 0 0 5px 0; color: var(--text-color);">{{ __('Henüz Ek Yok') }}</h4>
+                        <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;">
+                            {{ __('Bu dokümana bağlanmış herhangi bir ek belge bulunmuyor.') }}
+                        </p>
+                    </div>
+                @else
+                    <div style="display: flex; flex-direction: column; gap: 15px;">
+                        @foreach ($document->attachments as $attachment)
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: #fff; border: 1px solid var(--border-color); border-radius: 8px; transition: all 0.2s;"
+                                onmouseover="this.style.borderColor='var(--primary-color)';"
+                                onmouseout="this.style.borderColor='var(--border-color)';">
+
+                                <div style="display: flex; align-items: center; gap: 15px;">
+                                    <div
+                                        style="width: 40px; height: 40px; border-radius: 8px; background: #e0f2fe; display: flex; align-items: center; justify-content: center; color: #0284c7;">
+                                        @if (str_contains($attachment->mime_type, 'pdf'))
+                                            <i data-lucide="file-text" style="width: 20px;"></i>
+                                        @elseif(str_contains($attachment->mime_type, 'image'))
+                                            <i data-lucide="image" style="width: 20px;"></i>
+                                        @else
+                                            <i data-lucide="file" style="width: 20px;"></i>
+                                        @endif
+                                    </div>
+
+                                    <div>
+                                        <strong
+                                            style="display: block; font-size: 0.95rem; color: var(--text-color);">{{ $attachment->original_name }}</strong>
+                                        <div
+                                            style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; display: flex; gap: 10px; align-items: center;">
+                                            <span style="display: flex; align-items: center; gap: 4px;"><i
+                                                    data-lucide="user" style="width: 12px;"></i>
+                                                {{ $attachment->uploader->name }}</span>
+                                            <span>|</span>
+                                            <span style="display: flex; align-items: center; gap: 4px;"><i
+                                                    data-lucide="calendar" style="width: 12px;"></i>
+                                                {{ $attachment->created_at->format('d.m.Y H:i') }}</span>
+                                            <span>|</span>
+                                            <span>{{ number_format($attachment->file_size / 1024, 2) }} KB</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div style="display: flex; gap: 10px;">
+                                    <a href="{{ route('document-attachments.download', $attachment->id) }}"
+                                        class="btn btn-sm btn-outline-primary" style="padding: 6px 12px;"
+                                        title="{{ __('İndir') }}">
+                                        <i data-lucide="download" style="width: 16px;"></i>
+                                    </a>
+
+                                    @if (auth()->user()->hasAnyRole(['Super Admin', 'Admin']) || $attachment->uploaded_by === auth()->id())
+                                        <form action="{{ route('document-attachments.destroy', $attachment->id) }}"
+                                            method="POST"
+                                            onsubmit="return confirm('Bu eki silmek istediğinize emin misiniz?');">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                style="padding: 6px 12px;" title="{{ __('Sil') }}">
+                                                <i data-lucide="trash-2" style="width: 16px;"></i>
+                                            </button>
+                                        </form>
+                                    @endif
+                                </div>
+
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+            </div>
         </main>
     </div>
 
@@ -1559,6 +1674,109 @@
             </form>
         </div>
     </div>
+
+    {{-- EKLER İÇİN YENİ DOSYA YÜKLEME MODALI --}}
+    <div id="uploadAttachmentModal" class="modal-overlay"
+        style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+        <div class="modal-content"
+            style="background: #fff; padding: 30px; border-radius: 12px; width: 100%; max-width: 500px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="font-size: 1.25rem;">{{ __('Yeni Ek Belge Yükle') }}</h2>
+                <button type="button" class="close-modal attachment-close"
+                    style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+            </div>
+
+            <form id="uploadAttachmentForm" action="{{ route('document-attachments.store', $document->id) }}"
+                method="POST" enctype="multipart/form-data">
+                @csrf
+                <div id="attachmentError" class="alert alert-danger"
+                    style="display: none; margin-bottom: 15px; padding: 10px; border-radius: 6px; background: #fee2e2; color: #991b1b; border: 1px solid #fecaca;">
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; font-size: 0.9rem; font-weight: 500; margin-bottom: 8px;">
+                        {{ __('Ek Dosya') }} <span style="color: var(--danger-color);">*</span>
+                    </label>
+                    <div style="position: relative; width: 100%;">
+                        <input type="file" name="file" id="attachmentFile" required
+                            style="position: absolute; margin: 0; padding: 0; width: 100%; height: 100%; outline: none; opacity: 0; cursor: pointer; z-index: 2;">
+                        <label for="attachmentFile"
+                            style="display: flex; align-items: center; justify-content: center; padding: 20px; background-color: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 8px; color: var(--text-muted); font-size: 1rem; transition: all 0.3s ease; z-index: 1;">
+                            <i data-lucide="file-plus"
+                                style="width: 24px; height: 24px; margin-right: 10px; color: var(--accent-color);"></i>
+                            <span id="attachment-file-name">{{ __('Dosya Seçin veya Sürükleyin') }}</span>
+                        </label>
+                    </div>
+                    <small style="display: block; margin-top: 8px; font-size: 0.75rem; color: var(--text-muted);">
+                        <i data-lucide="info" style="width: 12px; vertical-align: middle;"></i>
+                        İzin verilen formatlar: PDF, Word, Excel, JPG, PNG
+                    </small>
+                </div>
+
+                <button type="submit" id="attachmentSubmitBtn" class="btn btn-primary"
+                    style="width: 100%; padding: 12px; justify-content: center; font-size: 1rem;">
+                    <i data-lucide="upload" style="width: 18px;"></i> {{ __('Sisteme Yükle') }}
+                </button>
+            </form>
+        </div>
+    </div>
+    {{-- DIŞ PAYDAŞ PAYLAŞIM MODALI --}}
+    <div id="shareExternalModal" class="modal-overlay"
+        style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+        <div class="modal-content"
+            style="background: #fff; padding: 30px; border-radius: 12px; width: 100%; max-width: 550px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="font-size: 1.25rem; display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="send" style="color: var(--primary-color);"></i> {{ __('Doküman Bildirimi') }}
+                </h2>
+                <button type="button" class="close-modal share-close"
+                    style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+            </div>
+
+            <div class="alert alert-info"
+                style="font-size: 0.85rem; margin-bottom: 20px; background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; padding: 12px; border-radius: 6px;">
+                <i data-lucide="info" style="width: 16px; vertical-align: middle;"></i>
+                {{ __('Ana belge ve sekmelerden yüklediğiniz tüm ek belgeler, alıcıya tek bir bağlantı üzerinden iletilecektir.') }}
+            </div>
+
+            <form action="{{ route('documents.share', $document->id) }}" method="POST">
+                @csrf
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; font-size: 0.9rem; font-weight: 500; margin-bottom: 8px;">
+                        {{ __('Alıcı E-Posta Adresleri') }} <span style="color: var(--danger-color);">*</span>
+                    </label>
+                    <select id="externalEmailsSelect" name="external_emails[]" multiple required
+                        placeholder="{{ __('E-posta yazıp Enter\'a basın...') }}" style="width: 100%;"></select>
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; font-size: 0.9rem; font-weight: 500; margin-bottom: 8px;">
+                        {{ __('Dokümana Karşı Tarafın Erişim Geçerlilik Tarihi') }}
+                    </label>
+                    <input type="datetime-local" name="external_expires_at" class="form-control"
+                        style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px;">
+                    <small
+                        style="color: var(--text-muted); font-size: 0.75rem;">{{ __('Boş bırakırsanız erişim bağlantısı süresiz geçerli olur.') }}</small>
+                </div>
+
+                <div style="margin-bottom: 25px;">
+                    <label style="display: block; font-size: 0.9rem; font-weight: 500; margin-bottom: 8px;">
+                        {{ __('Ekstra Paylaşım Notu (Opsiyonel)') }}
+                    </label>
+                    <textarea name="external_note" rows="3" class="form-control"
+                        style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; font-family: inherit;"
+                        placeholder="{{ __('Alıcıya iletilmek üzere özel bir not ekleyebilirsiniz...') }}"></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary"
+                    style="width: 100%; padding: 12px; justify-content: center; font-size: 1rem;">
+                    <i data-lucide="mail" style="width: 18px;"></i> {{ __('Bağlantıyı Gönder') }}
+                </button>
+            </form>
+        </div>
+    </div>
 @endsection
 
 @push('scripts')
@@ -1650,7 +1868,8 @@
             setupModal('openStartWorkflowModal', 'startWorkflowModal', '#closeStartWorkflowModal');
             setupModal('openAssignPhysicalModal', 'assignPhysicalModal', '#closeAssignModal');
             setupModal('openConfirmPhysicalModal', 'confirmPhysicalModal', '#closeConfirmModal');
-
+            setupModal('openUploadAttachmentModal', 'uploadAttachmentModal', '.attachment-close');
+            setupModal('openShareModal', 'shareExternalModal', '.share-close');
             // --- ONAY/RED SEBEBİ UI KONTROLÜ ---
             const radios = document.querySelectorAll('input[name="decision"]');
             const commentWrapper = document.getElementById('rejectCommentWrapper');
@@ -2073,7 +2292,22 @@
                     openModal(action, id);
                 });
             });
-
+            // --- EKLER İÇİN DOSYA İSMİ GÖSTERİMİ ---
+            const attachmentFileInput = document.getElementById('attachmentFile');
+            const attachmentFileName = document.getElementById('attachment-file-name');
+            if (attachmentFileInput && attachmentFileName) {
+                attachmentFileInput.addEventListener('change', function(e) {
+                    if (e.target.files.length > 0) {
+                        attachmentFileName.textContent = e.target.files[0].name;
+                        attachmentFileName.style.color = 'var(--primary-color)';
+                        attachmentFileName.style.fontWeight = 'bold';
+                    } else {
+                        attachmentFileName.textContent = 'Dosya Seçin veya Sürükleyin';
+                        attachmentFileName.style.color = 'var(--text-muted)';
+                        attachmentFileName.style.fontWeight = 'normal';
+                    }
+                });
+            }
             // Modal Kapatma
             document.querySelectorAll('#dynamicPhysicalModal .close-modal').forEach(btn => {
                 btn.addEventListener('click', () => {
@@ -2084,6 +2318,29 @@
             if (physicalModal) {
                 physicalModal.addEventListener('click', (e) => {
                     if (e.target === physicalModal) physicalModal.style.display = 'none';
+                });
+            }
+            // TomSelect ile Serbest E-Posta Giriş Mekanizması
+            const emailSelect = document.getElementById('externalEmailsSelect');
+            if (emailSelect) {
+                new TomSelect(emailSelect, {
+                    plugins: ['remove_button'],
+                    create: function(input) {
+                        // Regex ile geçerli bir e-posta formatı olup olmadığını kontrol et
+                        const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                        if (regex.test(input)) {
+                            return {
+                                value: input,
+                                text: input
+                            };
+                        }
+                        // Geçersiz ise alert ver veya eklemeyi reddet
+                        alert('Lütfen geçerli bir e-posta adresi girin.');
+                        return false;
+                    },
+                    createOnBlur: true,
+                    persist: false,
+                    placeholder: "E-posta yazıp Enter'a basın..."
                 });
             }
 

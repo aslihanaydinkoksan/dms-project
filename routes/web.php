@@ -230,9 +230,14 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/{document}', [DocumentController::class, 'show'])->name('show');
             Route::get('/download/{document}', [DocumentController::class, 'download'])->name('download');
         });
+        // Dış Paydaş Paylaşım Rotası
+        Route::post('/{document}/share', [DocumentController::class, 'shareExternal'])->name('share');
     });
 
-
+    // --- BELGE EKLERİ (ATTACHMENTS) ROTALARI ---
+    Route::post('/documents/{document}/attachments', [\App\Http\Controllers\DocumentAttachmentController::class, 'store'])->name('document-attachments.store');
+    Route::get('/document-attachments/{attachment}/download', [\App\Http\Controllers\DocumentAttachmentController::class, 'download'])->name('document-attachments.download');
+    Route::delete('/document-attachments/{attachment}', [\App\Http\Controllers\DocumentAttachmentController::class, 'destroy'])->name('document-attachments.destroy');
     // ==========================================================================
     // 3. SİSTEM YÖNETİCİSİ & KULLANICI ROTALARI
     // ==========================================================================
@@ -327,3 +332,13 @@ Route::middleware(['auth'])->group(function () {
 Route::middleware(['auth', 'can:menu.executive_cockpit'])->group(function () {
     Route::get('/executive-cockpit', [\App\Http\Controllers\ExecutiveCockpitController::class, 'index'])->name('executive.cockpit');
 });
+// ==========================================================================
+// KÖKSAN SECURE GUEST TOKEN - DIŞ PAYLAŞIM ROTALARI
+// ==========================================================================
+Route::get('/shared-document/{token}', [\App\Http\Controllers\SharedDocumentController::class, 'show'])
+    ->name('shared.document.show');
+// YENİ EKLENEN: Sadece token ile çalışan dış indirme tüneli
+Route::get('/shared-document/{token}/download', [\App\Http\Controllers\SharedDocumentController::class, 'download'])
+    ->name('shared.document.download');
+Route::get('/shared-document/{token}/attachment/{attachment}/download', [\App\Http\Controllers\SharedDocumentController::class, 'downloadAttachment'])
+    ->name('shared.document.download-attachment');

@@ -424,4 +424,15 @@ class Document extends Model
         return $this->belongsToMany(User::class, 'document_notified_users')
             ->withTimestamps();
     }
+    public function externalShares(): HasMany
+    {
+        return $this->hasMany(DocumentExternalShare::class);
+    }
+    /**
+     * Dokümana ait tüm ek belgeler
+     */
+    public function attachments()
+    {
+        return $this->hasMany(DocumentAttachment::class)->orderBy('created_at', 'desc');
+    }
 }
