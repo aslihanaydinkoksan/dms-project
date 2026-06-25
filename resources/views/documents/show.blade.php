@@ -104,107 +104,113 @@
             </div>
         </div>
 
-        <div class="action-group" style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end;">
-            @if (!$document->is_locked && $document->status_text !== 'archived')
-                @can('update', $document)
-                    <a href="{{ route('documents.edit', $document->id) }}" class="btn btn-outline-primary"
-                        style="display: flex; gap: 8px; background: #f0fdf4; border-color: var(--success-color); color: var(--success-color);">
-                        <i data-lucide="edit-3" style="width: 18px;"></i> {{ __('Özellikleri Düzenle') }}
-                    </a>
-                @endcan
+        <div class="action-group" style="display: flex; gap: 10px; align-items: center; justify-content: flex-end;">
+
+            {{-- 1. BİRİNCİL VE ACİL AKSİYONLAR (Her Zaman Görünür) --}}
+
+            @if ($document->status_text !== 'archived' && $canApprove)
+                <button id="openApprovalModal" class="btn btn-warning pulse-animation"
+                    style="background: var(--warning-color); color: #fff; border: none; box-shadow: 0 4px 6px -1px rgba(245, 158, 11, 0.3);">
+                    <i data-lucide="zap" style="width: 18px;"></i> {{ __('İşlem Yap (Sıra Sizde)') }}
+                </button>
             @endif
 
-            @if ($document->status_text !== 'archived')
-                @if ($canApprove)
-                    <button id="openApprovalModal" class="btn btn-warning"
-                        style="background: var(--warning-color); color: #fff; border: none;">
-                        <i data-lucide="zap" style="width: 18px;"></i> {{ __('İşlem Yap (Sıra Sizde)') }}
-                    </button>
-                @endif
+            @if ($document->is_locked && $document->locked_by === auth()->id())
+                <button type="button" id="openCheckinModal" class="btn btn-success"
+                    style="background: var(--success-color); color: #fff; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.3);">
+                    <i data-lucide="upload-cloud" style="width: 18px;"></i> {{ __('Yeni Versiyon Yükle (Check-in)') }}
+                </button>
+            @endif
 
-                @if (!$document->is_locked)
-                    @can('update', $document)
-                        <form action="{{ route('documents.checkout', $document->id) }}" method="POST" class="inline-form">
-                            @csrf
-                            <button type="submit" class="btn btn-outline-primary" style="display: flex; gap: 8px;">
-                                <i data-lucide="lock" style="width: 18px;"></i> {{ __('Revize İçin Kilitle') }}
-                            </button>
-                        </form>
-                    @endcan
-                @endif
-
-                @if ($document->is_locked && $document->locked_by === auth()->id())
-                    <button type="button" id="openCheckinModal" class="btn btn-success"
-                        style="background: var(--success-color); color: #fff;">
-                        <i data-lucide="upload-cloud" style="width: 18px;"></i> {{ __('Yeni Versiyon Yükle (Kilidi Aç)') }}
-                    </button>
-                @endif
-
-                @if (in_array($document->status_text, ['draft', 'rejected', 'published', 'pending']))
-                    @can('update', $document)
-                        <button id="openStartWorkflowModal" class="btn btn-outline-secondary">
-                            <i data-lucide="play-circle" style="width: 18px;"></i> {{ __('Onay Akışını Başlat') }}
+            @if ($document->delivered_to_user_id === auth()->id() && $document->physical_receipt_status === 'pending')
+                @php
+                    $pendingMovement = $document->physicalMovements
+                        ->where('status', 'pending')
+                        ->where('receiver_id', auth()->id())
+                        ->first();
+                @endphp
+                @if ($pendingMovement)
+                    <div style="display: flex; gap: 5px; align-items: center;">
+                        <button type="button" class="btn btn-success btn-physical-action" data-action="accept"
+                            data-id="{{ $pendingMovement->id }}">
+                            <i data-lucide="check" style="width: 18px;"></i> {{ __('Evrakı Al') }}
                         </button>
-                    @endcan
-                @endif
-
-                @if (in_array($document->category, ['Sözleşme', 'Vekaletname', 'İpotek/Rehin']))
-                    @can('update', $document)
-                        <button type="button" id="openAssignPhysicalModal" class="btn btn-outline-secondary">
-                            <i data-lucide="inbox" style="width: 18px;"></i> {{ __('Zimmetle / Teslim Et') }}
+                        <button type="button" class="btn btn-danger btn-physical-action" data-action="reject"
+                            data-id="{{ $pendingMovement->id }}">
+                            <i data-lucide="x" style="width: 18px;"></i>
                         </button>
-                    @endcan
-                @endif
-
-                @if ($document->delivered_to_user_id === auth()->id() && $document->physical_receipt_status === 'pending')
-                    @php
-                        $pendingMovement = $document->physicalMovements
-                            ->where('status', 'pending')
-                            ->where('receiver_id', auth()->id())
-                            ->first();
-                    @endphp
-                    @if ($pendingMovement)
-                        <div style="display: flex; gap: 10px; align-items: center;">
-                            <button type="button" class="btn btn-success pulse-animation btn-physical-action"
-                                data-action="accept" data-id="{{ $pendingMovement->id }}"
-                                style="box-shadow: 0 4px 6px -1px rgba(22, 163, 74, 0.3);">
-                                <i data-lucide="check-square" style="width: 18px;"></i>
-                                {{ __('Islak İmzalı Evrakı Teslim Aldım') }}
-                            </button>
-
-                            <button type="button" class="btn btn-outline-danger btn-physical-action" data-action="reject"
-                                data-id="{{ $pendingMovement->id }}" style="background: #fff;">
-                                <i data-lucide="x-circle" style="width: 18px;"></i>
-                                {{ __('Teslimatı Reddet') }}
-                            </button>
-                        </div>
-                    @endif
+                    </div>
                 @endif
             @endif
 
+            {{-- Standart İndirme Butonu --}}
             <a href="{{ route('documents.download', $document->id) }}?v={{ $document->currentVersion?->id ?? time() }}&download=1"
-                class="btn btn-primary" download>
-                <i data-lucide="{{ $document->requires_vault ? 'shield-lock' : 'download' }}" style="width: 18px;"></i>
+                class="btn btn-primary" style="box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3);" download>
+                <i data-lucide="{{ $document->requires_vault ? 'lock' : 'download' }}" style="width: 18px;"></i>
                 {{ $document->requires_vault ? __('Kasadan İndir') : __('İndir') }}
             </a>
 
-            @can('delete', $document)
-                <form action="{{ route('documents.destroy', $document->id) }}" method="POST" class="inline-form"
-                    onsubmit="return confirm('{{ __('DİKKAT: Bu belgeyi sistemden kaldırmak istediğinize emin misiniz? Bu işlem geri alınamaz.') }}');">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn btn-danger"
-                        style="background: var(--danger-color); color: #fff; border: none; display: flex; align-items: center; gap: 8px; padding: 10px 15px; border-radius: 6px; box-shadow: 0 4px 6px -1px rgba(220, 38, 38, 0.2);">
-                        <i data-lucide="trash-2" style="width: 18px;"></i> {{ __('Belgeyi Sil') }}
-                    </button>
-                </form>
-            @endcan
-            @can('update', $document)
-                <button type="button" id="openShareModal" class="btn btn-outline-info"
-                    style="display: flex; gap: 8px; background: #f0f9ff; border-color: #0ea5e9; color: #0ea5e9;">
-                    <i data-lucide="share-2" style="width: 18px;"></i> {{ __('Bilgilendirmede Bulun') }}
+
+            {{-- 2. İKİNCİL AKSİYONLAR (Modern Dropdown Menü) --}}
+
+            <div class="dropdown-container" style="position: relative;">
+                <button type="button" class="btn btn-outline-secondary" id="docActionsBtn"
+                    style="display: flex; align-items: center; gap: 5px; background: #fff;">
+                    <i data-lucide="more-vertical" style="width: 18px;"></i> {{ __('İşlemler') }}
                 </button>
-            @endcan
+
+                <div id="docActionsMenu" class="dropdown-menu"
+                    style="display: none; position: absolute; right: 0; top: 110%; width: 220px; background: #fff; border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); z-index: 50; overflow: hidden;">
+
+                    @if (!$document->is_locked && $document->status_text !== 'archived')
+                        @can('update', $document)
+                            <a href="{{ route('documents.edit', $document->id) }}" class="dropdown-item">
+                                <i data-lucide="edit-3"></i> {{ __('Özellikleri Düzenle') }}
+                            </a>
+                            <form action="{{ route('documents.checkout', $document->id) }}" method="POST" style="margin:0;">
+                                @csrf
+                                <button type="submit" class="dropdown-item w-100 text-left">
+                                    <i data-lucide="lock"></i> {{ __('Revize İçin Kilitle') }}
+                                </button>
+                            </form>
+                        @endcan
+                    @endif
+
+                    @if (in_array($document->status_text, ['draft', 'rejected', 'published', 'pending']))
+                        @can('update', $document)
+                            <button type="button" id="openStartWorkflowModal" class="dropdown-item w-100 text-left">
+                                <i data-lucide="play-circle"></i> {{ __('Onay Akışını Başlat') }}
+                            </button>
+                        @endcan
+                    @endif
+
+                    @if (in_array($document->category, ['Sözleşme', 'Vekaletname', 'İpotek/Rehin']))
+                        @can('update', $document)
+                            <button type="button" id="openAssignPhysicalModal" class="dropdown-item w-100 text-left">
+                                <i data-lucide="inbox"></i> {{ __('Zimmetle / Teslim Et') }}
+                            </button>
+                        @endcan
+                    @endif
+
+                    @can('update', $document)
+                        <button type="button" id="openShareModal" class="dropdown-item w-100 text-left">
+                            <i data-lucide="share-2"></i> {{ __('Bilgilendirmede Bulun') }}
+                        </button>
+                    @endcan
+
+                    @can('delete', $document)
+                        <div style="height: 1px; background: var(--border-color); margin: 4px 0;"></div>
+                        <form action="{{ route('documents.destroy', $document->id) }}" method="POST" style="margin:0;"
+                            onsubmit="return confirm('{{ __('DİKKAT: Bu belgeyi sistemden kaldırmak istediğinize emin misiniz? Bu işlem geri alınamaz.') }}');">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="dropdown-item w-100 text-left text-danger hover-danger">
+                                <i data-lucide="trash-2"></i> {{ __('Belgeyi Sil') }}
+                            </button>
+                        </form>
+                    @endcan
+                </div>
+            </div>
         </div>
     </div>
 
@@ -2134,6 +2140,29 @@
                 document.getElementById('dynamicPhysicalModal').style.display = 'none';
             }
 
+            // --- DROPDOWN MENÜ KONTROLÜ (MODERN EVENT LISTENER) ---
+            const docActionsBtn = document.getElementById('docActionsBtn');
+            const docActionsMenu = document.getElementById('docActionsMenu');
+            const dropdownContainer = document.querySelector('.dropdown-container');
+
+            if (docActionsBtn && docActionsMenu) {
+                docActionsBtn.addEventListener('click', function(event) {
+                    event.stopPropagation(); // Tıklamanın sayfaya yayılmasını engelle
+                    
+                    // Menü kapalıysa aç, açıksa kapat
+                    if (docActionsMenu.style.display === 'none' || docActionsMenu.style.display === '') {
+                        docActionsMenu.style.display = 'block';
+                    } else {
+                        docActionsMenu.style.display = 'none';
+                    }
+                });
+            }
+            // Menü dışına (sayfanın herhangi bir yerine) tıklanınca menüyü kapat
+            document.addEventListener('click', function(event) {
+                if (dropdownContainer && docActionsMenu && !dropdownContainer.contains(event.target)) {
+                    docActionsMenu.style.display = 'none';
+                }
+            });
             // Modal dışına tıklandığında kapatma
             document.getElementById('dynamicPhysicalModal').addEventListener('click', (e) => {
                 if (e.target === document.getElementById('dynamicPhysicalModal')) {
@@ -2422,6 +2451,57 @@
             color: white !important;
             border-radius: 4px !important;
             padding: 2px 8px !important;
+        }
+
+        /* Modern Dropdown Menü Stilleri */
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            color: var(--text-color);
+            text-decoration: none;
+            background: transparent;
+            border: none;
+            font-size: 0.9rem;
+            font-family: inherit;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .dropdown-item i {
+            width: 16px;
+            color: var(--text-muted);
+        }
+
+        .dropdown-item:hover {
+            background: #f1f5f9;
+            color: var(--primary-color);
+        }
+
+        .dropdown-item:hover i {
+            color: var(--primary-color);
+        }
+
+        .dropdown-item.hover-danger:hover {
+            background: #fef2f2;
+            color: var(--danger-color);
+        }
+
+        .dropdown-item.hover-danger:hover i {
+            color: var(--danger-color);
+        }
+
+        .w-100 {
+            width: 100%;
+        }
+
+        .text-left {
+            text-align: left;
+        }
+
+        .text-danger {
+            color: var(--danger-color);
         }
     </style>
 @endpush
