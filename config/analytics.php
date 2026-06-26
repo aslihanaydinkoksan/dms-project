@@ -18,6 +18,12 @@ return [
                     'col' => 'document_type_id',
                     'relation' => 'documentType',
                     'display_col' => 'name'
+                ],
+                'user' => [
+                    'label' => 'Yükleyen Personele Göre (Performans)',
+                    'col' => 'id', // Document ID'den yola çıkarak
+                    'relation' => 'currentVersion.createdBy', // Zincirleme ilişki (Nested Relation)
+                    'display_col' => 'name'
                 ]
             ]
         ],
