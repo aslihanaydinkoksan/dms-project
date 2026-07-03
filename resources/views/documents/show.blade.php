@@ -2417,15 +2417,6 @@
                     placeholder: "E-posta yazıp Enter'a basın..."
                 });
             }
-            const documentId = {{ $document->id }};
-            const chatBox = document.getElementById('chatBox');
-            const chatInput = document.getElementById('chatInput');
-            const sendBtn = document.getElementById('chatSendBtn');
-
-            // Input alanında Enter tuşu dinleyicisi
-            chatInput.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') sendChatMessage();
-            });
 
             class DocumentAssistantChat {
                 constructor(documentId, csrfToken) {
