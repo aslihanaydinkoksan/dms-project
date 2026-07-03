@@ -170,6 +170,7 @@ class DocumentApprovalService
             // Belge tamamen onaylandı ve 'published' statüsüne geçti. 
             // Artık yapay zeka bu belgeyi okuyup "kurumsal hafızasına" alabilir.
             if ($document->currentVersion) {
+                \Illuminate\Support\Facades\Log::emergency("TETİKLEYİCİ KONTROLÜ: Belge onaylandı, Job şimdi kuyruğa gönderilecek. Document ID: " . $document->id);
                 \App\Jobs\ProcessDocumentForRAGJob::dispatch($document->currentVersion);
             }
         } elseif (count($nextStepUsers) > 0) {
