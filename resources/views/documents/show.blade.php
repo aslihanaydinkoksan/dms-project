@@ -227,14 +227,14 @@
                     style="padding: 12px 20px; cursor: pointer; display: flex; align-items: center; gap: 10px; border-left: 3px solid var(--accent-color); background: var(--bg-color); color: var(--accent-color); font-weight: 500;">
                     <i data-lucide="eye" style="width: 18px;"></i> {{ __('Doküman Önizleme') }}
                 </li>
-                <li class="tab-item" data-target="tab-ai"
+                {{-- <li class="tab-item" data-target="tab-ai"
                     style="padding: 12px 20px; cursor: pointer; display: flex; align-items: center; gap: 10px; border-left: 3px solid transparent; color: var(--text-muted); position: relative;">
                     <i data-lucide="bot" style="width: 18px;"></i> {{ __('Belge Asistanı') }}
                     <!-- YENİ: Dikkat çekici yönlendirme balonu -->
                     <div id="aiWelcomeTooltip" class="ai-tooltip">
                         Belge hakkında sorularını sor! ✨
                     </div>
-                </li>
+                </li> --}}
                 <li class="tab-item" data-target="tab-info"
                     style="padding: 12px 20px; cursor: pointer; display: flex; align-items: center; gap: 10px; border-left: 3px solid transparent; color: var(--text-muted);">
                     <i data-lucide="info" style="width: 18px;"></i> {{ __('Doküman Bilgileri') }}
