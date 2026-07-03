@@ -23,6 +23,17 @@ use App\Http\Controllers\Auth\PasswordResetController;
 use Illuminate\Support\Facades\Http;
 use App\Http\Controllers\SsoController;
 
+Route::get('/debug-google-models', function() {
+    $apiKey = config('ai.providers.google.api_key');
+    
+    // app()->isLocal() kontrolü ile sadece yerel ortamda SSL doğrulamasını esnetiyoruz.
+    $response = Illuminate\Support\Facades\Http::withOptions([
+        'verify' => !app()->isLocal() 
+    ])->get("https://generativelanguage.googleapis.com/v1/models?key={$apiKey}");
+    
+    return $response->json();
+});
+
 // Sadece Super Adminlerin erişebileceği Kara Kutu Rotası
 Route::middleware(['auth', 'role:Super Admin'])->group(function () {
     Route::get('/system-logs', [\App\Http\Controllers\SystemLogController::class, 'index'])->name('system.logs.index');
@@ -232,6 +243,9 @@ Route::middleware(['auth'])->group(function () {
         });
         // Dış Paydaş Paylaşım Rotası
         Route::post('/{document}/share', [DocumentController::class, 'shareExternal'])->name('share');
+
+        //Doküman Yapay Zeka Chat Rotası 
+        Route::post('/chat', [\App\Http\Controllers\AI\DocumentChatController::class, 'chat'])->name('chat');
     });
 
     // --- BELGE EKLERİ (ATTACHMENTS) ROTALARI ---

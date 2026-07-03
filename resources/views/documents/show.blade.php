@@ -227,6 +227,14 @@
                     style="padding: 12px 20px; cursor: pointer; display: flex; align-items: center; gap: 10px; border-left: 3px solid var(--accent-color); background: var(--bg-color); color: var(--accent-color); font-weight: 500;">
                     <i data-lucide="eye" style="width: 18px;"></i> {{ __('Doküman Önizleme') }}
                 </li>
+                <li class="tab-item" data-target="tab-ai"
+                    style="padding: 12px 20px; cursor: pointer; display: flex; align-items: center; gap: 10px; border-left: 3px solid transparent; color: var(--text-muted); position: relative;">
+                    <i data-lucide="bot" style="width: 18px;"></i> {{ __('Belge Asistanı') }}
+                    <!-- YENİ: Dikkat çekici yönlendirme balonu -->
+                    <div id="aiWelcomeTooltip" class="ai-tooltip">
+                        Belge hakkında sorularını sor! ✨
+                    </div>
+                </li>
                 <li class="tab-item" data-target="tab-info"
                     style="padding: 12px 20px; cursor: pointer; display: flex; align-items: center; gap: 10px; border-left: 3px solid transparent; color: var(--text-muted);">
                     <i data-lucide="info" style="width: 18px;"></i> {{ __('Doküman Bilgileri') }}
@@ -316,6 +324,42 @@
                         <p>{{ __('Bu belgeye ait fiziksel bir dosya bulunamadı.') }}</p>
                     </div>
                 @endif
+            </div>
+
+            {{-- 2. AI  --}}
+            <div id="tab-ai" class="tab-pane" style="display: none; opacity: 0; transition: opacity 0.3s;">
+                <div class="rag-chat-container">
+                    <div class="rag-chat-header">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div
+                                style="width: 32px; height: 32px; background: var(--primary-color); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white;">
+                                <i data-lucide="bot" style="width: 18px;"></i>
+                            </div>
+                            <div>
+                                <h3 style="margin: 0; font-size: 1rem; color: var(--primary-color);">DMS Yapay Zeka
+                                    Asistanı</h3>
+                                <span style="font-size: 0.75rem; color: var(--text-muted);">{{ $document->title }}
+                                    bağlamında çalışır</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="rag-chat-messages" id="chatBox">
+                        <div class="chat-bubble chat-ai">
+                            <strong>Merhaba!</strong> Ben KÖKSAN DMS Asistanı.<br>
+                            Bu belge hakkında analiz yapmak, özet çıkarmak veya spesifik bir maddeyi sormak için hazırım.
+                            Size nasıl yardımcı olabilirim?
+                        </div>
+                    </div>
+
+                    <div class="rag-chat-input-area">
+                        <input type="text" id="chatInput" class="rag-input"
+                            placeholder="Dokümanla ilgili sorunuzu yazın..." autocomplete="off">
+                        <button id="chatSendBtn" class="rag-btn">
+                            <i data-lucide="send" style="width: 18px;"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <div id="tab-info" class="tab-pane" style="display: none; opacity: 0; transition: opacity 0.3s;">
@@ -1786,6 +1830,7 @@
 @endsection
 
 @push('scripts')
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // --- LUCIDE İKONLARI ---
@@ -2148,7 +2193,7 @@
             if (docActionsBtn && docActionsMenu) {
                 docActionsBtn.addEventListener('click', function(event) {
                     event.stopPropagation(); // Tıklamanın sayfaya yayılmasını engelle
-                    
+
                     // Menü kapalıysa aç, açıksa kapat
                     if (docActionsMenu.style.display === 'none' || docActionsMenu.style.display === '') {
                         docActionsMenu.style.display = 'block';
@@ -2372,7 +2417,157 @@
                     placeholder: "E-posta yazıp Enter'a basın..."
                 });
             }
+            const documentId = {{ $document->id }};
+            const chatBox = document.getElementById('chatBox');
+            const chatInput = document.getElementById('chatInput');
+            const sendBtn = document.getElementById('chatSendBtn');
 
+            // Input alanında Enter tuşu dinleyicisi
+            chatInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') sendChatMessage();
+            });
+
+            class DocumentAssistantChat {
+                constructor(documentId, csrfToken) {
+                    this.documentId = documentId;
+                    this.csrfToken = csrfToken;
+                    this.chatBox = document.getElementById('chatBox');
+                    this.chatInput = document.getElementById('chatInput');
+                    this.sendBtn = document.getElementById('chatSendBtn');
+                    this.tooltip = document.getElementById('aiWelcomeTooltip');
+                    this.isProcessing = false;
+
+                    this.init();
+                }
+
+                init() {
+                    // Event Listener'lar
+                    this.chatInput.addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter') this.sendMessage();
+                    });
+                    this.sendBtn.addEventListener('click', () => this.sendMessage());
+
+                    // Dikkat çekici balonu (tooltip) 1.5 saniye sonra göster
+                    setTimeout(() => {
+                        if (this.tooltip) this.tooltip.classList.add('show');
+                    }, 1500);
+
+                    // Tab değiştiğinde balonu gizle
+                    document.querySelectorAll('.tab-item').forEach(tab => {
+                        tab.addEventListener('click', () => {
+                            if (this.tooltip) this.tooltip.classList.remove('show');
+                        });
+                    });
+                }
+
+                async sendMessage() {
+                    const message = this.chatInput.value.trim();
+                    if (!message || this.isProcessing) return;
+
+                    this.isProcessing = true;
+                    this.toggleInputState(true);
+
+                    // Kullanıcı mesajını ekle (Markdown parse edilmez, düz metin)
+                    this.appendMessage(message, 'chat-user');
+
+                    // Yükleniyor animasyonunu göster
+                    const loaderId = this.showLoader();
+
+                    try {
+                        const response = await fetch('/documents/chat', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': this.csrfToken
+                            },
+                            body: JSON.stringify({
+                                document_id: this.documentId,
+                                message: message
+                            })
+                        });
+
+                        const data = await response.json();
+                        this.removeLoader(loaderId);
+
+                        if (response.ok && data.status === 'success') {
+                            // Yapay zeka cevabını ekle (marked.js ile parse ederek)
+                            const parsedHtml = marked.parse(data.answer);
+                            this.appendMessage(parsedHtml, 'chat-ai', true);
+                        } else {
+                            this.appendMessage('⚠️ ' + (data.message || 'Sistemsel bir hata oluştu.'),
+                                'chat-error', true);
+                        }
+
+                    } catch (error) {
+                        this.removeLoader(loaderId);
+                        this.appendMessage('⚠️ Sunucu ile bağlantı kurulamadı.', 'chat-error', true);
+                    } finally {
+                        this.isProcessing = false;
+                        this.toggleInputState(false);
+                        this.chatInput.focus();
+                        lucide.createIcons(); // Yeni eklenen ikonları işle
+                    }
+                }
+
+                appendMessage(content, typeClass, isHtml = false) {
+                    const bubble = document.createElement('div');
+                    bubble.className = `chat-bubble ${typeClass}`;
+
+                    if (isHtml) {
+                        bubble.innerHTML = content;
+                    } else {
+                        bubble.textContent = content;
+                    }
+
+                    this.chatBox.appendChild(bubble);
+                    this.scrollToBottom();
+                }
+
+                showLoader() {
+                    const loaderId = 'loader-' + Date.now();
+                    const loaderHtml = `
+                <div class="typing-indicator">
+                    <span></span><span></span><span></span>
+                </div>
+            `;
+
+                    const bubble = document.createElement('div');
+                    bubble.id = loaderId;
+                    bubble.className = 'chat-bubble chat-ai loading-bubble';
+                    bubble.innerHTML = loaderHtml;
+
+                    this.chatBox.appendChild(bubble);
+                    this.scrollToBottom();
+                    return loaderId;
+                }
+
+                removeLoader(loaderId) {
+                    const loader = document.getElementById(loaderId);
+                    if (loader) loader.remove();
+                }
+
+                toggleInputState(disabled) {
+                    this.chatInput.disabled = disabled;
+                    this.sendBtn.disabled = disabled;
+                    if (disabled) {
+                        this.chatInput.style.opacity = '0.7';
+                        this.sendBtn.style.opacity = '0.7';
+                    } else {
+                        this.chatInput.style.opacity = '1';
+                        this.chatInput.value = '';
+                        this.sendBtn.style.opacity = '1';
+                    }
+                }
+
+                scrollToBottom() {
+                    this.chatBox.style.scrollBehavior = 'smooth';
+                    this.chatBox.scrollTop = this.chatBox.scrollHeight;
+                }
+            }
+
+            // Sınıfı başlat
+            new DocumentAssistantChat({{ $document->id }}, '{{ csrf_token() }}');
         });
     </script>
 
@@ -2502,6 +2697,210 @@
 
         .text-danger {
             color: var(--danger-color);
+        }
+
+        /* --- AI ASİSTAN GLASSMORPHISM UI --- */
+        .rag-chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 650px;
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            border-radius: 16px;
+            box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+            overflow: hidden;
+        }
+
+        .rag-chat-header {
+            padding: 16px 20px;
+            background: rgba(255, 255, 255, 0.7);
+            border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+        }
+
+        .rag-chat-messages {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            scroll-behavior: smooth;
+        }
+
+        .chat-bubble {
+            max-width: 85%;
+            padding: 14px 18px;
+            border-radius: 14px;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            word-wrap: break-word;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02);
+        }
+
+        /* Markdown İçi Düzenlemeler */
+        .chat-bubble p {
+            margin-bottom: 0.75rem;
+        }
+
+        .chat-bubble p:last-child {
+            margin-bottom: 0;
+        }
+
+        .chat-bubble ul,
+        .chat-bubble ol {
+            padding-left: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .chat-bubble li {
+            margin-bottom: 0.25rem;
+        }
+
+        .chat-bubble strong {
+            color: var(--primary-color);
+            font-weight: 700;
+        }
+
+        .chat-user {
+            align-self: flex-end;
+            background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .chat-ai {
+            align-self: flex-start;
+            background: rgba(255, 255, 255, 0.95);
+            color: #334155;
+            border: 1px solid #e2e8f0;
+            border-bottom-left-radius: 4px;
+        }
+
+        .chat-error {
+            align-self: flex-start;
+            background: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+            border-bottom-left-radius: 4px;
+        }
+
+        .rag-chat-input-area {
+            padding: 16px 20px;
+            background: rgba(255, 255, 255, 0.7);
+            border-top: 1px solid rgba(226, 232, 240, 0.8);
+            display: flex;
+            gap: 12px;
+        }
+
+        .rag-input {
+            flex: 1;
+            padding: 12px 16px;
+            border-radius: 10px;
+            border: 1px solid #cbd5e1;
+            background: rgba(255, 255, 255, 0.9);
+            outline: none;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
+        }
+
+        .rag-input:focus {
+            background: #ffffff;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .rag-btn {
+            padding: 0 20px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .rag-btn:hover:not(:disabled) {
+            background: #1e3a8a;
+            transform: translateY(-1px);
+        }
+
+        /* Yükleniyor Animasyonu */
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+            padding: 4px;
+        }
+
+        .typing-indicator span {
+            width: 6px;
+            height: 6px;
+            background: #94a3b8;
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+
+        .typing-indicator span:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+
+        .typing-indicator span:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+
+        @keyframes bounce {
+
+            0%,
+            80%,
+            100% {
+                transform: scale(0);
+            }
+
+            40% {
+                transform: scale(1);
+            }
+        }
+
+        /* Tooltip Animasyonu */
+        .ai-tooltip {
+            position: absolute;
+            left: 100%;
+            top: 50%;
+            transform: translateY(-50%) translateX(0px);
+            background: var(--primary-color);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            z-index: 10;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .ai-tooltip::before {
+            content: '';
+            position: absolute;
+            left: -4px;
+            top: 50%;
+            transform: translateY(-50%);
+            border-width: 5px 5px 5px 0;
+            border-style: solid;
+            border-color: transparent var(--primary-color) transparent transparent;
+        }
+
+        .ai-tooltip.show {
+            opacity: 1;
+            transform: translateY(-50%) translateX(15px);
         }
     </style>
 @endpush

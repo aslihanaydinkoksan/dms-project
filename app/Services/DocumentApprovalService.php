@@ -51,7 +51,7 @@ class DocumentApprovalService
 
         // TRANSACTION BİTTİKTEN SONRA BİLDİRİM FIRLAT:
         foreach ($firstStepUsers as $user) {
-            /** @var \App\Models\User $user */
+            /** @var User $user */
             $user->notify(new WorkflowActionRequired($document, 'pending_your_approval'));
         }
     }
@@ -166,6 +166,11 @@ class DocumentApprovalService
             $owner = $document->currentVersion?->createdBy;
             if ($owner) {
                 $owner->notify(new WorkflowActionRequired($document, 'approved'));
+            }
+            // Belge tamamen onaylandı ve 'published' statüsüne geçti. 
+            // Artık yapay zeka bu belgeyi okuyup "kurumsal hafızasına" alabilir.
+            if ($document->currentVersion) {
+                \App\Jobs\ProcessDocumentForRAGJob::dispatch($document->currentVersion);
             }
         } elseif (count($nextStepUsers) > 0) {
             foreach ($nextStepUsers as $nextUser) {
