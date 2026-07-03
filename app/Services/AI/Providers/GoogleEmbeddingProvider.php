@@ -29,7 +29,8 @@ class GoogleEmbeddingProvider implements EmbeddingProviderInterface
     {
         $verifySsl = !app()->isLocal(); // Local ortamda SSL hatasını önlemek için
 
-        $url = "https://generativelanguage.googleapis.com/v1beta/models/{$this->model}:embedContent?key={$this->apiKey}";
+        
+        $url = "https://generativelanguage.googleapis.com/v1/models/{$this->model}:embedContent?key={$this->apiKey}";
 
         $response = Http::withOptions(['verify' => $verifySsl])
             ->timeout(config('ai.providers.google.timeout'))
