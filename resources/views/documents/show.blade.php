@@ -2474,7 +2474,7 @@
                     const loaderId = this.showLoader();
 
                     try {
-                        const response = await fetch('/documents/chat', {
+                        const response = await fetch('{{ route('documents.chat') }}', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
