@@ -23,14 +23,14 @@ use App\Http\Controllers\Auth\PasswordResetController;
 use Illuminate\Support\Facades\Http;
 use App\Http\Controllers\SsoController;
 
-Route::get('/debug-google-models', function() {
+Route::get('/debug-google-models', function () {
     $apiKey = config('ai.providers.google.api_key');
-    
+
     // app()->isLocal() kontrolü ile sadece yerel ortamda SSL doğrulamasını esnetiyoruz.
     $response = Illuminate\Support\Facades\Http::withOptions([
-        'verify' => !app()->isLocal() 
+        'verify' => !app()->isLocal()
     ])->get("https://generativelanguage.googleapis.com/v1/models?key={$apiKey}");
-    
+
     return $response->json();
 });
 
@@ -264,7 +264,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/users/{id}/onayla', [UserController::class, 'basvuruOnayla'])
         ->name('r_yonetim_basvuru_onayla')
         ->middleware(['can:user.manage', 'can:menu.users']);
-
+    Route::delete('/users/{id}/reddet', [UserController::class, 'basvuruReddet'])
+        ->name('r_yonetim_basvuru_reddet')
+        ->middleware(['can:user.manage', 'can:menu.users']);
     Route::resource('users', UserController::class)->middleware(['can:user.manage', 'can:menu.users']);
 
     // ==========================================================================
