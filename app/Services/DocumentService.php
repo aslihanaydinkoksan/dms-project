@@ -622,4 +622,45 @@ class DocumentService
         // Mevcut mükemmel token ve mail motorumuzu tetikliyoruz
         $this->processExternalShares($document, $emails, $note, $expiresAt, $userId);
     }
+    /**
+     * Dış paydaşlarla en sık paylaşılan e-posta adreslerini getirir
+     */
+    public function getFrequentExternalEmails(int $userId, int $limit = 5): array
+    {
+        return \App\Models\DocumentExternalShare::where('created_by', $userId)
+            ->select('email', DB::raw('count(*) as total'))
+            ->groupBy('email')
+            ->orderByDesc('total')
+            ->limit($limit)
+            ->pluck('email')
+            ->toArray();
+    }
+
+    /**
+     * Kullanıcının yetkisine göre belgeye ait sistem ve okuma loglarını döndürür
+     */
+    public function getDocumentLogsForUser(Document $document, User $user, bool $isOwner): array
+    {
+        $auditLogs = collect();
+        $readLogs = collect();
+
+        // Sadece yetkililer ve belge sahibi görebilir
+        if ($user->hasAnyRole(['Super Admin', 'Admin', 'Direktör', 'Müdür']) || $isOwner) {
+            $auditLogs = AuditLog::with('user')
+                ->where('auditable_type', Document::class)
+                ->where('auditable_id', $document->id)
+                ->latest()
+                ->get();
+
+            $readLogs = \App\Models\DocumentReadLog::with('user')
+                ->where('document_id', $document->id)
+                ->latest()
+                ->get();
+        }
+
+        return [
+            'auditLogs' => $auditLogs,
+            'readLogs'  => $readLogs
+        ];
+    }
 }

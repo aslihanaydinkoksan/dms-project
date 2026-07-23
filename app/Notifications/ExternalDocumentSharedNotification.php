@@ -43,6 +43,9 @@ class ExternalDocumentSharedNotification extends Notification implements ShouldQ
         // 1. Dokümanı Yükleyen Kişi Bilgisi (Null Safe yaklaşımı ile)
         $uploaderName = $this->document->currentVersion?->createdBy?->name ?? __('Sistem / Bilinmeyen');
 
+        // YENİ: Doküman Tipi Bilgisini Null-Safe Olarak Çekme
+        $documentType = $this->document->documentType?->name ?? __('Belirtilmemiş');
+
         // 2. Tarih ve Saat Bilgisini Carbon ile ayrı ayrı formatlama
         $uploadDate = $this->document->created_at->format('d.m.Y');
         $uploadTime = $this->document->created_at->format('H:i');
@@ -65,6 +68,8 @@ class ExternalDocumentSharedNotification extends Notification implements ShouldQ
         // --- DOKÜMAN DETAYLARI BÖLÜMÜ ---
         $mailMessage->line('---')
             ->line('**📋 ' . __('Doküman Detayları') . ':**')
+            ->line('- **' . __('Doküman Adı') . ':** ' . $this->document->title) // YENİ SATIR
+            ->line('- **' . __('Doküman Tipi') . ':** ' . $documentType) // YENİ SATIR
             ->line('- **' . __('Yükleyen') . ':** ' . $uploaderName)
             ->line('- **' . __('Kayıt Tarihi') . ':** ' . $uploadDate)
             ->line('- **' . __('Kayıt Saati') . ':** ' . $uploadTime);

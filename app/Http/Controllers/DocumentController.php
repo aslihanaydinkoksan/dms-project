@@ -143,48 +143,47 @@ class DocumentController extends Controller
 
     public function show(Document $document): View
     {
-        // 1. Güvenlik Duvarı: Bu belgeyi görmeye yetkisi var mı?
+        // 1. Güvenlik Duvarı
         Gate::authorize('view', $document);
 
         // 2. N+1 Yıkıcı Eager Loading (Ana Veriler)
         $document->load([
             'folder',
             'currentVersion.createdBy',
-            'versions.createdBy', // Versiyonları yükleyenleri de al
+            'versions.createdBy',
             'approvals.user',
             'tags',
-            'documentType' //Dinamik etiket çevirisi için gerekli
+            'documentType'
         ]);
+
         $latestUploadedVersion = $document->versions->sortByDesc('id')->first();
         $document->setRelation('currentVersion', $latestUploadedVersion);
 
+        // 3. Breadcrumb ve Kullanıcı Durumları
         $breadcrumb = $this->folderService->getFlatFolderList()[$document->folder_id] ?? ($document->folder->name ?? 'Ana Dizin');
 
-        // 3. Yetki Kontrolü ve Logların Çekilmesi (Sadece Yetkililere)
         /** @var User $user */
         $user = Auth::user();
         $isOwner = $document->currentVersion && $document->currentVersion->created_by === $user->id;
 
-        $auditLogs = collect();
-        $readLogs = collect();
+        // 4. İŞ MANTIĞINI SERVİSE DEVRET (Fat Controller'ı Engelleme ve IDE Uyarılarını Çözme)
 
-        // Patronun Kuralı: Tarihçeyi sadece Admin, Direktör, Müdür ve Belge Sahibi görebilir.
-        if ($user->hasAnyRole(['Super Admin', 'Admin', 'Direktör', 'Müdür']) || $isOwner) {
-            // Sistem İşlem Logları
-            $auditLogs = AuditLog::with('user')
-                ->where('auditable_type', Document::class)
-                ->where('auditable_id', $document->id)
-                ->latest()
-                ->get();
+        // A) Loglar
+        $logs = $this->documentService->getDocumentLogsForUser($document, $user, $isOwner);
+        $auditLogs = $logs['auditLogs'];
+        $readLogs = $logs['readLogs'];
 
-            // Sayfada Kalma / Okuma Logları
-            $readLogs = DocumentReadLog::with('user')
-                ->where('document_id', $document->id)
-                ->latest()
-                ->get();
-        }
+        // B) Sık Kullanılan E-Postalar (Suggestion)
+        $frequentEmails = $this->documentService->getFrequentExternalEmails($user->id);
 
-        return view('documents.show', compact('document', 'breadcrumb', 'auditLogs', 'readLogs', 'isOwner'));
+        return view('documents.show', compact(
+            'document',
+            'breadcrumb',
+            'auditLogs',
+            'readLogs',
+            'isOwner',
+            'frequentEmails'
+        ));
     }
 
     /**
@@ -215,7 +214,7 @@ class DocumentController extends Controller
         /** @var User $user */
         $user = Auth::user();
         $documentTypes = DocumentType::where('is_active', true)
-            ->visibleToUser($user) 
+            ->visibleToUser($user)
             ->orderBy('name')
             ->get();
         $notifiableSuperiors = $this->documentService->getNotifiableSuperiors($user);
@@ -682,7 +681,7 @@ class DocumentController extends Controller
     /**
      * Belgeyi Dış Paydaşlarla Paylaşır
      */
-    public function shareExternal(Request $request,Document $document, DocumentService $documentService)
+    public function shareExternal(Request $request, Document $document, DocumentService $documentService)
     {
         // 1. Yetki Kontrolü (Belgeyi düzenleyebilen/silebilen paylaşabilsin)
         $this->authorize('update', $document);

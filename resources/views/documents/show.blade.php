@@ -2436,11 +2436,24 @@
                     if (e.target === physicalModal) physicalModal.style.display = 'none';
                 });
             }
-            // TomSelect ile Serbest E-Posta Giriş Mekanizması
+            // TomSelect ile Serbest E-Posta Giriş Mekanizması ve Sık Kullanılanlar Önerisi
             const emailSelect = document.getElementById('externalEmailsSelect');
             if (emailSelect) {
+                // Backend'den gelen düz array'i TomSelect'in anlayacağı {value: '...', text: '...'} formatına çeviriyoruz
+                const frequentEmailsRaw = @json($frequentEmails ?? []);
+                const suggestionOptions = frequentEmailsRaw.map(email => {
+                    return {
+                        value: email,
+                        text: email
+                    };
+                });
+
                 new TomSelect(emailSelect, {
                     plugins: ['remove_button'],
+                    options: suggestionOptions, // <-- YENİ: Otomatik tamamlama seçenekleri
+                    valueField: 'value',
+                    labelField: 'text',
+                    searchField: 'text',
                     create: function(input) {
                         // Regex ile geçerli bir e-posta formatı olup olmadığını kontrol et
                         const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -2456,10 +2469,22 @@
                     },
                     createOnBlur: true,
                     persist: false,
-                    placeholder: "E-posta yazıp Enter'a basın..."
+                    placeholder: "{{ __('E-posta yazıp Enter basın veya listeden seçin...') }}",
+                    // YENİ: Dropdown UI iyileştirmesi (Sık kullanılan e-postaların yanına bir ikon ekleyelim)
+                    render: {
+                        option: function(data, escape) {
+                            return `
+                                <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px;">
+                                    <i data-lucide="history" style="width: 14px; color: var(--text-muted);"></i>
+                                    <span>${escape(data.text)}</span>
+                                </div>`;
+                        }
+                    },
+                    onDropdownOpen: function() {
+                        lucide.createIcons(); // Option içindeki ikonları yükle
+                    }
                 });
             }
-
             class DocumentAssistantChat {
                 constructor(documentId, csrfToken) {
                     this.documentId = documentId;
