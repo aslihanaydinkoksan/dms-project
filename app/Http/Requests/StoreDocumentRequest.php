@@ -57,7 +57,7 @@ class StoreDocumentRequest extends FormRequest
             'documents.*.title' => ['required', 'string', 'max:255'],
             'documents.*.document_type_id' => ['required', 'exists:document_types,id'],
             'documents.*.is_indefinite' => ['nullable'], // Checkbox değeri
-
+            'documents.*.validity_description' => ['nullable', 'string', 'max:1000'], //Güvenlik için 1000 karakter sınırı var
             // KORUNAN KRİTİK İŞ MANTIĞI: Belge tipine göre dinamik tarih kontrolü yapan fonksiyon
             'documents.*.expire_at' => [
                 'nullable', // Checkbox seçiliyse null gelebilir

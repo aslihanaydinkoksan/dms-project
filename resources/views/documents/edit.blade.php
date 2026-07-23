@@ -166,6 +166,17 @@
                             value="{{ old('expire_at', $document->expire_at ? \Carbon\Carbon::parse($document->expire_at)->format('Y-m-d') : '') }}"
                             style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px;">
                     </div>
+                    <div class="form-group mt-3">
+                        <label class="form-label"
+                            style="font-size:0.85rem; font-weight:600; display:flex; align-items:center; gap:5px; margin-bottom:5px;">
+                            <i data-lucide="info" style="width:14px; color:var(--text-muted);"></i> Geçerlilik Özel Durum
+                            / Açıklama
+                            <span style="font-size:0.7rem; color:#94a3b8; font-weight:normal;">(Opsiyonel)</span>
+                        </label>
+                        <textarea name="validity_description" class="form-control" rows="3"
+                            placeholder="Örn: Sözleşme 1 yıllıktır ancak taraflarca feshedilmediği sürece otomatik uzar..."
+                            style="width:100%; padding:10px; border:1px solid var(--border-color); border-radius:6px; resize:vertical;">{{ old('validity_description', $document->validity_description) }}</textarea>
+                    </div>
 
                     <div class="form-group">
                         <label class="form-label" style="font-weight: 600;">{{ __('Etiketler (Opsiyonel)') }}</label>

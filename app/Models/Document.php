@@ -38,7 +38,8 @@ class Document extends Model
         'department_retention_years',
         'archive_retention_years',
         'metadata',
-        'expire_at'
+        'expire_at',
+        'validity_description'
     ];
 
     protected $casts = [
@@ -434,5 +435,47 @@ class Document extends Model
     public function attachments()
     {
         return $this->hasMany(DocumentAttachment::class)->orderBy('created_at', 'desc');
+    }
+    /**
+     * SANAL NİTELİK: Metadata içeriğini, belge tipinin (DocumentType)
+     * custom_fields şablonundaki Türkçe etiketlerle (label) eşleştirip döndürür.
+     * Kullanımı: $document->mapped_metadata
+     */
+    public function getMappedMetadataAttribute(): array
+    {
+        if (empty($this->metadata)) {
+            return [];
+        }
+
+        $mappedData = [];
+        $customFieldsMap = [];
+
+        // Belge tipi ve form şablonu (custom_fields) varsa etiket haritasını çıkar
+        if ($this->documentType && !empty($this->documentType->custom_fields)) {
+            $fields = is_string($this->documentType->custom_fields)
+                ? json_decode($this->documentType->custom_fields, true)
+                : $this->documentType->custom_fields;
+
+            if (is_array($fields)) {
+                foreach ($fields as $field) {
+                    if (isset($field['name'])) {
+                        $customFieldsMap[$field['name']] = $field['label'] ?? $field['name'];
+                    }
+                }
+            }
+        }
+
+        // Değerleri haritadaki etiketlerle eşleştir (Eşleşmezse key'i düzgün formata çevir)
+        foreach ($this->metadata as $key => $value) {
+            $displayValue = is_array($value) ? implode(', ', $value) : ($value ?: '-');
+            $displayLabel = $customFieldsMap[$key] ?? ucfirst(str_replace('_', ' ', $key));
+
+            $mappedData[] = [
+                'label' => $displayLabel,
+                'value' => $displayValue
+            ];
+        }
+
+        return $mappedData;
     }
 }

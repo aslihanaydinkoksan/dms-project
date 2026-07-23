@@ -489,6 +489,13 @@
                             </label>
                         </div>
                     </div> 
+                    <div>
+                                <label style="font-size:0.85rem; font-weight:600; display:flex; align-items:center; gap:5px; margin-bottom:5px;">
+                                    <i data-lucide="info" style="width:14px; color:var(--text-muted);"></i> Geçerlilik Özel Durum / Açıklama
+                                    <span style="font-size:0.7rem; color:#94a3b8; font-weight:normal;">(Opsiyonel)</span>
+                                </label>
+                                <textarea name="documents[${currentIdx}][validity_description]" class="form-control" rows="2" placeholder="Örn: Sözleşme 1 yıllıktır ancak taraflarca feshedilmediği sürece otomatik uzar..." style="width:100%; padding:10px; border:1px solid var(--border-color); border-radius:6px; resize:vertical; font-size:0.85rem; transition: border-color 0.3s;"></textarea>
+                    </div>
                 </div>`;
                 cardsContainer.insertAdjacentHTML('beforeend', card);
                 lucide.createIcons();

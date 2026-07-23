@@ -367,15 +367,19 @@
                     <h2 style="font-size: 1.25rem; margin-bottom: 5px;">{{ __('Doküman Üst Verileri (Kurumsal Kimlik)') }}
                     </h2>
                     <p class="text-muted" style="font-size: 0.9rem;">
-                        {{ __('Bu belgenin sistem üzerindeki kimlik ve imha bilgileri aşağıdadır.') }}</p>
+                        {{ __('Bu belgenin sistem üzerindeki kimlik ve imha bilgileri aşağıdadır.') }}
+                    </p>
                 </div>
 
                 <div class="metadata-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+
+                    {{-- 1. TEMEL BİLGİLER --}}
                     <div
                         style="border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; background: #fafafa;">
                         <h3
                             style="font-size: 1rem; color: var(--primary-color); margin-bottom: 15px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px;">
-                            {{ __('Temel Bilgiler') }}</h3>
+                            {{ __('Temel Bilgiler') }}
+                        </h3>
                         <div style="display: flex; flex-direction: column; gap: 12px;">
                             <div
                                 style="display: flex; justify-content: space-between; align-items: center; padding: 8px; background: #fff; border: 1px solid #e5e7eb; border-radius: 6px;">
@@ -421,11 +425,13 @@
                         </div>
                     </div>
 
+                    {{-- 2. ORGANİZASYON VE GİZLİLİK --}}
                     <div
                         style="border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; background: #fafafa;">
                         <h3
                             style="font-size: 1rem; color: var(--primary-color); margin-bottom: 15px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px;">
-                            {{ __('Organizasyon ve Gizlilik') }}</h3>
+                            {{ __('Organizasyon ve Gizlilik') }}
+                        </h3>
                         <div style="display: flex; flex-direction: column; gap: 12px;">
                             <div
                                 style="display: flex; justify-content: space-between; align-items: center; padding: 8px; background: #fff; border: 1px solid #e5e7eb; border-radius: 6px;">
@@ -458,26 +464,15 @@
                         </div>
                     </div>
 
+                    {{-- 3. SAKLAMA VE İMHA POLİTİKASI + GEÇERLİLİK ÖZEL DURUMU (EKSİK OLAN KISIM EKLENDİ) --}}
                     <div
                         style="border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; grid-column: span 2; background: #fafafa;">
                         <h3
                             style="font-size: 1rem; color: var(--danger-color); margin-bottom: 15px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px;">
-                            {{ __('Saklama ve İmha Politikası') }}</h3>
+                            {{ __('Saklama, İmha Politikası ve Geçerlilik') }}
+                        </h3>
+
                         <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px;">
-                            {{-- <div
-                                style="background: #fff; padding: 15px; border-radius: 6px; border: 1px solid #e5e7eb; border-left: 3px solid var(--primary-color);">
-                                <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 5px;">
-                                    {{ __('Bölümde Saklama') }}</div>
-                                <div style="font-size: 1.1rem; font-weight: bold; color: var(--text-color);">
-                                    {{ $document->department_retention_years }} {{ __('Yıl') }}</div>
-                            </div>
-                            <div
-                                style="background: #fff; padding: 15px; border-radius: 6px; border: 1px solid #e5e7eb; border-left: 3px solid var(--warning-color);">
-                                <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 5px;">
-                                    {{ __('Arşivde Saklama') }}</div>
-                                <div style="font-size: 1.1rem; font-weight: bold; color: var(--text-color);">
-                                    {{ $document->archive_retention_years }} {{ __('Yıl') }}</div>
-                            </div> --}}
                             <div style="background: #fff; padding: 15px; border-radius: 6px; border: 1px solid #e5e7eb;">
                                 <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 5px;">
                                     {{ __('Geçerlilik Bitiş') }}
@@ -495,13 +490,60 @@
                             </div>
                             <div style="background: #fff; padding: 15px; border-radius: 6px; border: 1px solid #e5e7eb;">
                                 <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 5px;">
-                                    {{ __('İlk Kayıt Tarihi') }}</div>
+                                    {{ __('İlk Kayıt Tarihi') }}
+                                </div>
                                 <div style="font-size: 1.1rem; font-weight: bold; color: var(--text-color);">
-                                    {{ $document->created_at->format('d.m.Y') }}</div>
+                                    {{ $document->created_at->format('d.m.Y') }}
+                                </div>
                             </div>
                         </div>
+
+                        {{-- YENİ EKLENEN: GEÇERLİLİK ÖZEL DURUMU --}}
+                        @if (!empty($document->validity_description))
+                            <div
+                                style="margin-top: 15px; background: #fff; padding: 15px; border-radius: 6px; border: 1px solid #e5e7eb; border-left: 4px solid var(--warning-color);">
+                                <div
+                                    style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--text-muted); font-weight: 600; margin-bottom: 8px;">
+                                    <i data-lucide="info" style="width: 16px; color: var(--warning-color);"></i>
+                                    {{ __('Geçerlilik Özel Durum / Açıklama') }}
+                                </div>
+                                <div style="font-size: 0.95rem; color: var(--text-color); line-height: 1.5;">
+                                    {!! nl2br(e($document->validity_description)) !!}
+                                </div>
+                            </div>
+                        @endif
                     </div>
 
+                    {{-- 4. DİNAMİK DOKÜMAN BİLGİLERİ (METADATA) --}}
+                    @if (!empty($document->mapped_metadata))
+                        <div
+                            style="border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; grid-column: span 2; background: #f8fafc;">
+                            <h3
+                                style="font-size: 1rem; color: var(--primary-color); margin-bottom: 15px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                                <i data-lucide="file-json" style="width: 18px; color: var(--accent-color);"></i>
+                                {{ __('Dinamik Doküman Bilgileri') }}
+                            </h3>
+
+                            <div
+                                style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px;">
+                                @foreach ($document->mapped_metadata as $meta)
+                                    <div
+                                        style="background: #fff; padding: 12px 15px; border-radius: 6px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; justify-content: center;">
+                                        <span
+                                            style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">
+                                            {{ $meta['label'] }}
+                                        </span>
+                                        <span
+                                            style="font-size: 1rem; font-weight: 500; color: var(--text-color); word-break: break-word;">
+                                            {{ $meta['value'] }}
+                                        </span>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+
+                    {{-- 5. FİZİKSEL ARŞİV VE ZİMMET DURUMU (KOPYASI TEMİZLENDİ, TEK BİR TANE KALDI) --}}
                     @if (in_array($document->category, ['Sözleşme', 'Vekaletname', 'İpotek/Rehin']))
                         <div
                             style="border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; grid-column: span 2; background: #f8fafc;">

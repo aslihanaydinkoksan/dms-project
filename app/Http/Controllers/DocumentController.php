@@ -152,7 +152,8 @@ class DocumentController extends Controller
             'currentVersion.createdBy',
             'versions.createdBy', // Versiyonları yükleyenleri de al
             'approvals.user',
-            'tags'
+            'tags',
+            'documentType' //Dinamik etiket çevirisi için gerekli
         ]);
         $latestUploadedVersion = $document->versions->sortByDesc('id')->first();
         $document->setRelation('currentVersion', $latestUploadedVersion);
@@ -381,6 +382,7 @@ class DocumentController extends Controller
             'archive_retention_years' => 'nullable|integer|min:0',
             'expire_at' => 'nullable|date',
             'tags' => 'nullable|array',
+            'validity_description' => 'nullable|string|max:1000',
         ]);
 
         try {
@@ -427,6 +429,7 @@ class DocumentController extends Controller
                     'department_retention_years' => $validated['department_retention_years'] ?? null,
                     'archive_retention_years' => $validated['archive_retention_years'] ?? null,
                     'expire_at' => $validated['expire_at'] ?? null,
+                    'validity_description' => $validated['validity_description'] ?? null,
                 ]);
 
                 // 6. Etiketleri Güncelle (Sync: Eskileri siler, yenileri ekler)
