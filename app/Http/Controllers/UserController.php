@@ -20,13 +20,22 @@ class UserController extends Controller
      */
     public function __construct(protected UserService $userService) {}
 
-    public function index(): View
+    public function index(Request $request): View
     {
-        $users = User::with(['department', 'roles'])
-            ->orderBy('name', 'asc')
-            ->paginate(50);
+        // Gelen filtre parametrelerini dizi olarak al
+        $filters = $request->only(['q', 'department_id', 'role', 'status']);
 
-        return view('users.index', compact('users'));
+        $users = User::with(['department', 'roles'])
+            ->advancedFilter($filters) // Yeni yazdığımız scope'u çağırdık
+            ->orderBy('name', 'asc')
+            ->paginate(50)
+            ->withQueryString(); // Sayfalama butonlarının filtreleri unutmaması için kritik
+
+        // Dropdown menüleri doldurmak için gerekli veriler
+        $departments = Department::orderBy('name')->get();
+        $roles = Role::orderBy('name')->get();
+
+        return view('users.index', compact('users', 'departments', 'roles'));
     }
 
     public function show(User $user): RedirectResponse

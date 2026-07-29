@@ -106,4 +106,42 @@ class User extends Authenticatable
     {
         return $this->hasMany(DocumentVersion::class, 'created_by');
     }
+    /**
+     * Gelişmiş Kullanıcı Filtreleme Motoru (Local Scope)
+     * Kullanımı: User::advancedFilter($request->only(...))->get();
+     * 
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param array $filters
+     */
+    public function scopeAdvancedFilter($query, array $filters)
+    {
+        // 1. Ad veya E-Posta Araması
+        $query->when($filters['q'] ?? null, function ($q, $search) {
+            $q->where(function ($subQ) use ($search) {
+                $subQ->where('name', 'like', "%{$search}%")
+                     ->orWhere('email', 'like', "%{$search}%");
+            });
+        });
+
+        // 2. Departman Filtresi
+        $query->when($filters['department_id'] ?? null, function ($q, $departmentId) {
+            $q->where('department_id', $departmentId);
+        });
+
+        // 3. Rol Filtresi (Spatie HasRoles ilişkisi üzerinden)
+        $query->when($filters['role'] ?? null, function ($q, $roleName) {
+            $q->whereHas('roles', function ($subQ) use ($roleName) {
+                $subQ->where('name', $roleName);
+            });
+        });
+
+        // 4. Aktif/Pasif Durum Filtresi
+        $query->when($filters['status'] ?? null, function ($q, $status) {
+            if ($status === 'active') {
+                $q->where('is_active', true);
+            } elseif ($status === 'passive') {
+                $q->where('is_active', false);
+            }
+        });
+    }
 }

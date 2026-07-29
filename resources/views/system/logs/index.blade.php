@@ -131,7 +131,8 @@
                         </tbody>
                     </table>
                 </div>
-                <div style="padding: 15px; background: #f8fafc; border-top: 1px solid var(--border-color);">
+                <div
+                    style="padding: 15px 20px; background: #f8fafc; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end;">
                     {{ $auditLogs->links() }}
                 </div>
             </div>
@@ -204,7 +205,8 @@
                         </tbody>
                     </table>
                 </div>
-                <div style="padding: 15px; background: #f8fafc; border-top: 1px solid var(--border-color);">
+                <div
+                    style="padding: 15px 20px; background: #f8fafc; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end;">
                     {{ $dispatchLogs->links() }}
                 </div>
             </div>

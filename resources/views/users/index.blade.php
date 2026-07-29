@@ -11,6 +11,85 @@
 
     @include('partials.alerts')
 
+    <div class="card glass-card"
+        style="margin-bottom: 25px; border-radius: var(--border-radius); border: 1px solid var(--border-color); background: var(--surface-color); padding: 20px;">
+        <form action="{{ route('users.index') }}" method="GET"
+            style="display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end;">
+
+            {{-- Arama Kutusu --}}
+            <div style="flex: 2; min-width: 200px;">
+                <label
+                    style="font-size: 0.85rem; font-weight: 600; margin-bottom: 5px; display: block; color: var(--text-color);">{{ __('Kullanıcı Ara') }}</label>
+                <div style="position: relative;">
+                    <i data-lucide="search"
+                        style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; color: var(--text-muted);"></i>
+                    <input type="text" name="q" value="{{ request('q') }}" class="form-control"
+                        placeholder="{{ __('Ad, Soyad veya E-Posta...') }}"
+                        style="width: 100%; padding: 10px 10px 10px 38px; border-radius: 6px; border: 1px solid var(--border-color);">
+                </div>
+            </div>
+
+            {{-- Departman Filtresi --}}
+            <div style="flex: 1; min-width: 150px;">
+                <label
+                    style="font-size: 0.85rem; font-weight: 600; margin-bottom: 5px; display: block; color: var(--text-color);">{{ __('Departman') }}</label>
+                <select name="department_id" class="form-control"
+                    style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border-color);">
+                    <option value="">{{ __('-- Tümü --') }}</option>
+                    @foreach ($departments as $dept)
+                        <option value="{{ $dept->id }}" {{ request('department_id') == $dept->id ? 'selected' : '' }}>
+                            {{ $dept->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            {{-- Rol Filtresi --}}
+            <div style="flex: 1; min-width: 150px;">
+                <label
+                    style="font-size: 0.85rem; font-weight: 600; margin-bottom: 5px; display: block; color: var(--text-color);">{{ __('Sistem Rolü') }}</label>
+                <select name="role" class="form-control"
+                    style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border-color);">
+                    <option value="">{{ __('-- Tümü --') }}</option>
+                    @foreach ($roles as $role)
+                        <option value="{{ $role->name }}" {{ request('role') == $role->name ? 'selected' : '' }}>
+                            {{ $role->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            {{-- Durum Filtresi --}}
+            <div style="flex: 1; min-width: 120px;">
+                <label
+                    style="font-size: 0.85rem; font-weight: 600; margin-bottom: 5px; display: block; color: var(--text-color);">{{ __('Hesap Durumu') }}</label>
+                <select name="status" class="form-control"
+                    style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border-color);">
+                    <option value="">{{ __('-- Tümü --') }}</option>
+                    <option value="active" {{ request('status') === 'active' ? 'selected' : '' }}>{{ __('Aktif') }}
+                    </option>
+                    <option value="passive" {{ request('status') === 'passive' ? 'selected' : '' }}>{{ __('Pasif') }}
+                    </option>
+                </select>
+            </div>
+
+            {{-- Aksiyon Butonları --}}
+            <div style="display: flex; gap: 10px;">
+                <button type="submit" class="btn btn-primary"
+                    style="padding: 10px 25px; height: 42px; display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="filter" style="width: 16px;"></i> {{ __('Uygula') }}
+                </button>
+                @if (request()->hasAny(['q', 'department_id', 'role', 'status']))
+                    <a href="{{ route('users.index') }}" class="btn btn-outline-secondary"
+                        style="padding: 10px 15px; height: 42px; display: flex; align-items: center; justify-content: center; background: #fff;"
+                        title="{{ __('Filtreleri Temizle') }}">
+                        <i data-lucide="x" style="width: 16px;"></i>
+                    </a>
+                @endif
+            </div>
+        </form>
+    </div>
+
     <div class="card glass-card">
         <div class="table-responsive">
             <table class="table">
