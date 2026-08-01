@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Notifications\DocumentRevisionAlert;
 use App\Notifications\WorkflowActionRequired;
 use App\Services\PdfGeneratorService;
+use App\Jobs\ProcessDocumentOcr;
 
 class DocumentService
 {
@@ -55,8 +56,9 @@ class DocumentService
                 $document->tags()->sync($data['tags']);
             }
 
-            // 2. Güvenli Dosya Yükleme (Storage)
-            $fileName = Str::uuid() . '.' . $file->getClientOriginalExtension();
+            // 2. Güvenli Dosya Yükleme (Magic Bytes tabanlı uzantı tespiti)
+            // GÜVENLİK YAMASI: getClientOriginalExtension() yerine extension() kullanıldı
+            $fileName = Str::uuid() . '.' . $file->extension();
             $directory = 'secure_documents/' . date('Y/m');
 
             $savedPath = $file->storeAs($directory, $fileName, 'local');
@@ -73,7 +75,7 @@ class DocumentService
                     'version_number' => '1.0',
                     'original_file_name' => $file->getClientOriginalName(),
                     'file_path' => $savedPath,
-                    'mime_type' => $file->getClientMimeType(),
+                    'mime_type' => $file->getMimeType(),
                     'file_size' => $file->getSize(),
                     'created_by' => Auth::id(),
                     'is_current' => true,
@@ -83,7 +85,7 @@ class DocumentService
                 Storage::disk('local')->delete($savedPath);
                 throw $e;
             }
-
+            ProcessDocumentOcr::dispatch($document)->afterCommit();
             return $document;
         });
     }
@@ -196,14 +198,14 @@ class DocumentService
                 $document->versions()->update(['is_current' => false]);
             }
 
-            $fileName = Str::uuid() . '.' . $file->getClientOriginalExtension();
+            $fileName = Str::uuid() . '.' . $file->extension();
             $filePath = $file->storeAs('secure_documents', $fileName, 'local');
 
             $document->versions()->create([
                 'version_number' => $newVersionNumber,
                 'original_file_name' => $file->getClientOriginalName(),
                 'file_path' => $filePath,
-                'mime_type' => $file->getClientMimeType(),
+                'mime_type' => $file->getMimeType(),
                 'file_size' => $file->getSize(),
                 'created_by' => $userId,
                 'is_current' => !$hasApprovals, // Onay gerekiyorsa False olarak başlar!
@@ -246,6 +248,7 @@ class DocumentService
         foreach ($firstStepUsersToNotify as $approverUser) {
             $approverUser->notify(new WorkflowActionRequired($document, 'pending_your_approval'));
         }
+        ProcessDocumentOcr::dispatch($document)->afterCommit();
     }
 
     /**

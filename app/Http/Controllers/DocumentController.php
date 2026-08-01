@@ -286,20 +286,15 @@ class DocumentController extends Controller
 
     /**
      * Belgeyi tarayıcıda önizletir (Inline) veya indirir.
-     * PDF'leri Damgalayarak (Stamping) servis eder.
+     * Güvenlik: "Çok Gizli" belgelerde Dinamik Filigran uygulanır.
      */
-    public function download(Request $request, Document $document)
+    public function download(Request $request, Document $document, \App\Services\SecurityWatermarkService $watermarkService)
     {
         Gate::authorize('view', $document);
 
-        // 1. ZEKİ VERSİYON SEÇİCİ: URL'de 'v' parametresi varsa o versiyonu, yoksa currentVersion'u al!
+        // 1. ZEKİ VERSİYON SEÇİCİ
         $requestedVersionId = $request->query('v');
-
-        if ($requestedVersionId) {
-            $version = $document->versions()->find($requestedVersionId);
-        } else {
-            $version = $document->currentVersion;
-        }
+        $version = $requestedVersionId ? $document->versions()->find($requestedVersionId) : $document->currentVersion;
 
         if (!$version || !Storage::disk('local')->exists($version->file_path)) {
             abort(404, 'Dosya sistemde bulunamadı. Veritabanı ve klasör uyuşmuyor.');
@@ -311,14 +306,40 @@ class DocumentController extends Controller
         $mimeType = Storage::disk('local')->mimeType($version->file_path);
 
         $isDownload = $request->has('download');
+        $disposition = $isDownload ? 'attachment' : 'inline';
 
-        // SADECE PDF İSE VE SADECE İNDİR BUTONUNA BASILDIYSA DAMGALA!
+        // =========================================================================
+        // GÜVENLİK DUVARI: DATA LEAKAGE PREVENTION (DLP) - DİNAMİK FİLİGRAN
+        // =========================================================================
+        if ($document->privacy_level === 'strictly_confidential') {
+            $supportedWatermarkMimes = ['application/pdf', 'image/jpeg', 'image/png', 'text/html'];
+
+            if (in_array($mimeType, $supportedWatermarkMimes)) {
+                try {
+                    $watermarkText = sprintf("Erişim: %s - IP: %s - Tarih: %s", Auth::user()->name, $request->ip(), now()->format('d.m.Y H:i'));
+
+                    // Servis dosyayı RAM'de işler ve binary döner
+                    $watermarkedContent = $watermarkService->applyWatermark($path, $mimeType, $watermarkText);
+
+                    return response($watermarkedContent)
+                        ->header('Content-Type', $mimeType)
+                        ->header('Content-Disposition', $disposition . '; filename="' . $cleanFilename . '"');
+                } catch (Exception $e) {
+                    Log::error('DLP Güvenlik Filigranı Basım Hatası: ' . $e->getMessage());
+                    // Güvenlik İlkesi: Filigran basılamadıysa, orijinal "Çok Gizli" dosya ASLA teslim edilmemelidir. İşlem durdurulur.
+                    abort(500, 'Güvenlik protokolü (Filigranlama) başarısız oldu. Veri sızıntısını önlemek amacıyla indirme işlemi durduruldu.');
+                }
+            }
+        }
+
+        // =========================================================================
+        // STANDART AKIŞ (Filigransız veya Desteklenmeyen MIME Türleri İçin)
+        // =========================================================================
+
+        // SADECE PDF İSE VE SADECE İNDİR BUTONUNA BASILDIYSA DAMGALA! (Eski Mantık)
         if ($mimeType === 'application/pdf' && $isDownload) {
             try {
-                // Damgalama servisi artık spesifik versiyonu almalı
-                // Modeldeki currentVersion ilişkisini anlık olarak ezerek servise gönderiyoruz
                 $document->setRelation('currentVersion', $version);
-
                 $stampedPdf = $this->stamperService->stampPdf($document);
 
                 return response($stampedPdf)
@@ -329,7 +350,7 @@ class DocumentController extends Controller
             }
         }
 
-        // --- ÖNİZLEME VEYA PDF DIŞI DOSYALAR ---
+        // Önizleme veya PDF Dışı Dosyalar
         if ($isDownload) {
             return response()->download($path, $cleanFilename);
         }

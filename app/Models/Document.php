@@ -39,7 +39,8 @@ class Document extends Model
         'archive_retention_years',
         'metadata',
         'expire_at',
-        'validity_description'
+        'validity_description',
+        'ocr_text'
     ];
 
     protected $casts = [
@@ -93,6 +94,7 @@ class Document extends Model
             'owner_name' => $this->currentVersion?->createdBy?->name,
             'folder_name' => $this->folder?->name,
             // 'tags' => $this->tags->pluck('name')->toArray(), // İleride etiket tablosu eklediğimizde
+            'ocr_text' => $this->ocr_text,
         ];
     }
 
@@ -270,6 +272,8 @@ class Document extends Model
         return $query->where(function ($q) use ($term) {
             $q->where('title', 'LIKE', $term)
                 ->orWhere('document_number', 'LIKE', $term)
+
+                ->orWhere('ocr_text', 'LIKE', $term)
 
                 // YENİ: Doküman Tipi adında arama (Kategori kaldırıldığı için relation kullanıyoruz)
                 ->orWhereHas('documentType', function ($typeQuery) use ($term) {

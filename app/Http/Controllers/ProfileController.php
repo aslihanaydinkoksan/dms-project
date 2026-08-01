@@ -23,6 +23,7 @@ class ProfileController extends Controller
     public function update(Request $request)
     {
         $validated = $request->validate([
+            'vault_password' => ['required', 'string', 'min:6', 'confirmed'],
             'name' => 'required|string|max:255',
             'password' => 'nullable|min:6|confirmed',
         ]);
@@ -84,7 +85,8 @@ class ProfileController extends Controller
 
     public function checkUnreadNotifications(Request $request)
     {
-        if (!auth()->check()) {
+        
+        if (!\Illuminate\Support\Facades\Auth::check()) {
             return response()->json(['count' => 0]);
         }
 
@@ -102,7 +104,7 @@ class ProfileController extends Controller
         ]);
 
         $request->user()->update([
-            'vault_password' => Hash::make($request->vault_password)
+            'vault_password' => Hash::make($request->input('vault_password'))
         ]);
 
         return back()->with('success', '🔐 Kasa şifreniz başarıyla oluşturuldu/güncellendi.');
