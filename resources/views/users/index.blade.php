@@ -174,5 +174,12 @@
                 </tbody>
             </table>
         </div>
+        {{-- Sayfalama (Pagination) Bağlantıları --}}
+        @if ($users->hasPages())
+            <div style="padding: 15px 20px; border-top: 1px solid var(--border-color); display: flex; justify-content: center; background: #fff; border-bottom-left-radius: inherit; border-bottom-right-radius: inherit;">
+                {{-- withQueryString() sayesinde arama ve filtreler 2. sayfaya geçerken kaybolmaz --}}
+                {{ $users->withQueryString()->links() }}
+            </div>
+        @endif
     </div>
 @endsection
