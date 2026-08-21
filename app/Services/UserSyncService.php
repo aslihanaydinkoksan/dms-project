@@ -33,18 +33,27 @@ class UserSyncService
 
         DB::transaction(function () use ($users, &$syncedCount, $dummyPassword) {
             foreach ($users as $userData) {
-                $user = User::firstOrNew(['email' => $userData['email']]);
+                // 1. Çöp kutusu (Soft Delete) dahil olmak üzere e-postayı bul, yoksa yeni oluştur
+                $user = User::withTrashed()->firstOrNew(['email' => $userData['email']]);
 
+                // 2. Eğer kullanıcı daha önceden DMS'den silinmişse, çöp kutusundan çıkar (Restore)
+                if ($user->trashed()) {
+                    $user->restore();
+                }
+
+                // 3. Bilgileri güncelle
                 $user->name = $userData['name'];
                 $user->department_id = $userData['department'] ? $userData['department']['id'] : null;
                 $user->is_active = $userData['is_active'];
 
+                // 4. Sadece veritabanına daha önce HİÇ girmemiş yepyeni biriyse şifre ataması yap
                 if (!$user->exists) {
-                    // Önceden oluşturulmuş tek şifreyi veriyoruz (Sıfır performans kaybı)
                     $user->password = $dummyPassword;
                 }
 
+                // Kaydet
                 $user->save();
+                
                 $syncedCount++;
             }
         });
