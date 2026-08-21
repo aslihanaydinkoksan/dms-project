@@ -40,3 +40,6 @@ Schedule::command('reports:send weekly')->weeklyOn(1, '8:00');
 
 // AYLIK Raporlar (Her ayın 1'inde saat 08:00'da çalışır)
 Schedule::command('reports:send monthly')->monthlyOn(1, '8:00');
+
+// Her gece saat 02:00'da MYS ile otomatik eşitlenir
+Schedule::command('mys:sync')->dailyAt('02:00');

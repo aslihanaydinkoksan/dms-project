@@ -38,5 +38,9 @@ return [
         'site_key' => env('RECAPTCHA_SITE_KEY'),
         'secret_key' => env('RECAPTCHA_SECRET_KEY'),
     ],
+    'central_sso' => [
+        'url'     => env('CENTRAL_SSO_URL'),
+        'api_key' => env('CENTRAL_SSO_API_KEY'),
+    ],
 
 ];

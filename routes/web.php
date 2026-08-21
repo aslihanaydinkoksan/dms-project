@@ -22,6 +22,7 @@ use App\Http\Controllers\ReportEngineController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use Illuminate\Support\Facades\Http;
 use App\Http\Controllers\SsoController;
+use App\Http\Controllers\UserSyncController;
 
 Route::get('/debug-google-models', function () {
     $apiKey = config('ai.providers.google.api_key');
@@ -44,6 +45,10 @@ Route::middleware(['auth', 'role:Super Admin'])->group(function () {
     // AJAX Veri Çekme Rotası
     Route::get('/settings/users/{user}/permission-details', [\App\Http\Controllers\Settings\UserPermissionExplorerController::class, 'getUserDetails'])
         ->name('settings.users.permission_details');
+
+        // MYS Senkronizasyon Rotası
+        Route::post('/users/sync-from-mys', [UserSyncController::class, 'syncFromMys'])->name('users.sync_mys');
+        Route::post('/settings/permissions/sync-departments', [UserSyncController::class, 'syncDepartmentsOnly'])->name('settings.departments.sync');
 });
 
 // ==========================================================================

@@ -6,7 +6,25 @@
             <h1 class="page-title">{{ __('Kullanıcı Yönetimi') }}</h1>
             <p class="text-muted">{{ __('Sistemdeki tüm personelleri ve erişim yetkilerini yönetin.') }}</p>
         </div>
-        <a href="{{ route('users.create') }}" class="btn btn-primary">+ {{ __('Yeni Kullanıcı') }}</a>
+        {{-- Aksiyon Butonları --}}
+        <div style="display: flex; gap: 10px; align-items: center;">
+            {{-- MYS Senkronizasyon Butonu --}}
+            <form action="{{ route('users.sync_mys') }}" method="POST"
+                onsubmit="const btn = this.querySelector('button'); btn.disabled = true; btn.innerHTML = '<i data-lucide=\'refresh-cw\' style=\'width: 16px;\'></i> {{ __('Senkronize Ediliyor...') }}';">
+                @csrf
+                <button type="submit" class="btn btn-outline-primary"
+                    style="display: flex; align-items: center; gap: 8px; height: 42px; padding: 0 16px; font-weight: 500;">
+                    <i data-lucide="refresh-cw" style="width: 16px;"></i>
+                    {{ __('Merkezden Senkronize Et') }}
+                </button>
+            </form>
+
+            {{-- Yeni Kullanıcı Butonu --}}
+            <a href="{{ route('users.create') }}" class="btn btn-primary"
+                style="display: flex; align-items: center; height: 42px; padding: 0 18px; font-weight: 500;">
+                + {{ __('Yeni Kullanıcı') }}
+            </a>
+        </div>
     </div>
 
     @include('partials.alerts')

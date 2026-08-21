@@ -272,6 +272,14 @@
                         <button type="submit" class="btn btn-primary d-flex align-items-center justify-content-center"
                             style="padding: 0 20px; font-weight: 500;">{{ __('Ekle') }}</button>
                     </form>
+                    <form action="{{ route('settings.departments.sync') }}" method="POST"
+                        onsubmit="const btn = this.querySelector('button'); btn.disabled = true; btn.innerHTML = '<i data-lucide=\'refresh-cw\' style=\'width: 16px;\'></i> {{ __('Bekleyin...') }}';">
+                        @csrf
+                        <button type="submit" class="btn btn-outline-primary" style="height: 100%; padding: 0 15px;">
+                            <i data-lucide="refresh-cw" style="width: 14px;"></i>
+                            {{ __('Departmanları MYS\'den Çek') }}
+                        </button>
+                    </form>
                 </div>
                 <div class="table-responsive custom-scrollbar flex-grow-1" style="max-height: 350px;">
                     <table class="table modern-table" style="margin: 0; font-size: 0.9rem;">
