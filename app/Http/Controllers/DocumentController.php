@@ -734,4 +734,67 @@ class DocumentController extends Controller
             return back()->with('error', $e->getMessage());
         }
     }
+    /**
+     * Geçmiş veya mevcut bir versiyonu günceller (Sadece dosya veya sadece not değiştirilebilir)
+     */
+    public function updateVersion(Request $request, Document $document, \App\Models\DocumentVersion $version): RedirectResponse
+    {
+        // Adım 1'de yazdığımız Policy kuralı devreye giriyor
+        Gate::authorize('updateVersion', [$document, $version]);
+
+        // Veri Doğrulama
+        $request->validate([
+            'revision_reason' => 'nullable|string|max:1000',
+            'file' => [
+                'nullable',
+                'file',
+                'mimes:pdf,doc,docx,jpg,jpeg,png,html',
+                'max:20480' // Maksimum 20 MB
+            ]
+        ], [
+            'file.mimes' => 'Sisteme sadece PDF, Word, JPG, PNG ve HTML eklenebilir.',
+            'file.max' => 'Yükleyeceğiniz dosya boyutu 20 MB sınırını aşamaz.'
+        ]);
+
+        try {
+            $this->documentService->updateVersion(
+                $document, 
+                $version, 
+                $request->input('revision_reason'), 
+                $request->file('file'),
+                Auth::id(),
+                $request->ip() ?? '0.0.0.0',
+                $request->userAgent() ?? 'Unknown'
+            );
+
+            return back()->with('success', "v{$version->version_number} numaralı revizyon başarıyla güncellendi.");
+        } catch (Exception $e) {
+            Log::error('Versiyon Güncelleme Hatası: ' . $e->getMessage());
+            return back()->with('error', $e->getMessage());
+        }
+    }
+
+    /**
+     * Spesifik bir versiyonu siler ve duruma göre Rollback yapar.
+     */
+    public function destroyVersion(Request $request, Document $document, \App\Models\DocumentVersion $version): RedirectResponse
+    {
+        // Adım 1'de yazdığımız Policy kuralı devreye giriyor
+        Gate::authorize('deleteVersion', [$document, $version]);
+
+        try {
+            $this->documentService->deleteVersion(
+                $document, 
+                $version, 
+                Auth::id(),
+                $request->ip() ?? '0.0.0.0',
+                $request->userAgent() ?? 'Unknown'
+            );
+
+            return back()->with('success', "Versiyon başarıyla silindi. (Eğer aktif versiyon silindiyse sistem bir öncekini otomatik devreye almıştır.)");
+        } catch (Exception $e) {
+            Log::error('Versiyon Silme Hatası: ' . $e->getMessage());
+            return back()->with('error', $e->getMessage());
+        }
+    }
 }

@@ -214,6 +214,18 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/{document}', [DocumentController::class, 'destroy'])->name('destroy');
         Route::patch('/{document}/move', [DocumentController::class, 'move'])->name('move');
 
+        // Versiyon Yönetimi (Update / Delete)
+        Route::put('/{document}/versions/{version}', [DocumentController::class, 'updateVersion'])->name('versions.update');
+        Route::delete('/{document}/versions/{version}', [DocumentController::class, 'destroyVersion'])->name('versions.destroy');
+
+        // --- EK BELGELER (ATTACHMENTS) VE VERSİYON YÖNETİMİ ---
+    Route::post('/documents/{document}/attachments', [\App\Http\Controllers\DocumentAttachmentController::class, 'store'])->name('document-attachments.store');
+    Route::put('/document-attachments/{attachment}', [\App\Http\Controllers\DocumentAttachmentController::class, 'update'])->name('document-attachments.update');
+    Route::delete('/document-attachments/{attachment}', [\App\Http\Controllers\DocumentAttachmentController::class, 'destroy'])->name('document-attachments.destroy');
+    Route::post('/document-attachments/{attachment}/checkin', [\App\Http\Controllers\DocumentAttachmentController::class, 'checkin'])->name('document-attachments.checkin');
+    Route::get('/document-attachments/{attachment}/download', [\App\Http\Controllers\DocumentAttachmentController::class, 'download'])->name('document-attachments.download');
+    Route::delete('/document-attachments/versions/{version}', [\App\Http\Controllers\DocumentAttachmentController::class, 'destroyVersion'])->name('document-attachments.versions.destroy');
+
         // Çok Gizli Kasa (Vault)
         Route::get('/{document}/vault', [SudoController::class, 'showVault'])->name('vault');
         Route::post('/{document}/vault', [SudoController::class, 'unlockVault'])->name('vault.unlock');

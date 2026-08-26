@@ -12,9 +12,10 @@ return [
     'core_permissions' => [
         'document.view_all',          // Tüm belgeleri (gizlilik hariç) görme
         'document.manage_all',        // Tüm belgeleri yönetme
+        'document.manage_versions',   // YENİ: Versiyon Yönetimi (Edit/Delete)
         'document.force_unlock',      // Kilitli belgeleri zorla açma
         'notify.global',              // Tüm departmanlara bildirim gönderebilme
-
+        'document.manage_attachments', // Ek belgeleri ve versiyonlarını yönetme
 
         // --- BPM (SÜREÇ/GÖREV) YETKİLERİ ---
         'task' => [
@@ -42,8 +43,8 @@ return [
         ],
 
         'core_privacy_levels' => [
-            'public', 
-            'confidential', 
+            'public',
+            'confidential',
             'strictly_confidential'
         ],
     ],
@@ -59,7 +60,16 @@ return [
         'max_single_file_size' => 20, // Tek bir dosyanın maksimum boyutu (MB)
         'max_batch_total_size' => 40, // Çoklu yüklemede toplam paket boyutu (MB)
         'allowed_extensions' => [
-            'pdf', 'doc', 'docx', 'xls', 'xlsx', 'png', 'jpg', 'jpeg', 'zip', 'rar'
+            'pdf',
+            'doc',
+            'docx',
+            'xls',
+            'xlsx',
+            'png',
+            'jpg',
+            'jpeg',
+            'zip',
+            'rar'
         ],
     ],
 
@@ -72,6 +82,7 @@ return [
     'audit' => [
         'retention_days' => 365, // Loglar kaç gün saklanacak?
     ],
+
     /*
     |--------------------------------------------------------------------------
     | Yetki Arayüzü (UI Metadata)
@@ -84,9 +95,11 @@ return [
         'document.view_strictly_confidential' => ['icon' => '🕵️', 'color' => '#b91c1c', 'label' => '"ÇOK GİZLİ" ERİŞİMİ'],
         'document.view_all'                   => ['icon' => '🌍', 'color' => '#1d4ed8', 'label' => 'TÜM BELGELERİ GÖRÜNTÜLEME'],
         'document.manage_all'                 => ['icon' => '👑', 'color' => '#047857', 'label' => 'TÜM BELGELERİ YÖNETME'],
+        'document.manage_versions'            => ['icon' => '⏳', 'color' => '#d97706', 'label' => 'VERSİYON YÖNETİMİ'], // YENİ EKLENDİ
         'document.force_unlock'               => ['icon' => '⚠️', 'color' => '#b45309', 'label' => 'KİLİT AÇMA YETKİSİ'],
         'notify.global'                       => ['icon' => '🌐', 'color' => '#0284c7', 'label' => 'KÜRESEL BİLDİRİM YETKİSİ'],
-        
+        'document.manage_attachments' => ['icon' => '📎', 'color' => '#059669', 'label' => 'EK BELGE YÖNETİMİ'],
+
         // SÜREÇ (BPM) YETKİLERİ
         'task.view_all'                       => ['icon' => '👁️', 'color' => '#6366f1', 'label' => 'TÜM SÜREÇLERİ GÖRME (GOD MODE)'],
         'task.create'                         => ['icon' => '✨', 'color' => '#10b981', 'label' => 'YENİ SÜREÇ BAŞLATMA'],

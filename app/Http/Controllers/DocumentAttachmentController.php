@@ -4,73 +4,111 @@ namespace App\Http\Controllers;
 
 use App\Models\Document;
 use App\Models\DocumentAttachment;
+use App\Models\DocumentAttachmentVersion;
 use App\Services\DocumentAttachmentService;
 use Illuminate\Http\Request;
 use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Gate;
 
 class DocumentAttachmentController extends Controller
 {
-    protected DocumentAttachmentService $attachmentService;
+    public function __construct(protected DocumentAttachmentService $attachmentService) {}
 
-    // Dependency Injection (Bağımlılık Enjeksiyonu) ile Service'i sınıfa dahil ediyoruz.
-    public function __construct(DocumentAttachmentService $attachmentService)
-    {
-        $this->attachmentService = $attachmentService;
-    }
-
-    /**
-     * Yeni ek belge yükleme (Store)
-     */
     public function store(Request $request, Document $document)
     {
-        // 1. Temel Validasyon (İş mantığı değil, sadece HTTP kalkanı)
+        Gate::authorize('manageAttachment', [$document]);
+
         $request->validate([
-            'file' => ['required', 'file', 'max:20480'] // Max 20MB
-        ], [
-            'file.required' => __('Lütfen yüklenecek bir dosya seçin.'),
-            'file.max' => __('Ek dosya boyutu en fazla 20MB olabilir.')
+            'file' => ['required', 'file', 'max:20480'],
+            'title' => ['nullable', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        // 2. Service'e Paslama
         try {
-            $this->attachmentService->storeAttachment($document, $request->file('file'), $request->user()->id);
+            $this->attachmentService->storeAttachment(
+                $document,
+                $request->only(['title', 'description']),
+                $request->file('file'),
+                Auth::id(),
+                $request->ip()
+            );
             return back()->with('success', __('Ek belge başarıyla sisteme yüklendi.'));
         } catch (Exception $e) {
-            Log::error('Ek Belge Yükleme Hatası: ' . $e->getMessage());
             return back()->with('error', $e->getMessage());
         }
     }
 
-    /**
-     * Ek belge indirme (Download)
-     */
-    public function download(DocumentAttachment $attachment)
+    public function update(Request $request, DocumentAttachment $attachment)
     {
-        try {
-            // 1. Service katmanı yetki kontrolünü yapar ve path/name döner
-            $fileData = $this->attachmentService->downloadAttachment($attachment, Auth::user());
+        Gate::authorize('manageAttachment', [$attachment->document, $attachment]);
 
-            // 2. İşletim sistemi bağımsız, en güvenli ve temiz indirme yöntemi
-            return Storage::disk('local')->download(
-                $fileData['path'],
-                $fileData['name']
-            );
+        $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        try {
+            $this->attachmentService->updateAttachmentMetadata($attachment, $request->only(['title', 'description']), Auth::id(), $request->ip());
+            return back()->with('success', __('Ek belge bilgileri güncellendi.'));
         } catch (Exception $e) {
             return back()->with('error', $e->getMessage());
         }
     }
 
-    /**
-     * Ek belgeyi güvenli silme (SoftDelete)
-     */
+    public function checkin(Request $request, DocumentAttachment $attachment)
+    {
+        Gate::authorize('manageAttachment', [$attachment->document, $attachment]);
+
+        $request->validate([
+            'file' => ['required', 'file', 'max:20480'],
+            'revision_reason' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        try {
+            $this->attachmentService->checkinAttachment($attachment, $request->file('file'), $request->input('revision_reason'), Auth::id(), $request->ip());
+            return back()->with('success', __('Ek belgeye yeni bir versiyon başarıyla eklendi.'));
+        } catch (Exception $e) {
+            return back()->with('error', $e->getMessage());
+        }
+    }
+
+    public function download(Request $request, DocumentAttachment $attachment)
+    {
+        // View yetkisi Policy içinde service tarafında veya burada kontrol edilebilir
+        Gate::authorize('view', $attachment->document);
+
+        try {
+            $versionId = $request->query('v');
+            $fileData = $this->attachmentService->downloadAttachment($attachment, $versionId);
+
+            return Storage::disk('local')->download($fileData['path'], $fileData['name']);
+        } catch (Exception $e) {
+            return back()->with('error', $e->getMessage());
+        }
+    }
+
     public function destroy(DocumentAttachment $attachment)
     {
+        Gate::authorize('manageAttachment', [$attachment->document, $attachment]);
+
         try {
-            $this->attachmentService->deleteAttachment($attachment, Auth::user());
+            $this->attachmentService->deleteAttachment($attachment, Auth::id(), request()->ip());
             return back()->with('success', __('Ek belge başarıyla silindi.'));
+        } catch (Exception $e) {
+            return back()->with('error', $e->getMessage());
+        }
+    }
+
+    public function destroyVersion(DocumentAttachmentVersion $version)
+    {
+        Gate::authorize('manageAttachment', [$version->attachment->document, $version->attachment]);
+
+        try {
+            $this->attachmentService->deleteAttachmentVersion($version, Auth::id(), request()->ip());
+            return back()->with('success', __('Ek belgenin ilgili versiyonu silindi. (Gerekiyorsa otomatik rollback yapıldı).'));
         } catch (Exception $e) {
             return back()->with('error', $e->getMessage());
         }

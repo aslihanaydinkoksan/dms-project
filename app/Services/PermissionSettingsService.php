@@ -117,6 +117,7 @@ class PermissionSettingsService
                         'can_create' => isset($actions['can_create']) ? 1 : 0,
                         'can_edit' => isset($actions['can_edit']) ? 1 : 0,
                         'can_delete' => isset($actions['can_delete']) ? 1 : 0,
+                        'can_manage_versions' => isset($actions['can_manage_versions']) ? 1 : 0,
                         'created_at' => now(),
                         'updated_at' => now(),
                     ];

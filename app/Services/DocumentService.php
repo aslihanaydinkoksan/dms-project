@@ -187,7 +187,12 @@ class DocumentService
         $firstStepUsersToNotify = [];
 
         DB::transaction(function () use ($document, $file, $reason, $userId, &$firstStepUsersToNotify) {
-            $currentMaxVersion = $document->versions()->max('version_number') ?? 0;
+            // YENİ GÜVENLİ KOD:
+            // Metinsel sütunlarda max() hatasına düşmemek için fiziksel olarak en son eklenen (en büyük ID'li) versiyonu buluyoruz.
+            $lastVersion = $document->versions()->withTrashed()->latest('id')->first();
+
+            // version_number "1.0" bile olsa, (int) cast işlemi onu temiz bir şekilde 1'e çevirir.
+            $currentMaxVersion = $lastVersion ? (int) $lastVersion->version_number : 0;
             $newVersionNumber = $currentMaxVersion + 1;
 
             // Belgenin halihazırda bir onay akışı (workflow) var mı?
@@ -665,5 +670,117 @@ class DocumentService
             'auditLogs' => $auditLogs,
             'readLogs'  => $readLogs
         ];
+    }
+    /**
+     * Spesifik bir versiyonun (revizyonun) bilgilerini veya dosyasını günceller.
+     */
+    public function updateVersion(Document $document, DocumentVersion $version, ?string $reason, ?UploadedFile $file, int $userId, string $ip, string $userAgent): void
+    {
+        // Güvenlik: Versiyon gerçekten bu belgeye mi ait?
+        if ($version->document_id !== $document->id) {
+            throw new Exception("Güvenlik İhlali: Bu versiyon belirtilen belgeye ait değil.");
+        }
+
+        DB::transaction(function () use ($document, $version, $reason, $file, $userId, $ip, $userAgent) {
+            $oldValues = $version->toArray();
+            $newValues = ['revision_reason' => $reason];
+
+            // 1. EĞER YENİ DOSYA YÜKLENMİŞSE (Fiziksel Dosya Güncellemesi)
+            if ($file) {
+                // Eski dosya storage'da bırakılır (Soft Delete felsefesi), sadece veritabanındaki yol güncellenir.
+                $fileName = Str::uuid() . '.' . $file->extension();
+                $directory = 'secure_documents/' . date('Y/m');
+                $filePath = $file->storeAs($directory, $fileName, 'local');
+
+                if (!$filePath) {
+                    throw new Exception("Yeni dosya sunucuya yazılırken kritik bir hata oluştu.");
+                }
+
+                $newValues['file_path'] = $filePath;
+                $newValues['original_file_name'] = $file->getClientOriginalName();
+                $newValues['mime_type'] = $file->getMimeType();
+                $newValues['file_size'] = $file->getSize();
+            }
+
+            // 2. Veritabanını Güncelle
+            $version->updateQuietly($newValues);
+
+            // 3. İzlenebilirlik (Audit Log)
+            AuditLog::create([
+                'user_id' => $userId,
+                'event' => 'version_updated',
+                'auditable_type' => Document::class,
+                'auditable_id' => $document->id,
+                'old_values' => [
+                    'version_number' => $oldValues['version_number'], 
+                    'revision_reason' => $oldValues['revision_reason']
+                ],
+                'new_values' => [
+                    'version_number' => $version->version_number, 
+                    'revision_reason' => $version->revision_reason, 
+                    'file_changed' => $file ? true : false
+                ],
+                'ip_address' => $ip,
+                'user_agent' => $userAgent,
+            ]);
+
+            // Eğer dosya değiştiyse ve güncellenen versiyon aktif versiyonsa OCR motorunu tekrar tetikle
+            if ($file && $version->is_current) {
+                ProcessDocumentOcr::dispatch($document)->afterCommit();
+            }
+        });
+    }
+
+    /**
+     * Spesifik bir versiyonu siler ve (gerekirse) Rollback işlemini otomatik yapar.
+     */
+    public function deleteVersion(Document $document, DocumentVersion $version, int $userId, string $ip, string $userAgent): void
+    {
+        if ($version->document_id !== $document->id) {
+            throw new Exception("Güvenlik İhlali: Bu versiyon belirtilen belgeye ait değil.");
+        }
+
+        DB::transaction(function () use ($document, $version, $userId, $ip, $userAgent) {
+            // 1. ZIRH: Belgenin tek (ilk) versiyonu silinemez!
+            $totalVersions = $document->versions()->count();
+            if ($totalVersions <= 1) {
+                throw new Exception("Bu belgenin tek/ilk versiyonu silinemez. Sistemi tutarlı tutmak için belgeyi tamamen silmelisiniz.");
+            }
+
+            $wasCurrent = $version->is_current;
+            $deletedVersionNumber = $version->version_number;
+
+            // 2. Versiyonu Veritabanından Sil (Soft Delete model kullandığın için eski fiziksel dosya da DB kaydı da güvenle korunur)
+            $version->delete();
+
+            $newCurrentVersion = null;
+
+            // 3. AKILLI ROLLBACK MANTIĞI: Eğer silinen versiyon sistemdeki "Aktif (is_current=true)" versiyon ise;
+            if ($wasCurrent) {
+                /** @var DocumentVersion|null $newCurrentVersion */
+                // Silinmemiş kalan versiyonlar arasından son yükleneni (id bazlı) bul ve onu güncel yap
+                $newCurrentVersion = $document->versions()->orderBy('id', 'desc')->first();
+                if ($newCurrentVersion) {
+                    $newCurrentVersion->updateQuietly(['is_current' => true]);
+                }
+            }
+
+            // 4. İzlenebilirlik (Audit Log)
+            AuditLog::create([
+                'user_id' => $userId,
+                'event' => 'version_deleted',
+                'auditable_type' => Document::class,
+                'auditable_id' => $document->id,
+                'old_values' => [
+                    'deleted_version' => $deletedVersionNumber, 
+                    'was_current' => $wasCurrent
+                ],
+                'new_values' => [
+                    'rollback_to_version' => $newCurrentVersion ? $newCurrentVersion->version_number : 'Yok'
+                ],
+                'ip_address' => $ip,
+                'user_agent' => $userAgent,
+            ]);
+        });
     }
 }

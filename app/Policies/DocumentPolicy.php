@@ -306,4 +306,70 @@ class DocumentPolicy
     {
         return false;
     }
+    /**
+     * Kullanıcı spesifik bir versiyonu GÜNCELLEYEBİLİR mi?
+     */
+    public function updateVersion(User $user, Document $document, \App\Models\DocumentVersion $version): bool
+    {
+        if ($user->hasAnyRole(['Super Admin', 'Admin'])) return true;
+
+        try { // YENİ: Global Spatie Yetkisi
+            if ($user->hasPermissionTo('document.manage_versions')) return true;
+        } catch (PermissionDoesNotExist $e) {
+        }
+
+        // YENİ: Matris Yetkisi (Artık can_edit değil, YENİ SÜTUNUMUZ can_manage_versions kontrol ediliyor)
+        if ($document->document_type_id && $document->documentType && $this->hasMatrixPermission($user, $document->documentType->name, 'can_manage_versions')) {
+            return true;
+        }
+
+        return $version->created_by === $user->id;
+    }
+
+    /**
+     * Kullanıcı spesifik bir versiyonu SİLEBİLİR mi?
+     */
+    public function deleteVersion(User $user, Document $document, \App\Models\DocumentVersion $version): bool
+    {
+        if ($user->hasAnyRole(['Super Admin', 'Admin'])) return true;
+
+        try { // YENİ: Global Spatie Yetkisi
+            if ($user->hasPermissionTo('document.manage_versions')) return true;
+        } catch (PermissionDoesNotExist $e) {
+        }
+
+        // YENİ: Matris Yetkisi (Artık can_delete değil, YENİ SÜTUNUMUZ can_manage_versions kontrol ediliyor)
+        if ($document->document_type_id && $document->documentType && $this->hasMatrixPermission($user, $document->documentType->name, 'can_manage_versions')) {
+            return true;
+        }
+
+        return $version->created_by === $user->id;
+    }
+    /**
+     * Kullanıcı ana belgeye ek belge yükleyebilir mi veya mevcut bir ek belgeyi/versiyonunu yönetebilir mi?
+     */
+    public function manageAttachment(User $user, Document $document, ?\App\Models\DocumentAttachment $attachment = null): bool
+    {
+        // 1. Yönetici Zırhı
+        if ($user->hasAnyRole(['Super Admin', 'Admin'])) return true;
+
+        // 2. Global Spatie İzni (config'e eklediğimiz yeni yetki)
+        try {
+            if ($user->hasPermissionTo('document.manage_attachments')) return true;
+        } catch (PermissionDoesNotExist $e) {
+        }
+
+        // 3. Matris Yetkisi: Ana belgeyi "düzenleyebilen" (can_edit) ek belgeyi de yönetebilir
+        if ($document->document_type_id && $document->documentType && $this->hasMatrixPermission($user, $document->documentType->name, 'can_edit')) {
+            return true;
+        }
+
+        // 4. Sahiplik (Granular): İşlem yapılan spesifik bir ek belgeyse ve bu kişi yüklemişse
+        if ($attachment && $attachment->uploaded_by === $user->id) {
+            return true;
+        }
+
+        // 5. Ana Belge Sahipliği: Ana belgeyi yükleyen kişi, belgesinin tüm eklerini yönetebilir
+        return $document->currentVersion && $document->currentVersion->created_by === $user->id;
+    }
 }

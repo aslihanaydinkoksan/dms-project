@@ -648,19 +648,18 @@
                                 <tr>
                                     <th style="width: 200px; padding: 15px;">{{ __('Sistem Rolü') }}</th>
                                     @foreach ($specialPermissions as $sp)
-                                        <th class="text-center" style="width: 120px; padding: 10px;">
+                                       <th class="text-center" style="width: 120px; padding: 10px;">
                                             @php
-                                                $uiMeta = config("dms.permissions_ui.{$sp->name}");
-                                                // ... (Mantıksal kontroller aynı kalabilir) ...
-
-                                                // ÇEVİRİ SORUNU İÇİN GÜNCELLEME:
-                                                // Eğer config'de label yoksa, veritabanındaki ismi temizleyip çeviriyoruz.
-$label = $uiMeta['label'] ?? __($sp->name);
+                                                // Controller/Service'den gelen config verisini al
+                                                $uiMeta = config("dms.permissions_ui.{$sp->name}", []);
+                                                
+                                                // Config'de yoksa, ismin içindeki "_" ve "." işaretlerini temizleyip fallback yap
+                                                $fallbackLabel = ucwords(str_replace(['_', '.'], ' ', $sp->name));
+                                                $label = $uiMeta['label'] ?? $fallbackLabel;
                                             @endphp
 
-                                            <div style="font-size: 0.7rem; color: #475569; word-wrap: break-word;">
-                                                <span
-                                                    style="display: block; font-size: 1.2rem;">{{ $uiMeta['icon'] ?? '⚙️' }}</span>
+                                            <div style="font-size: 0.75rem; font-weight: 700; color: #475569; word-wrap: break-word;">
+                                                <span style="display: block; font-size: 1.4rem; margin-bottom: 6px;">{{ $uiMeta['icon'] ?? '⚙️' }}</span>
                                                 {{ mb_strtoupper($label) }}
                                             </div>
                                         </th>
@@ -729,6 +728,8 @@ $label = $uiMeta['label'] ?? __($sp->name);
                                     <th class="text-center" style="padding: 12px;">📤 {{ __('Yükleme') }}</th>
                                     <th class="text-center" style="padding: 12px;">📝 {{ __('Revize Etme') }}</th>
                                     <th class="text-center" style="padding: 12px;">🗑️ {{ __('İmha (Silme)') }}</th>
+                                    <th class="text-center" style="padding: 12px; color: var(--warning-color);">⚙️
+                                        {{ __('Versiyon Yönetimi') }}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -768,6 +769,13 @@ $label = $uiMeta['label'] ?? __($sp->name);
                                                     name="permissions[{{ $role->id }}][{{ $type->name }}][can_delete]"
                                                     value="1" {{ $rule && $rule->can_delete ? 'checked' : '' }}
                                                     style="width: 18px; height: 18px; accent-color: var(--danger-color);">
+                                            </td>
+                                            <td class="text-center" style="padding: 12px;">
+                                                <input type="checkbox"
+                                                    name="permissions[{{ $role->id }}][{{ $type->name }}][can_manage_versions]"
+                                                    value="1"
+                                                    {{ $rule && $rule->can_manage_versions ? 'checked' : '' }}
+                                                    style="width: 18px; height: 18px; accent-color: var(--warning-color);">
                                             </td>
                                         </tr>
                                     @endif
