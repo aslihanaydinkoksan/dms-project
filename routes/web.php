@@ -46,9 +46,9 @@ Route::middleware(['auth', 'role:Super Admin'])->group(function () {
     Route::get('/settings/users/{user}/permission-details', [\App\Http\Controllers\Settings\UserPermissionExplorerController::class, 'getUserDetails'])
         ->name('settings.users.permission_details');
 
-        // MYS Senkronizasyon Rotası
-        Route::post('/users/sync-from-mys', [UserSyncController::class, 'syncFromMys'])->name('users.sync_mys');
-        Route::post('/settings/permissions/sync-departments', [UserSyncController::class, 'syncDepartmentsOnly'])->name('settings.departments.sync');
+    // MYS Senkronizasyon Rotası
+    Route::post('/users/sync-from-mys', [UserSyncController::class, 'syncFromMys'])->name('users.sync_mys');
+    Route::post('/settings/permissions/sync-departments', [UserSyncController::class, 'syncDepartmentsOnly'])->name('settings.departments.sync');
 });
 
 // ==========================================================================
@@ -219,12 +219,12 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/{document}/versions/{version}', [DocumentController::class, 'destroyVersion'])->name('versions.destroy');
 
         // --- EK BELGELER (ATTACHMENTS) VE VERSİYON YÖNETİMİ ---
-    Route::post('/documents/{document}/attachments', [\App\Http\Controllers\DocumentAttachmentController::class, 'store'])->name('document-attachments.store');
-    Route::put('/document-attachments/{attachment}', [\App\Http\Controllers\DocumentAttachmentController::class, 'update'])->name('document-attachments.update');
-    Route::delete('/document-attachments/{attachment}', [\App\Http\Controllers\DocumentAttachmentController::class, 'destroy'])->name('document-attachments.destroy');
-    Route::post('/document-attachments/{attachment}/checkin', [\App\Http\Controllers\DocumentAttachmentController::class, 'checkin'])->name('document-attachments.checkin');
-    Route::get('/document-attachments/{attachment}/download', [\App\Http\Controllers\DocumentAttachmentController::class, 'download'])->name('document-attachments.download');
-    Route::delete('/document-attachments/versions/{version}', [\App\Http\Controllers\DocumentAttachmentController::class, 'destroyVersion'])->name('document-attachments.versions.destroy');
+        Route::post('/documents/{document}/attachments', [\App\Http\Controllers\DocumentAttachmentController::class, 'store'])->name('document-attachments.store');
+        Route::put('/document-attachments/{attachment}', [\App\Http\Controllers\DocumentAttachmentController::class, 'update'])->name('document-attachments.update');
+        Route::delete('/document-attachments/{attachment}', [\App\Http\Controllers\DocumentAttachmentController::class, 'destroy'])->name('document-attachments.destroy');
+        Route::post('/document-attachments/{attachment}/checkin', [\App\Http\Controllers\DocumentAttachmentController::class, 'checkin'])->name('document-attachments.checkin');
+        Route::get('/document-attachments/{attachment}/download', [\App\Http\Controllers\DocumentAttachmentController::class, 'download'])->name('document-attachments.download');
+        Route::delete('/document-attachments/versions/{version}', [\App\Http\Controllers\DocumentAttachmentController::class, 'destroyVersion'])->name('document-attachments.versions.destroy');
 
         // Çok Gizli Kasa (Vault)
         Route::get('/{document}/vault', [SudoController::class, 'showVault'])->name('vault');
@@ -269,6 +269,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/documents/{document}/attachments', [\App\Http\Controllers\DocumentAttachmentController::class, 'store'])->name('document-attachments.store');
     Route::get('/document-attachments/{attachment}/download', [\App\Http\Controllers\DocumentAttachmentController::class, 'download'])->name('document-attachments.download');
     Route::delete('/document-attachments/{attachment}', [\App\Http\Controllers\DocumentAttachmentController::class, 'destroy'])->name('document-attachments.destroy');
+
     // ==========================================================================
     // 3. SİSTEM YÖNETİCİSİ & KULLANICI ROTALARI
     // ==========================================================================
@@ -319,9 +320,8 @@ Route::middleware(['auth'])->group(function () {
         ->middleware('can:menu.tasks_archive');
 
     // ==========================================================================
-    // --- SİSTEM AYARLARI ROTALARI ---
+    // --- ESKİ SİSTEM AYARLARI ROTALARI (SİLİNMEYECEK, BİR SÜRE YAN YANA ÇALIŞACAK) ---
     // ==========================================================================
-    // YENİ: Ayarlar ana menüsü için 'can:menu.settings' eklendi.
     Route::middleware(['role:Super Admin|Admin', 'can:menu.settings'])->prefix('settings')->name('settings.')->group(function () {
 
         // İzinler, Roller ve Gizlilik
@@ -358,8 +358,34 @@ Route::middleware(['auth'])->group(function () {
         Route::resource('user-groups', \App\Http\Controllers\UserGroupController::class)->except(['create', 'show', 'edit'])->middleware('can:menu.user_groups');
         Route::post('user-groups/{userGroup}/sync', [\App\Http\Controllers\UserGroupController::class, 'syncMembers'])->name('user-groups.sync')->middleware('can:menu.user_groups');
     });
-});
 
+    // ==========================================================================
+    // YENİ MODÜLER ADMİN MİMARİSİ
+    // ==========================================================================
+    Route::middleware(['role:Super Admin|Admin', 'can:menu.settings'])->prefix('admin')->name('admin.')->group(function () {
+
+        // 1. Genel Ayarlar (Logo, Gizlilik Seviyeleri vb.) (Gelecek Adımlarda Doldurulacak)
+        Route::get('/settings', [\App\Http\Controllers\Admin\SettingController::class, 'index'])->name('settings.index');
+        Route::post('/settings/privacy-levels', [\App\Http\Controllers\Admin\SettingController::class, 'storePrivacyLevel'])->name('privacy-levels.store');
+        Route::delete('/settings/privacy-levels/{key}', [\App\Http\Controllers\Admin\SettingController::class, 'destroyPrivacyLevel'])->name('privacy-levels.destroy');
+
+        // 2. Departman Yönetimi (ŞU AN TEST ETTİĞİMİZ KISIM)
+        Route::resource('departments', \App\Http\Controllers\Admin\DepartmentController::class)->except(['create', 'show', 'edit']);
+        Route::patch('/departments/{department}/toggle-approval', [\App\Http\Controllers\Admin\DepartmentController::class, 'toggleApproval'])->name('departments.toggle-approval');
+
+        // 3. Doküman Tipleri ve Dinamik Formlar
+        Route::resource('document-types', \App\Http\Controllers\Admin\DocumentTypeController::class)->except(['create', 'show', 'edit']);
+
+        // 4. Roller ve Yetki Matrisleri Yönetimi
+        Route::resource('roles', \App\Http\Controllers\Admin\RoleController::class)->except(['create', 'show']);
+
+        // Rolün detayına (edit) girildiğinde 4 sekmeli UI açılacak. 
+        Route::put('/roles/{role}/matrix/global', [\App\Http\Controllers\Admin\RoleMatrixController::class, 'updateGlobal'])->name('roles.matrix.global');
+        Route::put('/roles/{role}/matrix/folder', [\App\Http\Controllers\Admin\RoleMatrixController::class, 'updateFolder'])->name('roles.matrix.folder');
+        Route::put('/roles/{role}/matrix/document-type', [\App\Http\Controllers\Admin\RoleMatrixController::class, 'updateDocumentType'])->name('roles.matrix.document-type');
+        Route::put('/roles/{role}/matrix/menu', [\App\Http\Controllers\Admin\RoleMatrixController::class, 'updateMenu'])->name('roles.matrix.menu');
+    });
+});
 
 // Middleware ile hem giriş yapılmış olması hem de yetki kontrolü sağlanır.
 Route::middleware(['auth', 'can:menu.executive_cockpit'])->group(function () {
