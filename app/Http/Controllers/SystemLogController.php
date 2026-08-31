@@ -21,16 +21,22 @@ class SystemLogController extends Controller
         $endDate = $request->query('end_date');
 
         // ==========================================
-        // TAB 1: BELGE İZLERİ (AUDIT LOGS)
+        // TAB 1: BELGE VE SİSTEM İZLERİ (AUDIT LOGS)
         // ==========================================
-        // Modelde 'user' ilişkisi olduğunu varsayıyoruz. N+1 önlemi için 'with' kullanıldı.
-        $auditQuery = AuditLog::with('user')->latest();
+        // Hem silinmiş kullanıcıları hem de silinmiş objeleri (Document, Folder vb.) getirebilmek için withTrashed() ekliyoruz.
+        $auditQuery = AuditLog::with([
+            'user' => fn($q) => $q->withTrashed(),
+            'auditable' => fn($q) => $q->withTrashed()
+        ])->latest();
 
+        // 1. Kullanıcı Adına Göre Arama (Silinmiş kullanıcılar dahil)
         if ($userName) {
             $auditQuery->whereHas('user', function ($q) use ($userName) {
-                $q->where('name', 'like', "%{$userName}%");
+                $q->withTrashed()->where('name', 'like', "%{$userName}%");
             });
         }
+
+        // 2. Tarih Filtreleri
         if ($startDate) {
             $auditQuery->whereDate('created_at', '>=', $startDate);
         }
@@ -38,14 +44,18 @@ class SystemLogController extends Controller
             $auditQuery->whereDate('created_at', '<=', $endDate);
         }
 
-        // Polimorfik yapı olduğu için Document tablosuna Join atarak isme göre arıyoruz
-        $auditQuery->leftJoin('documents', function ($join) {
-            $join->on('audit_logs.auditable_id', '=', 'documents.id')
-                ->where('audit_logs.auditable_type', '=', 'App\Models\Document');
-        })->select('audit_logs.*', 'documents.title as document_title');
-
+        // 3. Obje Adına (Belge, Klasör) Göre Arama - Polimorfik Arama
         if ($docName) {
-            $auditQuery->where('documents.title', 'like', "%{$docName}%");
+            $auditQuery->where(function ($q) use ($docName) {
+                // Belge isimlerinde ara
+                $q->whereHasMorph('auditable', [\App\Models\Document::class], function ($query) use ($docName) {
+                    $query->withTrashed()->where('title', 'like', "%{$docName}%");
+                })
+                    // Klasör isimlerinde ara (Artık klasörleri de loglayacağımız için)
+                    ->orWhereHasMorph('auditable', [\App\Models\Folder::class], function ($query) use ($docName) {
+                        $query->withTrashed()->where('name', 'like', "%{$docName}%");
+                    });
+            });
         }
 
         $auditLogs = $auditQuery->paginate(15, ['*'], 'audit_page')->withQueryString();

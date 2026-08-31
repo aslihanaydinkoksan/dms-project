@@ -12,10 +12,11 @@ use Laravel\Scout\Searchable;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
 use Spatie\Permission\Exceptions\PermissionDoesNotExist;
+use App\Traits\Auditable;
 
 class Document extends Model
 {
-    use SoftDeletes, Searchable;
+    use SoftDeletes, Searchable, Auditable;
 
     protected $fillable = [
         'folder_id',

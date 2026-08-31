@@ -99,25 +99,34 @@
                                 <tr style="border-bottom: 1px solid #f1f5f9;">
                                     <td style="padding: 15px; color: var(--text-muted);">
                                         {{ $log->created_at->format('d.m.Y H:i:s') }}</td>
+
                                     <td style="padding: 15px; font-weight: 600; color: var(--text-color);">
-                                        {{ $log->user?->name ?? 'Sistem' }}</td>
+                                        {{ $log->user ? $log->user->name : 'Sistem/Silinmiş Kullanıcı' }}
+                                    </td>
+
                                     <td style="padding: 15px;">
-                                        <span class="badge badge-secondary"
-                                            style="background: #eef2ff; color: #4f46e5; border: 1px solid #c7d2fe;">
-                                            {{ strtoupper($log->event) }}
+                                        <span class="badge"
+                                            style="background: {{ $log->event_theme['bg'] }}; color: {{ $log->event_theme['text'] }}; border: 1px solid {{ $log->event_theme['border'] }}; padding: 5px 10px; border-radius: 6px; font-weight: 500; font-size: 0.8rem;">
+                                            {{ $log->event_text }}
                                         </span>
                                     </td>
+
                                     <td style="padding: 15px; font-weight: 500;">
-                                        {{ $log->document_title ?? 'Silinmiş / Bilinmeyen Belge' }}</td>
+                                        {{ $log->auditable->title ?? ($log->auditable->name ?? 'Silinmiş Obje') }}
+                                    </td>
+
                                     <td style="padding: 15px; font-family: monospace; color: var(--text-muted);">
-                                        {{ $log->ip_address }}</td>
+                                        {{ $log->ip_address }}
+                                    </td>
+
                                     <td style="padding: 15px; text-align: right;">
                                         <button class="btn btn-sm btn-outline-danger btn-proof"
-                                            data-user="{{ $log->user?->name ?? 'Bilinmeyen Kullanıcı' }}"
+                                            data-user="{{ $log->user ? $log->user->name : 'Bilinmeyen Kullanıcı' }}"
                                             data-date="{{ $log->created_at->format('d.m.Y H:i:s') }}"
                                             data-ip="{{ $log->ip_address }}"
-                                            data-doc="{{ $log->document_title ?? 'Silinmiş Belge' }}"
-                                            data-event="{{ $log->event }}" style="padding: 6px 12px; font-size: 0.8rem;">
+                                            data-doc="{{ $log->auditable->title ?? ($log->auditable->name ?? 'Silinmiş Obje') }}"
+                                            data-event="{{ $log->event_text }}"
+                                            style="padding: 6px 12px; font-size: 0.8rem;">
                                             <i data-lucide="file-search" style="width: 14px;"></i> Kanıt Oluştur
                                         </button>
                                     </td>
