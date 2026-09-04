@@ -159,7 +159,6 @@ class Document extends Model
 
                         // 1. ŞART: KESİN DEPARTMAN İZOLASYONU
                         ->where(function ($deptQ) use ($allDeptIds) {
-
                             // Klasörü varsa Klasörün Departmanına Bak
                             $deptQ->whereHas('folder', function ($folderQ) use ($allDeptIds) {
                                 $folderQ->where(function ($fq) use ($allDeptIds) {
@@ -180,20 +179,38 @@ class Document extends Model
                         })
 
                         // 2. ŞART: GİZLİLİK VE MATRİS (Departmandan geçtikten sonra bu da eşleşmeli)
-                        ->where(function ($privacyQ) use ($allowedDocumentTypeNames, $hasStrictlyConfidential) {
+                        ->where(function ($privacyQ) use ($allowedDocumentTypeNames, $hasStrictlyConfidential, $allDeptIds) {
 
                             // Çok Gizli Kontrolü
                             if (!$hasStrictlyConfidential) {
                                 $privacyQ->where('privacy_level', '!=', 'strictly_confidential');
                             }
 
-                            // Public veya Matris Kesişimi
-                            $privacyQ->where(function ($matrixQ) use ($allowedDocumentTypeNames) {
-                                $matrixQ->where('privacy_level', ['public', 'confidential']) // Public ise matrise bakma
-                                    ->orWhereHas('documentType', function ($typeQ) use ($allowedDocumentTypeNames) {
-                                        $typeQ->whereIn('name', $allowedDocumentTypeNames); // Matristen yetkisi olan tipler
+                            $privacyQ->where(function ($matrixQ) use ($allowedDocumentTypeNames, $allDeptIds) {
+
+                                // YENİ EKLENEN KISIM: 
+                                // "public" ve "confidential" belgeler için mantığı ayırdık.
+                                $matrixQ->where('privacy_level', 'public') // Herkese açıklar doğrudan geçer
+
+                                    ->orWhere(function ($confQ) use ($allDeptIds) {
+                                        // confidential olanlar için, belgenin veya bulunduğu klasörün 
+                                        // departmanının, KULLANICININ DEPARTMANIYLA EŞLEŞMESİNİ GÜVENCE ALTINA AL
+                                        $confQ->where('privacy_level', 'confidential')
+                                            ->where(function ($deptCheck) use ($allDeptIds) {
+                                                // Klasörlü ise
+                                                $deptCheck->whereHas('folder.departments', function ($q) use ($allDeptIds) {
+                                                    $q->whereIn('departments.id', $allDeptIds);
+                                                })
+                                                    // Klasörsüz ise
+                                                    ->orWhereIn('related_department_id', $allDeptIds);
+                                            });
                                     })
-                                    ->orWhereNull('document_type_id'); // Belge tipi yoksa matris işlemez
+
+                                    // Matris yetkisi aranan durumlar (Diğer gizlilik seviyeleri)
+                                    ->orWhereHas('documentType', function ($typeQ) use ($allowedDocumentTypeNames) {
+                                        $typeQ->whereIn('name', $allowedDocumentTypeNames);
+                                    })
+                                    ->orWhereNull('document_type_id');
                             });
                         });
                 });
