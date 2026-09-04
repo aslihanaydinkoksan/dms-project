@@ -379,4 +379,33 @@ class DocumentPolicy
         // 5. Ana Belge Sahipliği: Ana belgeyi yükleyen kişi, belgesinin tüm eklerini yönetebilir
         return $document->currentVersion && $document->currentVersion->created_by === $user->id;
     }
+    /**
+     * Kullanıcı belgeyi revize etmek üzere KİLİTLEYEBİLİR Mİ (Check-out butonu kime görünsün)?
+     */
+    public function checkout(User $user, Document $document): bool
+    {
+        // 1. Yönetici Zırhı
+        if ($user->hasAnyRole(['Super Admin', 'Admin'])) {
+            return true;
+        }
+
+        // 2. Özel Granüler İzin (Kullanıcıya özel edit hakkı verilmişse)
+        $granularPermission = $document->specificUsers()->where('user_id', $user->id)->first();
+        if ($granularPermission && $granularPermission->pivot->access_level === 'edit') {
+            return true;
+        }
+
+        // 3. 3D MATRİS KONTROLÜ: Bu kullanıcının, bu belge kategorisinde (DocumentType)
+        // "Revize Edebilir (can_edit)" yetkisi var mı?
+        if ($document->document_type_id && $document->documentType && $this->hasMatrixPermission($user, $document->documentType->name, 'can_edit')) {
+            return true;
+        }
+
+        // 4. Belgenin Sahibi mi?
+        if ($document->currentVersion && $document->currentVersion->created_by === $user->id) {
+            return true;
+        }
+
+        return false;
+    }
 }

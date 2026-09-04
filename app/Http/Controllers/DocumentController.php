@@ -489,8 +489,9 @@ class DocumentController extends Controller
      */
     public function checkout(Request $request, Document $document): RedirectResponse
     {
-        // Yetki: Bu kullanıcı belgeyi düzenleme (create/edit) yetkisine sahip mi?
-        Gate::authorize('update', $document);
+        // YENİ YETKİ KONTROLÜ: Artık 'update' (Sadece admin/sahip) değil, 
+        // 'checkout' (Matristeki can_edit yetkisi olanları da kapsayan) kuralı çalışacak.
+        Gate::authorize('checkout', $document);
 
         try {
             $this->documentService->checkoutDocument(
@@ -758,9 +759,9 @@ class DocumentController extends Controller
 
         try {
             $this->documentService->updateVersion(
-                $document, 
-                $version, 
-                $request->input('revision_reason'), 
+                $document,
+                $version,
+                $request->input('revision_reason'),
                 $request->file('file'),
                 Auth::id(),
                 $request->ip() ?? '0.0.0.0',
@@ -784,8 +785,8 @@ class DocumentController extends Controller
 
         try {
             $this->documentService->deleteVersion(
-                $document, 
-                $version, 
+                $document,
+                $version,
                 Auth::id(),
                 $request->ip() ?? '0.0.0.0',
                 $request->userAgent() ?? 'Unknown'

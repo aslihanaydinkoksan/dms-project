@@ -152,7 +152,6 @@
 
 
             {{-- 2. İKİNCİL AKSİYONLAR (Modern Dropdown Menü) --}}
-
             <div class="dropdown-container" style="position: relative;">
                 <button type="button" class="btn btn-outline-secondary" id="docActionsBtn"
                     style="display: flex; align-items: center; gap: 5px; background: #fff;">
@@ -163,10 +162,15 @@
                     style="display: none; position: absolute; right: 0; top: 110%; width: 220px; background: #fff; border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); z-index: 50; overflow: hidden;">
 
                     @if (!$document->is_locked && $document->status_text !== 'archived')
+                        {{-- 1. Yalnızca Sahibine/Admine Özel (Metadata Düzenleme) --}}
                         @can('update', $document)
                             <a href="{{ route('documents.edit', $document->id) }}" class="dropdown-item">
                                 <i data-lucide="edit-3"></i> {{ __('Özellikleri Düzenle') }}
                             </a>
+                        @endcan
+
+                        {{-- 2. Revize Yetkisi (Matristen veya Özel Yetki Alanlar İçin) --}}
+                        @can('checkout', $document)
                             <form action="{{ route('documents.checkout', $document->id) }}" method="POST" style="margin:0;">
                                 @csrf
                                 <button type="submit" class="dropdown-item w-100 text-left">
@@ -176,15 +180,19 @@
                         @endcan
                     @endif
 
+                    {{-- 3. Onay Akışını Başlat --}}
                     @if (in_array($document->status_text, ['draft', 'rejected', 'published', 'pending']))
-                        @can('update', $document)
+                        {{-- Onay akışını başlatmayı sadece belge sahibine, adminlere veya matriste düzenleme yetkisi olanlara açıyoruz --}}
+                        @can('checkout', $document)
                             <button type="button" id="openStartWorkflowModal" class="dropdown-item w-100 text-left">
                                 <i data-lucide="play-circle"></i> {{ __('Onay Akışını Başlat') }}
                             </button>
                         @endcan
                     @endif
 
+                    {{-- 4. Fiziksel Zimmetleme --}}
                     @if (in_array($document->category, ['Sözleşme', 'Vekaletname', 'İpotek/Rehin']))
+                        {{-- Zimmetleme işlemini sadece Admin ve belge sahibine bırakıyoruz --}}
                         @can('update', $document)
                             <button type="button" id="openAssignPhysicalModal" class="dropdown-item w-100 text-left">
                                 <i data-lucide="inbox"></i> {{ __('Zimmetle / Teslim Et') }}
@@ -192,12 +200,13 @@
                         @endcan
                     @endif
 
-                    @can('update', $document)
-                        <button type="button" id="openShareModal" class="dropdown-item w-100 text-left">
-                            <i data-lucide="share-2"></i> {{ __('Bilgilendirmede Bulun') }}
-                        </button>
-                    @endcan
+                    {{-- 5. HERKESE AÇIK AKSİYON: Bilgilendirmede Bulun --}}
+                    {{-- Belgeyi okuyabilen (zaten bu sayfada olan) HERKESE AÇIK. @can zırhından çıkarıldı. --}}
+                    <button type="button" id="openShareModal" class="dropdown-item w-100 text-left">
+                        <i data-lucide="share-2"></i> {{ __('Bilgilendirmede Bulun') }}
+                    </button>
 
+                    {{-- 6. Belgeyi Sil --}}
                     @can('delete', $document)
                         <div style="height: 1px; background: var(--border-color); margin: 4px 0;"></div>
                         <form action="{{ route('documents.destroy', $document->id) }}" method="POST" style="margin:0;"
