@@ -380,7 +380,7 @@ class DocumentPolicy
         return $document->currentVersion && $document->currentVersion->created_by === $user->id;
     }
     /**
-     * Kullanıcı belgeyi revize etmek üzere KİLİTLEYEBİLİR Mİ (Check-out butonu kime görünsün)?
+     * Kullanıcı belgeyi revize etmek üzere KİLİTLEYEBİLİR Mİ (Check-out)?
      */
     public function checkout(User $user, Document $document): bool
     {
@@ -389,20 +389,78 @@ class DocumentPolicy
             return true;
         }
 
-        // 2. Özel Granüler İzin (Kullanıcıya özel edit hakkı verilmişse)
+        // 2. Özel Granüler İzin (Kullanıcıya özel edit hakkı verilmişse her şeyi ezer geçer)
         $granularPermission = $document->specificUsers()->where('user_id', $user->id)->first();
         if ($granularPermission && $granularPermission->pivot->access_level === 'edit') {
             return true;
         }
 
-        // 3. 3D MATRİS KONTROLÜ: Bu kullanıcının, bu belge kategorisinde (DocumentType)
-        // "Revize Edebilir (can_edit)" yetkisi var mı?
-        if ($document->document_type_id && $document->documentType && $this->hasMatrixPermission($user, $document->documentType->name, 'can_edit')) {
+        // 3. Belgenin Sahibi mi? (Sahibi her zaman revize edebilir)
+        $isOwner = $document->currentVersion && $document->currentVersion->created_by === $user->id;
+        if ($isOwner) {
             return true;
         }
 
-        // 4. Belgenin Sahibi mi?
-        if ($document->currentVersion && $document->currentVersion->created_by === $user->id) {
+        // 4. KESİN DEPARTMAN İZOLASYONU (Check-out için de View kadar sıkı olmalı)
+        $delegatorIds = $user->getActiveDelegatorIds();
+        $userDeptIds = array_filter(array_merge([$user->department_id], User::whereIn('id', $delegatorIds)->pluck('department_id')->toArray()));
+        $passesIsolation = false;
+        $folder = $document->folder;
+
+        if ($folder) {
+            if ($folder->departments->isEmpty()) {
+                $passesIsolation = true;
+            } elseif ($folder->departments->whereIn('id', $userDeptIds)->isNotEmpty()) {
+                $passesIsolation = true;
+            }
+        } else {
+            if (!$document->related_department_id || in_array($document->related_department_id, $userDeptIds)) {
+                $passesIsolation = true;
+            }
+        }
+
+        if (!$passesIsolation) {
+            return false;
+        }
+
+        // 5. GİZLİLİK (PRIVACY LEVEL) KONTROLÜ
+        if (!in_array($document->privacy_level, ['public', 'confidential'])) {
+            if (!empty($document->privacy_level)) {
+                $dynamicPermissionName = 'document.view_' . strtolower($document->privacy_level);
+                $hasPrivacyClearance = false;
+
+                try {
+                    $hasPrivacyClearance = $user->hasPermissionTo($dynamicPermissionName);
+                } catch (\Exception $e) {
+                }
+
+                if (!$hasPrivacyClearance && !empty($delegatorIds)) {
+                    $delegators = User::whereIn('id', $delegatorIds)->get();
+                    $hasPrivacyClearance = $delegators->contains(function (User $d) use ($dynamicPermissionName) {
+                        try {
+                            return $d->hasPermissionTo($dynamicPermissionName);
+                        } catch (\Exception $e) {
+                            return false;
+                        }
+                    });
+                }
+
+                if (!$hasPrivacyClearance) {
+                    return false;
+                }
+            }
+        }
+
+        // 6. MATRİS KONTROLÜ (GÖRÜNTÜLEYEBİLİYOR, AMA DÜZENLEYEBİLİR Mİ?)
+        // DİKKAT: Veritabanındaki tablonuzda sütun adının tam olarak 'can_edit' olduğundan emin olun. 
+        // Eğer 'can_edi' olarak bozuk kaydolduysa, aşağıdaki stringi ona göre değiştirin!
+        $editColumnName = 'can_edit';
+
+        if ($document->document_type_id && $document->documentType) {
+            if ($this->hasMatrixPermission($user, $document->documentType->name, $editColumnName)) {
+                return true;
+            }
+        } elseif (!$document->document_type_id) {
             return true;
         }
 
