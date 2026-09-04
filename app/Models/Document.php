@@ -189,7 +189,7 @@ class Document extends Model
 
                             // Public veya Matris Kesişimi
                             $privacyQ->where(function ($matrixQ) use ($allowedDocumentTypeNames) {
-                                $matrixQ->where('privacy_level', 'public') // Public ise matrise bakma
+                                $matrixQ->where('privacy_level', ['public', 'confidential']) // Public ise matrise bakma
                                     ->orWhereHas('documentType', function ($typeQ) use ($allowedDocumentTypeNames) {
                                         $typeQ->whereIn('name', $allowedDocumentTypeNames); // Matristen yetkisi olan tipler
                                     })
@@ -457,9 +457,7 @@ class Document extends Model
 
         // Belge tipi ve form şablonu (custom_fields) varsa etiket haritasını çıkar
         if ($this->documentType && !empty($this->documentType->custom_fields)) {
-            $fields = is_string($this->documentType->custom_fields)
-                ? json_decode($this->documentType->custom_fields, true)
-                : $this->documentType->custom_fields;
+            $fields = $this->documentType->custom_fields;
 
             if (is_array($fields)) {
                 foreach ($fields as $field) {

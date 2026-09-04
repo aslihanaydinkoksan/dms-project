@@ -143,10 +143,17 @@ class DocumentPolicy
         // 4. KURUMSAL GİZLİLİK VE MATRİS MANTIĞI
         // =========================================================
 
-        // Herkese Açık (Public) ise geç (Zaten departman duvarını çoktan geçtiği için güvenli)
-        if ($document->privacy_level !== 'public' && !empty($document->privacy_level)) {
+        // YENİ: Eğer belge "Herkese Açık" veya "Departmana Özel" ise ve kod buraya kadar 
+        // ulaştıysa (yani Adım 3'teki kesin departman duvarını aşabildiyse), 
+        // ekstra bir Spatie yetkisi veya Matris yetkisi aramadan DOĞRUDAN İZİN VER!
+        if (in_array($document->privacy_level, ['public', 'confidential'])) {
+            return true;
+        }
 
-            // Dinamik Gizlilik İzin Adı (Örn: document.view_confidential, document.view_top_secret)
+        // Sadece 'strictly_confidential' (Çok Gizli) vb. özel gizlilik seviyeleri için 
+        // dinamik Spatie yetkisi (Örn: document.view_strictly_confidential) ara.
+        if (!empty($document->privacy_level)) {
+
             $dynamicPermissionName = 'document.view_' . strtolower($document->privacy_level);
             $hasPrivacyClearance = false;
 
@@ -156,7 +163,7 @@ class DocumentPolicy
             } catch (\Exception $e) {
             }
 
-            // 2. Kendisinde yoksa, aktif vekalet verenlerin (delegators) bu izne sahip olup olmadığına bak
+            // 2. Kendisinde yoksa, vekalet verenlerin iznine bak
             if (!$hasPrivacyClearance && !empty($delegatorIds)) {
                 if (!isset($delegators)) {
                     $delegators = User::whereIn('id', $delegatorIds)->get();
@@ -170,19 +177,19 @@ class DocumentPolicy
                 });
             }
 
-            // Eğer ne kendisi ne de vekalet verenleri bu dinamik gizlilik seviyesini aşamıyorsa: ANINDA RET!
+            // Eğer dinamik gizlilik seviyesini aşamıyorsa: ANINDA RET!
             if (!$hasPrivacyClearance) {
                 return false;
             }
         }
 
-        // Son Kapı: 3D Matris Kontrolü
+        // Son Kapı: 3D Matris Kontrolü (Sadece özel gizlilik gerektiren ama public/confidential olmayan belgeler için)
         if ($document->document_type_id && $document->documentType) {
             if ($this->hasMatrixPermission($user, $document->documentType->name, 'can_view')) {
                 return true;
             }
         } elseif (!$document->document_type_id) {
-            return true; // Belge tipi yoksa matris işlemi uygulanmaz
+            return true;
         }
 
         return false;
