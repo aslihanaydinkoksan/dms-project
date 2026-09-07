@@ -124,7 +124,6 @@ class MergeUsersCommand extends Command
                 'email' => 'merged_' . time() . '_' . $duplicateUser->email,
                 'tc_no' => null,
                 'registration_no' => null,
-                'mys_id' => null,
                 'is_active' => false
             ]);
 
