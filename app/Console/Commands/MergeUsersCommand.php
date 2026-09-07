@@ -68,7 +68,7 @@ class MergeUsersCommand extends Command
             // 1. BELGELER VE VERSİYONLAR
             // ---------------------------------------------------------
             $this->line("- Belgeler ve Versiyonlar aktarılıyor...");
-            DB::table('documents')->where('created_by', $duplicateId)->update(['created_by' => $primaryId]);
+            //DB::table('documents')->where('created_by', $duplicateId)->update(['created_by' => $primaryId]);
             DB::table('documents')->where('locked_by', $duplicateId)->update(['locked_by' => $primaryId]);
             DB::table('documents')->where('delivered_to_user_id', $duplicateId)->update(['delivered_to_user_id' => $primaryId]);
             DB::table('document_versions')->where('created_by', $duplicateId)->update(['created_by' => $primaryId]);
