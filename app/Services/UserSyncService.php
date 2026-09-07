@@ -32,64 +32,83 @@ class UserSyncService
             foreach ($users as $userData) {
                 $user = null;
                 $incomingEmail = $userData['email'] ?? null;
+                $incomingName = $userData['name'] ?? null;
                 $incomingTc = $userData['tc_no'] ?? null;
                 $incomingRegNo = $userData['registration_no'] ?? null;
 
                 if (!$incomingEmail) continue;
 
-                // 1. Önce e-posta ile bulmayı dene
-                $user = User::withTrashed()->where('email', $incomingEmail)->first();
-
-                // 2. E-posta ile bulunamadıysa, TC Kimlik No ile bulmayı dene
-                if (!$user && !empty($incomingTc)) {
-                    $user = User::withTrashed()->where('tc_no', $incomingTc)->first();
+                // A. MYS'den gelen e-posta aslında TC numarası mı? (Örn: 42355231364@koksan.com)
+                $isIncomingTcEmail = preg_match('/^[0-9]{10,11}@/', $incomingEmail);
+                
+                // Eğer MYS tc_no'yu null gönderiyorsa ama e-postaya TC yazmışsa, onu akıllıca TC olarak kabul edelim
+                if ($isIncomingTcEmail && empty($incomingTc)) {
+                    $incomingTc = explode('@', $incomingEmail)[0];
                 }
 
-                // 3. Hala bulunamadıysa, yepyeni bir personeldir
+                // --- 1. AŞAMA: KESİN EŞLEŞTİRME (TC VEYA SİCİL NO) ---
+                if (!empty($incomingTc)) {
+                    $user = User::withTrashed()->where('tc_no', $incomingTc)->first();
+                }
+                if (!$user && !empty($incomingRegNo)) {
+                    $user = User::withTrashed()->where('registration_no', $incomingRegNo)->first();
+                }
+
+                // --- 2. AŞAMA: E-POSTA İLE EŞLEŞTİRME ---
+                if (!$user && !empty($incomingEmail)) {
+                    $user = User::withTrashed()->where('email', $incomingEmail)->first();
+                }
+
+                // --- 3. AŞAMA: İSİM İLE SEZGİSEL EŞLEŞTİRME (WORKFLOW MANTIĞI) ---
+                // TC boşsa ve e-posta değişmişse son çare olarak isme bakar.
+                if (!$user && !empty($incomingName)) {
+                    $potentialUsers = User::withTrashed()->where('name', $incomingName)->get();
+                    if ($potentialUsers->count() === 1) {
+                        $user = $potentialUsers->first();
+                    }
+                }
+
+                // --- 4. AŞAMA: HİÇBİR ŞEKİLDE BULUNAMADIYSA YENİ KAYIT ---
                 if (!$user) {
                     $user = new User();
                     $user->password = $dummyPassword;
                 }
 
-                // --- ÇAKIŞMA (CONFLICT) ÇÖZÜCÜ MİMARİ ---
-
-                // TC numarası güncellenecek ama bu TC veritabanında başka bir (eski/unutulmuş) hesapta asılı kalmış olabilir
+                // --- ÇAKIŞMA ÇÖZÜCÜ (UNIQUE KORUMASI) ---
                 if (!empty($incomingTc) && $user->tc_no !== $incomingTc) {
                     $conflictTcUser = User::withTrashed()->where('tc_no', $incomingTc)->where('id', '!=', $user->id)->first();
-                    if ($conflictTcUser) {
-                        // Çakışan eski kullanıcının TC'sini boşa çıkar ki UNIQUE constraint patlamasın
-                        $conflictTcUser->update(['tc_no' => null]);
-                    }
+                    if ($conflictTcUser) $conflictTcUser->update(['tc_no' => null]);
                 }
 
-                // Sicil numarası için de aynı koruma (Eğer MYS'den geliyorsa)
                 if (!empty($incomingRegNo) && $user->registration_no !== $incomingRegNo) {
                     $conflictRegUser = User::withTrashed()->where('registration_no', $incomingRegNo)->where('id', '!=', $user->id)->first();
-                    if ($conflictRegUser) {
-                        $conflictRegUser->update(['registration_no' => null]);
-                    }
+                    if ($conflictRegUser) $conflictRegUser->update(['registration_no' => null]);
                 }
 
-                // E-Posta güncellenecek ama bu E-Posta başka hesapta kalmış olabilir (Örn: TC'den bulduk, e-postayı ezeceğiz)
                 if (!empty($incomingEmail) && $user->email !== $incomingEmail) {
                     $conflictEmailUser = User::withTrashed()->where('email', $incomingEmail)->where('id', '!=', $user->id)->first();
-                    if ($conflictEmailUser) {
-                        $conflictEmailUser->update(['email' => 'conflict_' . time() . '_' . $conflictEmailUser->email]);
-                    }
+                    if ($conflictEmailUser) $conflictEmailUser->update(['email' => 'conflict_' . time() . '_' . $conflictEmailUser->email]);
                 }
 
-                // --- BİLGİLERİ GÜNCELLE VE KAYDET ---
-
+                // --- BİLGİLERİ GÜNCELLE ---
                 if ($user->trashed()) {
                     $user->restore();
                 }
 
-                $user->name = $userData['name'];
-                $user->email = $incomingEmail; // TC ile bulunmuşsa eski e-postayı yenisiyle ezer
-                $user->tc_no = $incomingTc;    // Çakışma yukarıda çözüldüğü için artık güvenle yazılabilir
+                $user->name = $incomingName;
+                $user->tc_no = $incomingTc; // Veritabanına işlenir, bir sonraki sefer isme gerek kalmadan 1. Aşamadan bulunur!
                 $user->registration_no = $incomingRegNo;
                 $user->is_active = $userData['is_active'] ?? true;
 
+                // --- E-POSTA KALKANI ---
+                // Eğer MYS çöp bir TC e-postası (123@koksan) gönderiyorsa VE kullanıcının zaten düzgün bir e-postası (yusuf.dasgin@) varsa; 
+                // Asla düzgün e-postayı ezme!
+                $isExistingProperEmail = !empty($user->email) && !preg_match('/^[0-9]{10,11}@/', $user->email);
+                
+                if (!($isIncomingTcEmail && $isExistingProperEmail)) {
+                    $user->email = $incomingEmail; 
+                }
+                
                 if (!empty($userData['department'])) {
                     $user->department_id = $userData['department']['id'] ?? null;
                 }
