@@ -85,6 +85,22 @@
     <div class="page-header flex-between"
         style="background: var(--surface-color); padding: 20px; border-radius: var(--border-radius); border: 1px solid var(--border-color); box-shadow: var(--card-shadow); margin-bottom: 25px;">
         <div>
+            <div class="shiny-doc-badge">
+                <div class="badge-item badge-version">
+                    <i data-lucide="git-merge" style="width: 14px;"></i>
+                    <span>Versiyon: v{{ $document->currentVersion?->version_number ?? 1 }}</span>
+                </div>
+                <div class="badge-divider"></div>
+                <div class="badge-item">
+                    <i data-lucide="file-code-2" style="width: 14px;"></i>
+                    <span>{{ $document->document_number }}</span>
+                </div>
+                <div class="badge-divider"></div>
+                <div class="badge-item">
+                    <i data-lucide="calendar" style="width: 14px;"></i>
+                    <span>{{ $document->currentVersion?->created_at->format('d.m.Y') ?? $document->created_at->format('d.m.Y') }}</span>
+                </div>
+            </div>
             <h1 class="page-title" style="margin-bottom: 10px; font-size: 1.5rem; color: var(--primary-color);">
                 {{ $document->title }}</h1>
             <div class="doc-meta-tags" style="display: flex; gap: 8px;">
@@ -143,11 +159,11 @@
                 @endif
             @endif
 
-            {{-- Standart İndirme Butonu --}}
+            {{-- Standart Yazdırma Butonu --}}
             <a href="{{ route('documents.download', $document->id) }}?v={{ $document->currentVersion?->id ?? time() }}&download=1"
                 class="btn btn-primary" style="box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3);" download>
                 <i data-lucide="{{ $document->requires_vault ? 'lock' : 'download' }}" style="width: 18px;"></i>
-                {{ $document->requires_vault ? __('Kasadan İndir') : __('İndir') }}
+                {{ $document->requires_vault ? __('Kasadan Yazdır') : __('Yazdır') }}
             </a>
 
 
@@ -171,7 +187,8 @@
 
                         {{-- 2. Revize Yetkisi (Matristen veya Özel Yetki Alanlar İçin) --}}
                         @can('checkout', $document)
-                            <form action="{{ route('documents.checkout', $document->id) }}" method="POST" style="margin:0;">
+                            <form action="{{ route('documents.checkout', $document->id) }}" method="POST"
+                                style="margin:0;">
                                 @csrf
                                 <button type="submit" class="dropdown-item w-100 text-left">
                                     <i data-lucide="lock"></i> {{ __('Revize İçin Kilitle') }}
@@ -321,7 +338,7 @@
                             <a href="{{ route('documents.download', ['document' => $document->id, 'download' => 1]) }}"
                                 class="btn btn-primary mt-15">
                                 <i data-lucide="download" style="width: 16px; margin-right: 5px;"></i>
-                                {{ __('Dosyayı Bilgisayara İndir') }}
+                                {{ __('Dosyayı Bilgisayara Yazdır') }}
                             </a>
                         </div>
                     @endif
@@ -646,9 +663,16 @@
 
                             <div
                                 style="text-align: right; margin-top: 15px; display: flex; gap: 10px; justify-content: flex-end;">
+                                <button type="button" class="btn btn-sm btn-outline-info btn-preview-version"
+                                    style="font-size: 0.8rem;" title="{{ __('Bu Sürümü Önizle') }}"
+                                    data-url="{{ route('documents.download', $document->id) }}?v={{ $version->id }}&t={{ time() }}"
+                                    data-mime="{{ $version->mime_type ?? '' }}"
+                                    data-version="{{ $version->version_number }}">
+                                    <i data-lucide="eye" style="width: 14px;"></i> {{ __('Bu Sürümü Önizle') }}
+                                </button>
                                 <a href="{{ route('documents.download', $document->id) }}?v={{ $version->id }}"
                                     class="btn btn-sm btn-outline-primary" style="font-size: 0.8rem;">
-                                    <i data-lucide="download" style="width: 14px;"></i> {{ __('Bu Sürümü İndir') }}
+                                    <i data-lucide="download" style="width: 14px;"></i> {{ __('Bu Sürümü Yazdır') }}
                                 </a>
 
                                 {{-- GÜVENLİK KALKANI: GÜNCELLEME YETKİSİ --}}
@@ -1537,8 +1561,8 @@
                                     <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;">
                                         <a href="{{ route('documents.document-attachments.download', $attachment->id) }}"
                                             class="btn btn-sm btn-outline-primary" style="padding: 6px 12px;"
-                                            title="{{ __('İndir (Güncel Versiyon)') }}">
-                                            <i data-lucide="download" style="width: 16px;"></i> İndir
+                                            title="{{ __('Yazdır (Güncel Versiyon)') }}">
+                                            <i data-lucide="download" style="width: 16px;"></i> Yazdır
                                         </a>
 
                                         <button type="button" class="btn btn-sm btn-outline-secondary"
@@ -1619,7 +1643,7 @@
                                                 </div>
                                                 <div style="display: flex; gap: 8px;">
                                                     <a href="{{ route('documents.document-attachments.download', $attachment->id) }}?v={{ $ver->id }}"
-                                                        class="btn btn-sm btn-outline-secondary" title="İndir">
+                                                        class="btn btn-sm btn-outline-secondary" title="Yazdır">
                                                         <i data-lucide="download" style="width: 14px;"></i>
                                                     </a>
                                                     @can('manageAttachment', [$document, $attachment])
@@ -2113,6 +2137,28 @@
                     <i data-lucide="upload-cloud" style="width: 18px;"></i> {{ __('Yeni Versiyon Olarak Yükle') }}
                 </button>
             </form>
+        </div>
+    </div>
+    {{-- VERSİYON ÖNİZLEME MODALI (TEK MODAL - DİNAMİK İÇERİK) --}}
+    <div id="previewVersionModal" class="modal-overlay"
+        style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 9999; justify-content: center; align-items: center; padding: 20px;">
+        <div class="modal-content"
+            style="background: #fff; padding: 20px; border-radius: 12px; width: 100%; max-width: 1000px; height: 90vh; display: flex; flex-direction: column; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
+
+            <div
+                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid var(--border-color);">
+                <h2 style="font-size: 1.25rem; display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="eye" style="color: var(--primary-color);"></i>
+                    <span id="previewVersionTitle">{{ __('Versiyon Önizlemesi') }}</span>
+                </h2>
+                <button type="button" class="close-modal" onclick="closePreviewVersionModal()"
+                    style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted);">&times;</button>
+            </div>
+
+            {{-- Dinamik JS İçeriği Buraya Basılacak --}}
+            <div id="previewVersionContent"
+                style="flex: 1; background: #f8fafc; border-radius: 8px; border: 1px solid var(--border-color); overflow: hidden; display: flex; align-items: center; justify-content: center;">
+            </div>
         </div>
     </div>
 @endsection
@@ -2938,6 +2984,64 @@
 
             // Sınıfı başlat
             new DocumentAssistantChat({{ $document->id }}, '{{ csrf_token() }}');
+            // --- DİNAMİK VERSİYON ÖNİZLEME MODALI KONTROLÜ ---
+            const previewVersionModal = document.getElementById('previewVersionModal');
+            const previewVersionContent = document.getElementById('previewVersionContent');
+            const previewVersionTitle = document.getElementById('previewVersionTitle');
+
+            // Modal Kapatma (Hem butondan hem dışarı tıklayarak)
+            window.closePreviewVersionModal = function() {
+                if(previewVersionModal) {
+                    previewVersionModal.style.display = 'none';
+                    previewVersionContent.innerHTML = ''; // İframe memory leak'i ve arkada ses çalmasını engeller
+                }
+            };
+
+            if (previewVersionModal) {
+                previewVersionModal.addEventListener('click', (e) => {
+                    if (e.target === previewVersionModal) closePreviewVersionModal();
+                });
+            }
+
+            // Tıklanan versiyona göre modalı doldur ve aç
+            document.querySelectorAll('.btn-preview-version').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    const url = this.getAttribute('data-url');
+                    const mime = this.getAttribute('data-mime').toLowerCase();
+                    const versionStr = this.getAttribute('data-version');
+
+                    // Başlığı Güncelle
+                    previewVersionTitle.textContent = `Versiyon v${versionStr} Önizlemesi`;
+
+                    // İçeriği MIME Tipine Göre Oluştur (Mevcut tab-preview ile aynı mantık)
+                    let contentHtml = '';
+
+                    if (mime.includes('pdf')) {
+                        contentHtml = `<iframe src="${url}#toolbar=0&navpanes=0&scrollbar=0&view=FitH" width="100%" height="100%" style="border: none; border-radius: 4px;"></iframe>`;
+                    } else if (mime.startsWith('image/')) {
+                        contentHtml = `<img src="${url}" alt="Versiyon v${versionStr}" style="max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">`;
+                    } else {
+                        // Önizlenemeyen formatlar için Fallback UI
+                        contentHtml = `
+                            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--text-muted); text-align: center;">
+                                <i data-lucide="file-x" style="width: 48px; height: 48px; margin-bottom: 15px; opacity: 0.5;"></i>
+                                <p>{{ __('Bu dosya formatı') }} (${mime || 'Bilinmiyor'}) {{ __('tarayıcıda önizlenemez.') }}</p>
+                                <a href="${url}&download=1" class="btn btn-primary mt-15">
+                                    <i data-lucide="download" style="width: 16px; margin-right: 5px;"></i>
+                                    {{ __('Dosyayı Bilgisayara İndir') }}
+                                </a>
+                            </div>
+                        `;
+                    }
+
+                    // İçeriği Bas, Lucide İkonlarını Çiz ve Modalı Aç
+                    previewVersionContent.innerHTML = contentHtml;
+                    lucide.createIcons(); // Fallback HTML içindeki ikonları yükle
+                    previewVersionModal.style.display = 'flex';
+                });
+            });
         });
     </script>
 
@@ -3271,6 +3375,61 @@
         .ai-tooltip.show {
             opacity: 1;
             transform: translateY(-50%) translateX(15px);
+        }
+
+        /* --- YENİ EKLENEN KÜNYE (SHINY BADGE) CSS KODLARI --- */
+        .shiny-doc-badge {
+            display: inline-flex;
+            align-items: center;
+            /* Mavi, Lacivert ve Mor tonlarında yanardöner geçiş */
+            background: linear-gradient(110deg, #1e3a8a, #4338ca, #6d28d9, #3b82f6, #1e3a8a);
+            background-size: 300% 100%;
+            animation: badgeShine 4s linear infinite;
+            color: #ffffff;
+            padding: 6px 16px;
+            border-radius: 50px;
+            /* Şık hap görünümü */
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-bottom: 12px;
+            /* Kurumsal yapıyı bozmayan ama derinlik katan gölge ve iç parlama (inset) */
+            box-shadow: 0 4px 15px -3px rgba(79, 70, 229, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            letter-spacing: 0.3px;
+        }
+
+        .shiny-doc-badge .badge-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Versiyon numarasını özellikle vurguluyoruz */
+        .shiny-doc-badge .badge-version {
+            font-weight: 800;
+            font-size: 0.95rem;
+            color: #f8fafc;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Bilgiler arası şık nokta ayırıcı */
+        .shiny-doc-badge .badge-divider {
+            width: 4px;
+            height: 4px;
+            background-color: rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            margin: 0 12px;
+        }
+
+        /* Arkaplanın kayarak parlamasını sağlayan animasyon */
+        @keyframes badgeShine {
+            0% {
+                background-position: 100% 0;
+            }
+
+            100% {
+                background-position: -200% 0;
+            }
         }
     </style>
 @endpush

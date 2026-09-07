@@ -22,38 +22,53 @@ class UserSyncService
      */
     public function sync(): int
     {
-        // Ne olur ne olmaz diye PHP'nin zaman sınırını 5 dakikaya çıkarıyoruz (Büyük veriler için güvenlik önlemi)
         set_time_limit(300);
 
         $users = $this->mysApi->getAllUsers();
         $syncedCount = 0;
-
-        // Bcrypt darboğazını aşmak için: Şifreyi döngü dışında SADECE BİR KEZ hashliyoruz.
         $dummyPassword = Hash::make(Str::random(16));
 
         DB::transaction(function () use ($users, &$syncedCount, $dummyPassword) {
             foreach ($users as $userData) {
-                // 1. Çöp kutusu (Soft Delete) dahil olmak üzere e-postayı bul, yoksa yeni oluştur
-                $user = User::withTrashed()->firstOrNew(['email' => $userData['email']]);
+                $user = null;
+                $incomingEmail = $userData['email'] ?? null;
+                $incomingTc = $userData['tc_no'] ?? null;
 
-                // 2. Eğer kullanıcı daha önceden DMS'den silinmişse, çöp kutusundan çıkar (Restore)
+                if (!$incomingEmail) continue;
+
+                // --- WORKFLOW PROJESİNDEKİ KUSURSUZ EŞLEŞTİRME MANTIĞI ---
+                
+                // 1. Önce e-posta ile bulmayı dene
+                $user = User::withTrashed()->where('email', $incomingEmail)->first();
+
+                // 2. E-posta ile bulunamadıysa (değişmiş olabilir), TC Kimlik No ile bulmayı dene
+                if (!$user && !empty($incomingTc)) {
+                    $user = User::withTrashed()->where('tc_no', $incomingTc)->first();
+                }
+
+                // 3. Hala bulunamadıysa, bu gerçekten yepyeni bir personeldir
+                if (!$user) {
+                    $user = new User();
+                    $user->password = $dummyPassword;
+                }
+
+                // --- BİLGİLERİ GÜNCELLE VE KAYDET ---
+                
                 if ($user->trashed()) {
                     $user->restore();
                 }
 
-                // 3. Bilgileri güncelle
                 $user->name = $userData['name'];
-                $user->department_id = $userData['department'] ? $userData['department']['id'] : null;
-                $user->is_active = $userData['is_active'];
-
-                // 4. Sadece veritabanına daha önce HİÇ girmemiş yepyeni biriyse şifre ataması yap
-                if (!$user->exists) {
-                    $user->password = $dummyPassword;
+                $user->email = $incomingEmail; // TC ile bulunmuşsa eski e-postayı yenisiyle ezer
+                $user->tc_no = $incomingTc;    // Gelecekteki eşleşmeler için DB'ye işler
+                $user->registration_no = $userData['registration_no'] ?? null;
+                $user->is_active = $userData['is_active'] ?? true;
+                
+                if (!empty($userData['department'])) {
+                    $user->department_id = $userData['department']['id'] ?? null;
                 }
 
-                // Kaydet
                 $user->save();
-                
                 $syncedCount++;
             }
         });

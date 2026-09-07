@@ -128,7 +128,7 @@
                                 <span id="file-name-display"
                                     style="font-size: 1.1rem; text-align: center;">{{ __('Dosyaları Seçin veya Buraya Sürükleyin') }}</span>
                                 <span
-                                    style="font-size: 0.85rem; color: #94a3b8; margin-top: 8px; text-align:center;">{{ __('Toplam Limit: 40MB | Her belge için ayrı bir veri kartı oluşturulacaktır. Toplu seçim için CTRL tuşuna basılı tutun VEYA dosyaları tek tek seçip listeye ekleyin.') }}</span>
+                                    style="font-size: 0.85rem; color: #94a3b8; margin-top: 8px; text-align:center;">{{ __('Toplam Limit: 40MB | Her belge için ayrı bir veri kartı oluşturulacaktır. Toplu seçim için CTRL tuşuna basılı tutun VEYA dosyaları tek tek seçip listeye ekleyin. Sisteme sadece PDF, Word, JPG, PNG ve HTML formatında belgeler yüklenebilir.') }}</span>
                             </label>
                         </div>
                     </div>
