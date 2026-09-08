@@ -40,7 +40,7 @@ class UserSyncService
 
                 // A. MYS'den gelen e-posta aslında TC numarası mı? (Örn: 42355231364@koksan.com)
                 $isIncomingTcEmail = preg_match('/^[0-9]{10,11}@/', $incomingEmail);
-                
+
                 // Eğer MYS tc_no'yu null gönderiyorsa ama e-postaya TC yazmışsa, onu akıllıca TC olarak kabul edelim
                 if ($isIncomingTcEmail && empty($incomingTc)) {
                     $incomingTc = explode('@', $incomingEmail)[0];
@@ -104,11 +104,11 @@ class UserSyncService
                 // Eğer MYS çöp bir TC e-postası (123@koksan) gönderiyorsa VE kullanıcının zaten düzgün bir e-postası (yusuf.dasgin@) varsa; 
                 // Asla düzgün e-postayı ezme!
                 $isExistingProperEmail = !empty($user->email) && !preg_match('/^[0-9]{10,11}@/', $user->email);
-                
+
                 if (!($isIncomingTcEmail && $isExistingProperEmail)) {
-                    $user->email = $incomingEmail; 
+                    $user->email = $incomingEmail;
                 }
-                
+
                 if (!empty($userData['department'])) {
                     $user->department_id = $userData['department']['id'] ?? null;
                 }
