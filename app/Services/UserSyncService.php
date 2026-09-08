@@ -28,7 +28,22 @@ class UserSyncService
         $syncedCount = 0;
         $dummyPassword = Hash::make(Str::random(16));
 
-        DB::transaction(function () use ($users, &$syncedCount, $dummyPassword) {
+        // 1. TÜM KULLANICILARI RAM'E AL (N+1 VE TÜRKÇE KARAKTER SORUNU İÇİN)
+        $localUsers = User::withTrashed()->get();
+        $usersByTc = $localUsers->keyBy('tc_no')->filter(fn($u, $k) => !empty($k));
+        $usersByEmail = $localUsers->keyBy('email');
+        
+        // 2. İSME GÖRE GRUPLA (HAYALET HESAPLARI GÖZARDI EDEREK)
+        $usersByName = $localUsers->filter(function ($u) {
+            // Arayüzden silinmiş ve merged/conflict yemiş hayalet kayıtlar isim eşleşmesini sabote etmesin
+            return !str_starts_with($u->email, 'merged_') && !str_starts_with($u->email, 'conflict_');
+        })->groupBy(function ($u) {
+            // PHP'nin kusursuz Türkçe karakter dönüştürücüsü
+            $name = str_replace(['İ', 'I'], ['i', 'ı'], $u->name);
+            return trim(mb_strtolower($name, 'UTF-8'));
+        });
+
+        DB::transaction(function () use ($users, &$syncedCount, $dummyPassword, $usersByTc, $usersByEmail, $usersByName) {
             foreach ($users as $userData) {
                 $user = null;
                 $incomingEmail = $userData['email'] ?? null;
@@ -38,33 +53,33 @@ class UserSyncService
 
                 if (!$incomingEmail) continue;
 
-                // A. MYS'den gelen e-posta aslında TC numarası mı? (Örn: 42355231364@koksan.com)
+                // A. MYS'den gelen e-posta aslında TC numarası mı?
                 $isIncomingTcEmail = preg_match('/^[0-9]{10,11}@/', $incomingEmail);
-
-                // Eğer MYS tc_no'yu null gönderiyorsa ama e-postaya TC yazmışsa, onu akıllıca TC olarak kabul edelim
                 if ($isIncomingTcEmail && empty($incomingTc)) {
                     $incomingTc = explode('@', $incomingEmail)[0];
                 }
 
                 // --- 1. AŞAMA: KESİN EŞLEŞTİRME (TC VEYA SİCİL NO) ---
-                if (!empty($incomingTc)) {
-                    $user = User::withTrashed()->where('tc_no', $incomingTc)->first();
-                }
-                if (!$user && !empty($incomingRegNo)) {
-                    $user = User::withTrashed()->where('registration_no', $incomingRegNo)->first();
+                if (!empty($incomingTc) && $usersByTc->has($incomingTc)) {
+                    $user = $usersByTc->get($incomingTc);
                 }
 
                 // --- 2. AŞAMA: E-POSTA İLE EŞLEŞTİRME ---
-                if (!$user && !empty($incomingEmail)) {
-                    $user = User::withTrashed()->where('email', $incomingEmail)->first();
+                if (!$user && !empty($incomingEmail) && $usersByEmail->has($incomingEmail)) {
+                    $user = $usersByEmail->get($incomingEmail);
                 }
 
-                // --- 3. AŞAMA: İSİM İLE SEZGİSEL EŞLEŞTİRME (WORKFLOW MANTIĞI) ---
-                // TC boşsa ve e-posta değişmişse son çare olarak isme bakar.
+                // --- 3. AŞAMA: İSİM İLE SEZGİSEL EŞLEŞTİRME (TÜRKÇE KARAKTER KALKANI) ---
                 if (!$user && !empty($incomingName)) {
-                    $potentialUsers = User::withTrashed()->where('name', $incomingName)->get();
-                    if ($potentialUsers->count() === 1) {
-                        $user = $potentialUsers->first();
+                    $normalizedIncomingName = str_replace(['İ', 'I'], ['i', 'ı'], $incomingName);
+                    $normalizedIncomingName = trim(mb_strtolower($normalizedIncomingName, 'UTF-8'));
+                    
+                    if ($usersByName->has($normalizedIncomingName)) {
+                        $potentialUsers = $usersByName->get($normalizedIncomingName);
+                        // Eğer bu isimde (hayaletler hariç) tam olarak 1 kişi varsa güvenle eşleştir
+                        if ($potentialUsers->count() === 1) {
+                            $user = $potentialUsers->first();
+                        }
                     }
                 }
 
@@ -104,11 +119,11 @@ class UserSyncService
                 // Eğer MYS çöp bir TC e-postası (123@koksan) gönderiyorsa VE kullanıcının zaten düzgün bir e-postası (yusuf.dasgin@) varsa; 
                 // Asla düzgün e-postayı ezme!
                 $isExistingProperEmail = !empty($user->email) && !preg_match('/^[0-9]{10,11}@/', $user->email);
-
+                
                 if (!($isIncomingTcEmail && $isExistingProperEmail)) {
-                    $user->email = $incomingEmail;
+                    $user->email = $incomingEmail; 
                 }
-
+                
                 if (!empty($userData['department'])) {
                     $user->department_id = $userData['department']['id'] ?? null;
                 }
