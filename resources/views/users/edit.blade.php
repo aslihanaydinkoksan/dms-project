@@ -35,7 +35,8 @@
 
                 {{-- SİSTEM VE VERİTABANI HATALARINI EKRANA BASTIRAN KOD --}}
                 @if (session('error'))
-                    <div class="alert alert-danger" style="background-color: #7f1d1d; color: #fef2f2; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                    <div class="alert alert-danger"
+                        style="background-color: #7f1d1d; color: #fef2f2; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
                         🚨 <strong>SİSTEM HATASI:</strong> {{ session('error') }}
                     </div>
                 @endif
@@ -63,7 +64,26 @@
                             <div class="form-error-text">{{ $message }}</div>
                         @enderror
                     </div>
+                    <div class="form-group">
+                        <label class="form-label">{{ __('TC Kimlik No') }}</label>
+                        <input type="text" name="tc_no" class="form-control @error('tc_no') is-invalid @enderror"
+                            value="{{ old('tc_no', $user->tc_no) }}" maxlength="11"
+                            placeholder="11 haneli TC Kimlik Numarası">
+                        @error('tc_no')
+                            <div class="form-error-text">{{ $message }}</div>
+                        @enderror
+                    </div>
 
+                    <div class="form-group">
+                        <label class="form-label">{{ __('Sicil No (Opsiyonel)') }}</label>
+                        <input type="text" name="registration_no"
+                            class="form-control @error('registration_no') is-invalid @enderror"
+                            value="{{ old('registration_no', $user->registration_no) }}"
+                            placeholder="Kurum içi sicil numarası">
+                        @error('registration_no')
+                            <div class="form-error-text">{{ $message }}</div>
+                        @enderror
+                    </div>
                     <div class="form-group">
                         <label class="form-label">
                             {{ __('Şifre') }}

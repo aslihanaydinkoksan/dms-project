@@ -59,6 +59,8 @@ class UserController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users',
+            'tc_no' => 'nullable|string|max:11|unique:users,tc_no',
+            'registration_no' => 'nullable|string|max:50|unique:users,registration_no',
             'password' => 'required|min:6',
             'department_id' => 'nullable|exists:departments,id',
             'roles' => 'required|array',

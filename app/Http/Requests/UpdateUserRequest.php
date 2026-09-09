@@ -18,6 +18,8 @@ class UpdateUserRequest extends FormRequest
             'name' => 'required|string|max:255',
             // Mevcut kullanıcının e-postasını unique kontrolünden muaf tutuyoruz
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($this->route('user'))],
+            'tc_no' => 'nullable|string|max:11|unique:users,tc_no,' . $this->route('user')->id,
+            'registration_no' => 'nullable|string|max:50|unique:users,registration_no,' . $this->route('user')->id,
             'password' => 'nullable|string|min:6', // Şifre boş bırakılırsa güncellenmez
             'department_id' => 'nullable|exists:departments,id',
             'is_active' => 'boolean',

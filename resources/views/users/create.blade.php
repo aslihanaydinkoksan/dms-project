@@ -42,7 +42,24 @@
                             <div class="form-error-text">{{ $message }}</div>
                         @enderror
                     </div>
+                    <div class="form-group">
+                        <label class="form-label">{{ __('TC Kimlik No') }}</label>
+                        <input type="text" name="tc_no" class="form-control @error('tc_no') is-invalid @enderror"
+                            value="{{ old('tc_no') }}" maxlength="11" placeholder="11 haneli TC Kimlik Numarası">
+                        @error('tc_no')
+                            <div class="form-error-text">{{ $message }}</div>
+                        @enderror
+                    </div>
 
+                    <div class="form-group">
+                        <label class="form-label">{{ __('Sicil No (Opsiyonel)') }}</label>
+                        <input type="text" name="registration_no"
+                            class="form-control @error('registration_no') is-invalid @enderror"
+                            value="{{ old('registration_no') }}" placeholder="Kurum içi sicil numarası">
+                        @error('registration_no')
+                            <div class="form-error-text">{{ $message }}</div>
+                        @enderror
+                    </div>
                     <div class="form-group">
                         <label class="form-label">{{ __('Geçici Şifre') }} <span class="text-danger">*</span></label>
                         <input type="password" name="password" class="form-control @error('password') is-invalid @enderror"

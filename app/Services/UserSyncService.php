@@ -24,113 +24,66 @@ class UserSyncService
     {
         set_time_limit(300);
 
-        $users = $this->mysApi->getAllUsers();
+        $centralUsers = $this->mysApi->getAllUsers();
         $syncedCount = 0;
         $dummyPassword = Hash::make(Str::random(16));
 
-        // 1. TÜM KULLANICILARI RAM'E AL (Editör için tip belirttik)
+        // WORKFLOW PROJESİ MANTIĞI: N+1 Koruması için veritabanını RAM'e (Memory) alıyoruz.
         /** @var \Illuminate\Database\Eloquent\Collection|User[] $localUsers */
         $localUsers = User::withTrashed()->get();
-
-        $usersByTc = $localUsers->keyBy('tc_no')->filter(fn($u, $k) => !empty($k));
         $usersByEmail = $localUsers->keyBy('email');
+        $usersByTc = $localUsers->keyBy('tc_no')->filter(fn($u, $k) => !empty($k));
 
-        // 2. İSME GÖRE GRUPLA (HAYALET HESAPLARI GÖZARDI EDEREK)
-        // Intelephense hatasını çözmek için $u değişkeninin User modeli olduğunu (User $u) olarak belirttik
-        $usersByName = $localUsers->filter(function (User $u) {
-            return !$u->trashed() && !str_starts_with($u->email ?? '', 'merged_') && !str_starts_with($u->email ?? '', 'conflict_');
-        })->groupBy(function (User $u) {
-            $name = str_replace(['İ', 'I'], ['i', 'ı'], $u->name);
-            return trim(mb_strtolower($name, 'UTF-8'));
-        });
+        DB::transaction(function () use ($centralUsers, &$syncedCount, $usersByEmail, $usersByTc, $dummyPassword) {
+            foreach ($centralUsers as $centralUser) {
+                if (empty($centralUser['email'])) continue;
 
-        DB::transaction(function () use ($users, &$syncedCount, $dummyPassword, $usersByTc, $usersByEmail, $usersByName) {
-            foreach ($users as $userData) {
-                
-                // Editöre $user değişkeninin User modeli veya null olabileceğini söylüyoruz
+                // MYS'nin boş gönderdiği TC'yi e-postanın içinden ayıklıyoruz
+                $incomingTc = $centralUser['tc_no'] ?? null;
+                if (empty($incomingTc) && preg_match('/^[0-9]{10,11}@/', $centralUser['email'])) {
+                    $incomingTc = explode('@', $centralUser['email'])[0];
+                }
+
+                // --- WORKFLOW EŞLEŞTİRME MANTIĞI ---
+                // Sadece E-Posta veya TC Numarasına bakar. (İsim benzerliği aramaz)
                 /** @var User|null $user */
-                $user = null;
+                $user = $usersByEmail->get($centralUser['email']) ?? 
+                        (!empty($incomingTc) ? $usersByTc->get($incomingTc) : null);
 
-                $incomingEmail = $userData['email'] ?? null;
-                $incomingName = $userData['name'] ?? null;
-                $incomingTc = $userData['tc_no'] ?? null;
-                $incomingRegNo = $userData['registration_no'] ?? null;
-
-                if (!$incomingEmail) continue;
-
-                // A. MYS'den gelen e-posta TC numarası mı?
-                $isIncomingTcEmail = preg_match('/^[0-9]{10,11}@/', $incomingEmail);
-                if ($isIncomingTcEmail && empty($incomingTc)) {
-                    $incomingTc = explode('@', $incomingEmail)[0];
-                }
-
-                // --- 1. AŞAMA: KESİN EŞLEŞTİRME ---
-                if (!empty($incomingTc) && $usersByTc->has($incomingTc)) {
-                    $user = $usersByTc->get($incomingTc);
-                }
-
-                // --- 2. AŞAMA: E-POSTA İLE EŞLEŞTİRME ---
-                if (!$user && !empty($incomingEmail) && $usersByEmail->has($incomingEmail)) {
-                    $user = $usersByEmail->get($incomingEmail);
-                }
-
-                // --- 3. AŞAMA: İSİM İLE EŞLEŞTİRME (ÇÖP KUTUSU HARİÇ) ---
-                if (!$user && !empty($incomingName)) {
-                    $normalizedIncomingName = str_replace(['İ', 'I'], ['i', 'ı'], $incomingName);
-                    $normalizedIncomingName = trim(mb_strtolower($normalizedIncomingName, 'UTF-8'));
-
-                    if ($usersByName->has($normalizedIncomingName)) {
-                        $potentialUsers = $usersByName->get($normalizedIncomingName);
-                        if ($potentialUsers->count() === 1) {
-                            $user = $potentialUsers->first();
-                        }
+                if ($user) {
+                    // 1. MEVCUT KULLANICIYI GÜNCELLE
+                    if ($user->trashed()) {
+                        $user->restore();
                     }
+
+                    // Asıl hesaptaki düzgün (isim.soyisim) e-postanın, rakamlı çöp e-postayla ezilmesini engelle
+                    $newEmail = $centralUser['email'];
+                    if (preg_match('/^[0-9]{10,11}@/', $newEmail) && !preg_match('/^[0-9]{10,11}@/', $user->email ?? '')) {
+                        $newEmail = $user->email; 
+                    }
+
+                    $user->update([
+                        'tc_no'           => $incomingTc ?? $user->tc_no,
+                        'registration_no' => $centralUser['registration_no'] ?? $user->registration_no,
+                        'name'            => $centralUser['name'],
+                        'email'           => $newEmail,
+                        'is_active'       => $centralUser['is_active'] ?? true,
+                        'department_id'   => $centralUser['department']['id'] ?? $user->department_id,
+                    ]);
+                    $syncedCount++;
+                } else {
+                    // 2. YENİ KULLANICI EKLE
+                    User::create([
+                        'name'            => $centralUser['name'],
+                        'email'           => $centralUser['email'],
+                        'password'        => $dummyPassword,
+                        'tc_no'           => $incomingTc,
+                        'registration_no' => $centralUser['registration_no'] ?? null,
+                        'is_active'       => $centralUser['is_active'] ?? true,
+                        'department_id'   => $centralUser['department']['id'] ?? null,
+                    ]);
+                    $syncedCount++;
                 }
-
-                // --- 4. AŞAMA: YENİ KAYIT ---
-                if (!$user) {
-                    $user = new User();
-                    $user->password = $dummyPassword;
-                }
-
-                // --- ÇAKIŞMA ÇÖZÜCÜ ---
-                if (!empty($incomingTc) && $user->tc_no !== $incomingTc) {
-                    $conflictTcUser = User::withTrashed()->where('tc_no', $incomingTc)->where('id', '!=', $user->id)->first();
-                    if ($conflictTcUser) $conflictTcUser->update(['tc_no' => null]);
-                }
-
-                if (!empty($incomingRegNo) && $user->registration_no !== $incomingRegNo) {
-                    $conflictRegUser = User::withTrashed()->where('registration_no', $incomingRegNo)->where('id', '!=', $user->id)->first();
-                    if ($conflictRegUser) $conflictRegUser->update(['registration_no' => null]);
-                }
-
-                if (!empty($incomingEmail) && $user->email !== $incomingEmail) {
-                    $conflictEmailUser = User::withTrashed()->where('email', $incomingEmail)->where('id', '!=', $user->id)->first();
-                    if ($conflictEmailUser) $conflictEmailUser->update(['email' => 'conflict_' . time() . '_' . $conflictEmailUser->email]);
-                }
-
-                // --- BİLGİLERİ GÜNCELLE ---
-                if ($user->trashed()) {
-                    $user->restore();
-                }
-
-                $user->name = $incomingName;
-                $user->tc_no = $incomingTc;
-                $user->registration_no = $incomingRegNo;
-                $user->is_active = $userData['is_active'] ?? true;
-
-                // E-POSTA KALKANI
-                $isExistingProperEmail = !empty($user->email) && !preg_match('/^[0-9]{10,11}@/', $user->email);
-                if (!($isIncomingTcEmail && $isExistingProperEmail)) {
-                    $user->email = $incomingEmail;
-                }
-
-                if (!empty($userData['department'])) {
-                    $user->department_id = $userData['department']['id'] ?? null;
-                }
-
-                $user->save();
-                $syncedCount++;
             }
         });
 
