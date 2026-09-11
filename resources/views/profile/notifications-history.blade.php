@@ -43,7 +43,15 @@
                         style="align-items: center; gap: 15px; text-decoration: none; color: inherit; flex: 1;">
                         <div class="icon-box"
                             style="font-size: 1.8rem; background: #f8fafc; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; border-radius: 10px;">
-                            {{ $notification->data['icon'] ?? '🔔' }}
+                            @php
+                                $iconStr = $notification->data['icon'] ?? '🔔';
+                                $isLucide = preg_match('/^[a-z\-]+$/', $iconStr);
+                            @endphp
+                            @if($isLucide)
+                                <i data-lucide="{{ $iconStr }}" style="width: 24px; height: 24px; color: var(--primary-color);"></i>
+                            @else
+                                <span>{{ $iconStr }}</span>
+                            @endif
                         </div>
                         <div class="content-box">
                             <h4

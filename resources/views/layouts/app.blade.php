@@ -387,7 +387,17 @@
                                 <div class="dropdown-body">
                                     @forelse(auth()->user()->notifications()->limit(5)->get() as $notification)
                                         <a href="{{ route('notifications.read', $notification->id) }}" class="notification-item {{ is_null($notification->read_at) ? 'unread' : '' }}" style="text-decoration: none; color: inherit;">
-                                            <div class="notif-icon"><i data-lucide="{{ $notification->data['icon'] ?? 'info' }}"></i></div>
+                                            @php
+                                                $iconStr = $notification->data['icon'] ?? 'info';
+                                                $isLucide = preg_match('/^[a-z\-]+$/', $iconStr);
+                                            @endphp
+                                            <div class="notif-icon" style="display: flex; align-items: center; justify-content: center;">
+                                                @if($isLucide)
+                                                    <i data-lucide="{{ $iconStr }}"></i>
+                                                @else
+                                                    <span style="font-size: 1.2rem; line-height: 1;">{{ $iconStr }}</span>
+                                                @endif
+                                            </div>
                                             <div class="notification-content">
                                                 <div class="notif-title">{{ __($notification->data['title'] ?? 'Bildirim') }}</div>
                                                 <div class="notif-desc">{{ __($notification->data['message'] ?? '') }}</div>

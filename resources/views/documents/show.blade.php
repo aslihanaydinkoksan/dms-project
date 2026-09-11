@@ -2320,7 +2320,9 @@
                 document.getElementById('diffLoadingSpinner').style.display = 'flex';
                 switchDiffMode('text');
                 
-                let url = `/documents/${documentId}/compare/${versionId}`;
+                // Alt klasör mimarisi destekli URL oluşturma
+                let baseUrl = '{{ url('/documents') }}';
+                let url = `${baseUrl}/${documentId}/compare/${versionId}`;
                 if (targetVersionId) {
                     url += `?target_version=${targetVersionId}`;
                 }
