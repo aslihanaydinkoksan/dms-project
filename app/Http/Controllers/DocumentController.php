@@ -798,4 +798,36 @@ class DocumentController extends Controller
             return back()->with('error', $e->getMessage());
         }
     }
+    /**
+     * İki versiyonu karşılaştırıp sonucu döner.
+     */
+    public function compareVersions(Request $request, Document $document, \App\Models\DocumentVersion $version)
+    {
+        Gate::authorize('view', $document);
+
+        try {
+            $targetVersionId = $request->query('target_version');
+            $targetVersion = $targetVersionId ? $document->versions()->find($targetVersionId) : $document->currentVersion;
+
+            if (!$targetVersion) {
+                throw new \Exception("Hedef versiyon bulunamadı.");
+            }
+
+            $compareService = app(\App\Services\DocumentCompareService::class);
+            
+            // Versiyon numarasına göre sırala (eski versiyon solda, yeni versiyon sağda gösterilsin)
+            $oldVersion = $version->version_number < $targetVersion->version_number ? $version : $targetVersion;
+            $newVersion = $version->version_number > $targetVersion->version_number ? $version : $targetVersion;
+
+            if ($oldVersion->id === $newVersion->id) {
+                throw new \Exception("Aynı versiyonlar karşılaştırılamaz.");
+            }
+
+            $result = $compareService->compare($document, $oldVersion, $newVersion);
+            return response()->json($result);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Diff Viewer Hatası: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
+        }
+    }
 }

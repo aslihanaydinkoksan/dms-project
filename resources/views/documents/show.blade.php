@@ -314,6 +314,7 @@
                     $mimeType = $document->currentVersion->mime_type ?? '';
                     $isPdf = str_contains($mimeType, 'pdf');
                     $isImage = str_starts_with($mimeType, 'image/');
+                    $isWord = str_contains($mimeType, 'word') || str_contains($mimeType, 'officedocument.wordprocessingml');
                 @endphp
 
                 @if ($document->currentVersion)
@@ -329,6 +330,40 @@
                                 alt="{{ $document->title }}"
                                 style="max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
                         </div>
+                    @elseif ($isWord)
+                        <div id="docx-preview-container" style="width: 100%; height: 100%; overflow: auto; background: #fff; border-radius: 4px; padding: 20px;">
+                            <div style="display: flex; justify-content: center; align-items: center; height: 100%; color: var(--text-muted);" id="docx-loading">
+                                <i data-lucide="loader" class="spin" style="width: 24px; margin-right: 10px; animation: spin 1s linear infinite;"></i> {{ __('Word belgesi yükleniyor...') }}
+                            </div>
+                        </div>
+                        @push('scripts')
+                            <script src="https://unpkg.com/jszip/dist/jszip.min.js"></script>
+                            <script src="https://unpkg.com/docx-preview/dist/docx-preview.min.js"></script>
+                            <script>
+                                document.addEventListener('DOMContentLoaded', function() {
+                                    const docxUrl = "{{ route('documents.download', $document->id) }}?v={{ $document->currentVersion?->id }}&t={{ time() }}";
+                                    fetch(docxUrl)
+                                        .then(response => {
+                                            if(!response.ok) throw new Error("Ağ hatası");
+                                            return response.blob();
+                                        })
+                                        .then(blob => {
+                                            const container = document.getElementById("docx-preview-container");
+                                            document.getElementById('docx-loading').style.display = 'none';
+                                            
+                                            // docx-preview yalnızca docx destekler. Eski doc dosyaları render edilemeyebilir, ama dener.
+                                            docx.renderAsync(blob, container)
+                                                .catch(e => {
+                                                    container.innerHTML = '<div style="padding:20px; color:var(--danger-color); display:flex; flex-direction:column; align-items:center;"><i data-lucide="file-x" style="width:48px;height:48px;margin-bottom:15px;opacity:0.5;"></i><p>Bu Word belgesi (.doc veya karmaşık formatlı) önizlenemedi.</p><a href="' + docxUrl + '&download=1" class="btn btn-primary mt-15"><i data-lucide="download" style="width: 16px; margin-right: 5px;"></i>Dosyayı Bilgisayara Yazdır</a></div>';
+                                                    lucide.createIcons();
+                                                });
+                                        })
+                                        .catch(e => {
+                                             document.getElementById('docx-loading').innerHTML = 'Dosya yüklenirken hata oluştu.';
+                                        });
+                                });
+                            </script>
+                        @endpush
                     @else
                         <div
                             style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--text-muted);">
@@ -670,6 +705,23 @@
                                     data-version="{{ $version->version_number }}">
                                     <i data-lucide="eye" style="width: 14px;"></i> {{ __('Bu Sürümü Önizle') }}
                                 </button>
+                                
+                                @if($document->versions->count() > 1)
+                                <div style="display: inline-flex; align-items: center; gap: 5px;">
+                                    <select id="compareTarget_{{ $version->id }}" style="font-size: 0.8rem; padding: 4px 8px; height: 31px; border-radius: 4px; border: 1px solid var(--border-color); width: auto; background-color: #fff; color: var(--text-color);">
+                                        @foreach($document->versions->sortByDesc('created_at') as $v)
+                                            @if($v->id !== $version->id)
+                                                <option value="{{ $v->id }}" {{ $v->is_current ? 'selected' : '' }}>v{{ $v->version_number }} {{ $v->is_current ? '(Güncel)' : '' }}</option>
+                                            @endif
+                                        @endforeach
+                                    </select>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" style="font-size: 0.8rem;"
+                                        onclick="openDiffModal({{ $document->id }}, {{ $version->id }}, document.getElementById('compareTarget_{{ $version->id }}').value)">
+                                        <i data-lucide="git-compare" style="width: 14px;"></i> {{ __('Karşılaştır') }}
+                                    </button>
+                                </div>
+                                @endif
+                                
                                 <a href="{{ route('documents.download', $document->id) }}?v={{ $version->id }}"
                                     class="btn btn-sm btn-outline-primary" style="font-size: 0.8rem;">
                                     <i data-lucide="download" style="width: 14px;"></i> {{ __('Bu Sürümü Yazdır') }}
@@ -2161,14 +2213,334 @@
             </div>
         </div>
     </div>
+
+    {{-- DİFF VIEWER MODAL --}}
+    <div id="diffViewerModal" class="modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9999; justify-content: center; align-items: center; padding: 20px;">
+        <div class="modal-content" style="background: #fff; padding: 0; border-radius: 12px; width: 100%; height: 100%; max-width: 1600px; display: flex; flex-direction: column; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); overflow: hidden;">
+            <div class="modal-header flex-between" style="padding: 20px 25px; border-bottom: 1px solid var(--border-color); background: #f8fafc;">
+                <h3 style="margin: 0; font-size: 1.25rem; display: flex; align-items: center; gap: 10px; color: var(--primary-color);">
+                    <i data-lucide="git-compare" style="width: 24px; height: 24px;"></i>
+                    {{ __('Versiyon Karşılaştırma (Diff Viewer)') }}
+                </h3>
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <div class="btn-group" role="group" style="display: flex; gap: 5px; background: #e2e8f0; padding: 4px; border-radius: 8px;">
+                        <button type="button" id="btnDiffText" class="btn btn-sm btn-primary" onclick="switchDiffMode('text')" style="border: none; border-radius: 6px; padding: 8px 16px;">
+                            <i data-lucide="file-text" style="width: 16px;"></i> Metin Modu
+                        </button>
+                        <button type="button" id="btnDiffVisual" class="btn btn-sm btn-outline-secondary" onclick="switchDiffMode('visual')" style="border: none; border-radius: 6px; padding: 8px 16px; color: #475569;">
+                            <i data-lucide="image" style="width: 16px;"></i> Görsel Mod
+                        </button>
+                    </div>
+                    <button type="button" onclick="closeDiffModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); padding: 0; display: flex; align-items: center;">&times;</button>
+                </div>
+            </div>
+            
+            <div id="diffToolbarVisual" style="display: none; padding: 15px 25px; border-bottom: 1px solid var(--border-color); background: #fff; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02); z-index: 10;">
+                <button type="button" id="btnToggleVisualDiff" class="btn btn-primary" onclick="toggleVisualOverlay()" style="display: none; transition: all 0.3s; box-shadow: 0 4px 6px -1px rgba(37,99,235,0.2);">
+                    <i data-lucide="layers" style="width: 18px; margin-right: 8px;"></i> <span id="toggleVisualText">Farkları İşaretle</span>
+                </button>
+            </div>
+
+            <div id="diffLoadingSpinner" style="display: none; position: absolute; inset: 0; background: rgba(255,255,255,0.8); z-index: 50; align-items: center; justify-content: center; flex-direction: column; gap: 15px;">
+                <i data-lucide="loader" class="spin" style="width: 48px; height: 48px; color: var(--primary-color); animation: spin 1s linear infinite;"></i>
+                <span style="font-weight: 500; color: var(--text-color); font-size: 1.1rem;">Karşılaştırma İşleniyor...</span>
+            </div>
+
+            <div class="modal-body" style="flex: 1; overflow: hidden; padding: 0; background: #f1f5f9; position: relative;">
+                {{-- TEXT DIFF CONTAINER --}}
+                <div id="diffTextContainer" style="height: 100%; overflow: auto; padding: 20px; background: #fff;"></div>
+                
+                {{-- VISUAL DIFF CONTAINER --}}
+                <div id="diffVisualContainer" style="display: none; height: 100%; flex-direction: column;">
+                    <div id="visualDiffError" style="display: none; color: var(--danger-color); padding: 20px; text-align: center; background: #fee2e2; margin: 20px; border-radius: 8px; border: 1px solid #fecaca;"></div>
+                    <div style="flex: 1; display: flex; gap: 2px; overflow: hidden; height: 100%; background: var(--border-color);">
+                        <!-- Left Side: Old -->
+                        <div style="flex: 1; display: flex; flex-direction: column; background: #fff; overflow: hidden;">
+                            <div style="background: #f8fafc; padding: 12px; border-bottom: 1px solid var(--border-color); text-align: center; font-weight: 600; color: var(--text-color); box-shadow: 0 2px 4px rgba(0,0,0,0.02); z-index: 10;">Eski Versiyon</div>
+                            <div id="visualDiffOld" style="flex: 1; overflow: auto; padding: 20px; text-align: center; background: #e2e8f0;">
+                                <div id="visualDiffOldContent" style="display: inline-block; position: relative;"></div>
+                            </div>
+                        </div>
+                        <!-- Right Side: New -->
+                        <div style="flex: 1; display: flex; flex-direction: column; background: #fff; overflow: hidden;">
+                            <div style="background: #f8fafc; padding: 12px; border-bottom: 1px solid var(--border-color); text-align: center; font-weight: 600; color: var(--success-color); box-shadow: 0 2px 4px rgba(0,0,0,0.02); z-index: 10;">Güncel Versiyon</div>
+                            <div id="visualDiffNew" style="flex: 1; overflow: auto; padding: 20px; text-align: center; background: #e2e8f0;">
+                                <div id="visualDiffNewContent" style="display: inline-block; position: relative;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <canvas id="pdfCanvasOld" style="display: none;"></canvas>
+                    <canvas id="pdfCanvasNew" style="display: none;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @push('scripts')
+    <style>
+        /* Text Diff (Side-by-Side) Metin Kaydırma (Wrap) Çözümü */
+        .d2h-file-diff {
+            overflow-y: hidden;
+        }
+        .d2h-code-line-ctn {
+            white-space: pre-wrap !important;
+            word-wrap: break-word !important;
+        }
+        .d2h-code-line {
+            white-space: pre-wrap !important;
+        }
+    </style>
+    <!-- Diff2Html CSS -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/diff2html/bundles/css/diff2html.min.css" />
+    <!-- Diff2Html JS -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/diff2html/bundles/js/diff2html-ui.min.js"></script>
+    <!-- Resemble.js -->
+    <script src="https://cdn.jsdelivr.net/npm/resemblejs@4.1.0/resemble.js"></script>
+    <!-- PDF.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // --- LUCIDE İKONLARI ---
             lucide.createIcons();
+
+            // --- DIFF VIEWER SCRIPTS ---
+            window.diffData = null;
+            window.currentDiffFormat = 'side-by-side';
+            
+            window.openDiffModal = function(documentId, versionId, targetVersionId = null) {
+                document.getElementById('diffViewerModal').style.display = 'flex';
+                document.getElementById('diffTextContainer').innerHTML = '';
+                document.getElementById('visualDiffOldContent').innerHTML = '';
+                document.getElementById('visualDiffNewContent').innerHTML = '';
+                document.getElementById('btnToggleVisualDiff').style.display = 'none';
+                document.getElementById('visualDiffError').style.display = 'none';
+                document.getElementById('diffLoadingSpinner').style.display = 'flex';
+                switchDiffMode('text');
+                
+                let url = `/documents/${documentId}/compare/${versionId}`;
+                if (targetVersionId) {
+                    url += `?target_version=${targetVersionId}`;
+                }
+                
+                fetch(url)
+                    .then(response => response.json())
+                    .then(data => {
+                        document.getElementById('diffLoadingSpinner').style.display = 'none';
+                        if(data.success) {
+                            window.diffData = data;
+                            renderTextDiff(data.text_diff);
+                        } else {
+                            document.getElementById('diffTextContainer').innerHTML = `<div class="alert alert-danger" style="margin: 20px;">${data.message || 'Karşılaştırma sırasında bir hata oluştu.'}</div>`;
+                        }
+                    })
+                    .catch(err => {
+                        document.getElementById('diffLoadingSpinner').style.display = 'none';
+                        document.getElementById('diffTextContainer').innerHTML = `<div class="alert alert-danger" style="margin: 20px;">Sunucu ile iletişim kurulamadı.</div>`;
+                        console.error(err);
+                    });
+            };
+            
+            window.closeDiffModal = function() {
+                document.getElementById('diffViewerModal').style.display = 'none';
+                window.diffData = null;
+            };
+            
+            window.switchDiffMode = function(mode) {
+                if(mode === 'text') {
+                    document.getElementById('btnDiffText').className = 'btn btn-sm btn-primary';
+                    document.getElementById('btnDiffText').style.color = '#fff';
+                    document.getElementById('btnDiffText').style.background = 'var(--primary-color)';
+                    document.getElementById('btnDiffVisual').className = 'btn btn-sm btn-outline-secondary';
+                    document.getElementById('btnDiffVisual').style.color = '#475569';
+                    document.getElementById('btnDiffVisual').style.background = 'transparent';
+                    
+                    document.getElementById('diffTextContainer').style.display = 'block';
+                    document.getElementById('diffVisualContainer').style.display = 'none';
+                    document.getElementById('diffToolbarVisual').style.display = 'none';
+                } else {
+                    document.getElementById('btnDiffText').className = 'btn btn-sm btn-outline-secondary';
+                    document.getElementById('btnDiffText').style.color = '#475569';
+                    document.getElementById('btnDiffText').style.background = 'transparent';
+                    document.getElementById('btnDiffVisual').className = 'btn btn-sm btn-primary';
+                    document.getElementById('btnDiffVisual').style.color = '#fff';
+                    document.getElementById('btnDiffVisual').style.background = 'var(--primary-color)';
+                    
+                    document.getElementById('diffTextContainer').style.display = 'none';
+                    document.getElementById('diffVisualContainer').style.display = 'flex';
+                    document.getElementById('diffToolbarVisual').style.display = 'flex';
+                    
+                    if(window.diffData && document.getElementById('visualDiffOldContent').innerHTML === '') {
+                        renderVisualDiff(window.diffData.visual_diff.old_file_url, window.diffData.visual_diff.new_file_url, window.diffData.extension);
+                    }
+                }
+            };
+            
+            // --- PERFECT SYNCHRONIZED SCROLLING ---
+            const oldScroll = document.getElementById('visualDiffOld');
+            const newScroll = document.getElementById('visualDiffNew');
+            
+            let isSyncingLeft = false;
+            let isSyncingRight = false;
+            
+            if (oldScroll && newScroll) {
+                oldScroll.addEventListener('scroll', function(e) {
+                    if (!isSyncingLeft) {
+                        isSyncingRight = true;
+                        const maxScrollY = oldScroll.scrollHeight - oldScroll.clientHeight;
+                        const maxScrollX = oldScroll.scrollWidth - oldScroll.clientWidth;
+                        
+                        if (maxScrollY > 0) {
+                            const percentY = oldScroll.scrollTop / maxScrollY;
+                            newScroll.scrollTop = percentY * (newScroll.scrollHeight - newScroll.clientHeight);
+                        }
+                        if (maxScrollX > 0) {
+                            const percentX = oldScroll.scrollLeft / maxScrollX;
+                            newScroll.scrollLeft = percentX * (newScroll.scrollWidth - newScroll.clientWidth);
+                        }
+                    }
+                    isSyncingLeft = false;
+                });
+                
+                newScroll.addEventListener('scroll', function(e) {
+                    if (!isSyncingRight) {
+                        isSyncingLeft = true;
+                        const maxScrollY = newScroll.scrollHeight - newScroll.clientHeight;
+                        const maxScrollX = newScroll.scrollWidth - newScroll.clientWidth;
+                        
+                        if (maxScrollY > 0) {
+                            const percentY = newScroll.scrollTop / maxScrollY;
+                            oldScroll.scrollTop = percentY * (oldScroll.scrollHeight - oldScroll.clientHeight);
+                        }
+                        if (maxScrollX > 0) {
+                            const percentX = newScroll.scrollLeft / maxScrollX;
+                            oldScroll.scrollLeft = percentX * (oldScroll.scrollWidth - oldScroll.clientWidth);
+                        }
+                    }
+                    isSyncingRight = false;
+                });
+            }
+
+            window.visualOverlayVisible = false;
+            
+            window.toggleVisualOverlay = function() {
+                window.visualOverlayVisible = !window.visualOverlayVisible;
+                const overlay = document.getElementById('visualDiffOverlayImage');
+                const btn = document.getElementById('btnToggleVisualDiff');
+                const btnText = document.getElementById('toggleVisualText');
+                if (overlay) {
+                    if (window.visualOverlayVisible) {
+                        overlay.style.display = 'block';
+                        btn.classList.replace('btn-primary', 'btn-success');
+                        btnText.innerText = 'Farkları Gizle';
+                    } else {
+                        overlay.style.display = 'none';
+                        btn.classList.replace('btn-success', 'btn-primary');
+                        btnText.innerText = 'Farkları İşaretle';
+                    }
+                }
+            };
+            
+            function renderTextDiff(diffString) {
+                if (!diffString || diffString.trim() === '') {
+                    document.getElementById('diffTextContainer').innerHTML = '<div class="alert alert-info" style="margin: 20px;">Metin karşılaştırması için sonuç bulunamadı veya dosyalar tamamen aynı.</div>';
+                    return;
+                }
+                var targetElement = document.getElementById('diffTextContainer');
+                
+                // Kurumsal Standartlar - Side by Side ve Kelime Eşleştirme (Inline asla gösterilmeyecek)
+                var configuration = { 
+                    drawFileList: false, 
+                    fileListToggle: false, 
+                    fileListStartVisible: false, 
+                    fileContentToggle: false, 
+                    matching: 'words', 
+                    outputFormat: 'side-by-side', // GitHub stili bölünmüş ekran
+                    synchronisedScroll: true, 
+                    highlight: true, 
+                    renderNothingWhenEmpty: false,
+                    diffStyle: 'word' // Daha pürüzsüz kelime farklılıkları
+                };
+                
+                var diff2htmlUi = new Diff2HtmlUI(targetElement, diffString, configuration);
+                diff2htmlUi.draw();
+                diff2htmlUi.highlightCode();
+            }
+            
+            async function renderVisualDiff(oldUrl, newUrl, extension) {
+                if(extension !== 'pdf') {
+                    document.getElementById('visualDiffError').style.display = 'block';
+                    document.getElementById('visualDiffError').innerText = 'Görsel karşılaştırma (Visual Diff) sadece PDF formatında desteklenmektedir.';
+                    return;
+                }
+                document.getElementById('diffLoadingSpinner').style.display = 'flex';
+                try {
+                    // Configure PDF.js worker
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+                    
+                    const renderPageToCanvas = async (url, canvasId) => {
+                        const loadingTask = pdfjsLib.getDocument(url);
+                        const pdf = await loadingTask.promise;
+                        const page = await pdf.getPage(1); // İlk sayfayı al
+                        const scale = 1.5;
+                        const viewport = page.getViewport({ scale: scale });
+                        const canvas = document.getElementById(canvasId);
+                        const context = canvas.getContext('2d');
+                        canvas.height = viewport.height;
+                        canvas.width = viewport.width;
+                        
+                        // Arka planı beyaz yap (şeffaf PDF'lerde devasa fark hatalarını önlemek için)
+                        context.fillStyle = "white";
+                        context.fillRect(0, 0, canvas.width, canvas.height);
+                        
+                        const renderContext = { canvasContext: context, viewport: viewport };
+                        await page.render(renderContext).promise;
+                        return canvas.toDataURL();
+                    };
+                    
+                    const oldDataUrl = await renderPageToCanvas(oldUrl, 'pdfCanvasOld');
+                    const newDataUrl = await renderPageToCanvas(newUrl, 'pdfCanvasNew');
+                    
+                    const oldContent = document.getElementById('visualDiffOldContent');
+                    const newContent = document.getElementById('visualDiffNewContent');
+                    
+                    const paperStyle = 'max-width: 100%; display: block; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); border-radius: 4px;';
+                    
+                    oldContent.innerHTML = `<img src="${oldDataUrl}" style="${paperStyle}" />`;
+                    
+                    // Görsel farklılıkta tam ölçülü senkronize overlay inşa edildi
+                    newContent.innerHTML = `<img src="${newDataUrl}" style="${paperStyle}" />
+                                            <img id="visualDiffOverlayImage" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0.7; display: none; pointer-events: none;" />`;
+                    
+                    // Resemble.js konfigürasyonu: Arka plan resmini tamamen gizle (transparency: 0), sadece pembe farkları göster
+                    resemble.outputSettings({
+                        errorColor: { red: 255, green: 0, blue: 255 },
+                        errorType: 'flat',
+                        transparency: 0, 
+                        useCrossOrigin: false
+                    });
+                    
+                    // DİKKAT: newDataUrl ile oldDataUrl karşılaştırıyoruz ki üretilen fark görselinin
+                    // boyutları newDataUrl (sağ taraftaki kapsayıcı) ile birebir aynı olsun.
+                    // Anti-aliasing farklılıklarını görmezden gelerek hatalı pembe vurguları engelliyoruz.
+                    resemble(newDataUrl).compareTo(oldDataUrl).ignoreAntialiasing().onComplete(function(data) {
+                        document.getElementById('diffLoadingSpinner').style.display = 'none';
+                        const overlay = document.getElementById('visualDiffOverlayImage');
+                        if (overlay) {
+                            overlay.src = data.getImageDataUrl();
+                            document.getElementById('btnToggleVisualDiff').style.display = 'inline-flex';
+                        }
+                    });
+                } catch (error) {
+                    document.getElementById('diffLoadingSpinner').style.display = 'none';
+                    document.getElementById('visualDiffError').style.display = 'block';
+                    document.getElementById('visualDiffError').innerText = 'Görsel işlenirken bir hata oluştu: ' + error.message;
+                    console.error(error);
+                }
+            }
+
             // --- TOM SELECT (AKILLI ARAMA) ENTEGRASYONU ---
             // Sayfadaki ilgili tüm select kutularını bul ve akıllı hale getir
             const selectSelectors =

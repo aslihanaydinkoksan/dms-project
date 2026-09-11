@@ -202,6 +202,7 @@
                         </div>
                     </div>
 
+                    {{-- Geçici olarak kapatıldı
                     <div class="form-group" style="margin-bottom: 20px;">
                         <label class="form-label" style="font-weight: 600; display: flex; align-items: center; gap: 6px;">
                             {{ __('Bilgi Verilecek Kullanıcılar') }} <i data-lucide="bell-ring"
@@ -218,6 +219,7 @@
                             @endforeach
                         </select>
                     </div>
+                    --}}
                     {{-- <div class="form-group"
                         style="margin-bottom: 20px; border-top: 1px dashed #e2e8f0; padding-top: 15px;">
                         <label class="form-label" style="font-weight: 600; display: flex; align-items: center; gap: 6px;">
@@ -263,10 +265,17 @@
                             @endforeach
                         </select>
                     </div>
+                    {{-- YENİ YERİ: Onay akışı geçici olarak kapatıldığı için submit butonu buraya alındı --}}
+                    <div style="height: 1px; background: var(--border-color); margin: 25px 0;"></div>
+                    <button type="submit" id="mainSubmitBtn" class="btn btn-primary btn-block"
+                        style="width: 100%; padding: 15px; font-size: 1.1rem; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                        <i data-lucide="rocket" style="width: 20px;"></i> {{ __('Yükle / Üret') }}
+                    </button>
                 </div>
             </div>
 
-            {{-- SAĞ TARAF: ONAY AKIŞI KARTI (ORİJİNAL) --}}
+            <!-- SAĞ TARAF: ONAY AKIŞI KARTI (ORİJİNAL) -->
+            {{-- Geçici olarak kapatıldı
             <div class="card glass-card"
                 style="flex: 1 1 50%; min-width: 300px; border-radius: var(--border-radius); border: 1px solid var(--border-color); background: var(--surface-color); box-shadow: var(--card-shadow); position: sticky; top: 20px;">
                 <div class="card-header"
@@ -292,16 +301,15 @@
                         </div>
                     </div>
                     <div style="height: 1px; background: var(--border-color); margin: 25px 0;"></div>
-                    <button type="submit" id="mainSubmitBtn" class="btn btn-primary btn-block"
-                        style="width: 100%; padding: 15px; font-size: 1.1rem; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 10px;">
-                        <i data-lucide="rocket" style="width: 20px;"></i> {{ __('Yükle / Üret') }}
-                    </button>
+                    <!-- Submit butonu sola taşındı -->
                 </div>
             </div>
+            --}}
         </div>
     </form>
 
-    {{-- ONAYCI ROW TEMPLATE (ORİJİNAL) --}}
+    <!-- ONAYCI ROW TEMPLATE (ORİJİNAL) -->
+    {{-- Geçici olarak kapatıldı
     <template id="approver-row-template">
         <div class="workflow-row"
             style="display: flex; gap: 10px; align-items: flex-end; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
@@ -325,6 +333,7 @@
             </button>
         </div>
     </template>
+    --}}
 @endsection
 
 @push('scripts')
@@ -615,10 +624,11 @@
             // ... Orijinal Onay Süreci Kodların (Değişmedi) ...
             const workflowContainer = document.getElementById('workflow-container');
             const addApproverBtn = document.getElementById('add-approver-btn');
-            const template = document.getElementById('approver-row-template').innerHTML;
+            const templateEl = document.getElementById('approver-row-template');
+            const template = templateEl ? templateEl.innerHTML : '';
             let approverIdx = 0;
 
-            addApproverBtn.addEventListener('click', () => {
+            if (addApproverBtn) addApproverBtn.addEventListener('click', () => {
                 const emptyMsg = document.getElementById('empty-workflow-msg');
                 if (emptyMsg) emptyMsg.style.display = 'none';
 
@@ -632,7 +642,7 @@
                 lucide.createIcons();
             });
 
-            workflowContainer.addEventListener('click', e => {
+            if (workflowContainer) workflowContainer.addEventListener('click', e => {
                 const btn = e.target.closest('.remove-approver');
                 if (btn) {
                     btn.closest('.workflow-row').remove();

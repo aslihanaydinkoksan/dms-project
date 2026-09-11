@@ -213,6 +213,7 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/{document}', [DocumentController::class, 'update'])->name('update');
         Route::delete('/{document}', [DocumentController::class, 'destroy'])->name('destroy');
         Route::patch('/{document}/move', [DocumentController::class, 'move'])->name('move');
+        Route::get('/{document}/compare/{version}', [DocumentController::class, 'compareVersions'])->name('compare');
 
         // Versiyon Yönetimi (Update / Delete)
         Route::put('/{document}/versions/{version}', [DocumentController::class, 'updateVersion'])->name('versions.update');

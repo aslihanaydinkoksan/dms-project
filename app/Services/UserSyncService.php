@@ -28,7 +28,6 @@ class UserSyncService
         $syncedCount = 0;
         $dummyPassword = Hash::make(Str::random(16));
 
-        // WORKFLOW PROJESİ MANTIĞI: N+1 Koruması için veritabanını RAM'e (Memory) alıyoruz.
         /** @var \Illuminate\Database\Eloquent\Collection|User[] $localUsers */
         $localUsers = User::withTrashed()->get();
         $usersByEmail = $localUsers->keyBy('email');
@@ -38,17 +37,43 @@ class UserSyncService
             foreach ($centralUsers as $centralUser) {
                 if (empty($centralUser['email'])) continue;
 
-                // MYS'nin boş gönderdiği TC'yi e-postanın içinden ayıklıyoruz
                 $incomingTc = $centralUser['tc_no'] ?? null;
                 if (empty($incomingTc) && preg_match('/^[0-9]{10,11}@/', $centralUser['email'])) {
                     $incomingTc = explode('@', $centralUser['email'])[0];
                 }
+                $incomingRegNo = $centralUser['registration_no'] ?? null;
 
                 // --- WORKFLOW EŞLEŞTİRME MANTIĞI ---
-                // Sadece E-Posta veya TC Numarasına bakar. (İsim benzerliği aramaz)
                 /** @var User|null $user */
                 $user = $usersByEmail->get($centralUser['email']) ?? 
                         (!empty($incomingTc) ? $usersByTc->get($incomingTc) : null);
+
+                // --- DMS ÇAKIŞMA ÇÖZÜCÜ (UNIQUE KALKANI) ---
+                // Eğer TC veya E-posta başka bir hayalet hesapta kalmışsa, hata vermemesi için onu null yap.
+                $targetId = $user ? $user->id : 0;
+
+                if (!empty($incomingTc)) {
+                    $conflictTc = User::withTrashed()->where('tc_no', $incomingTc)->where('id', '!=', $targetId)->first();
+                    if ($conflictTc) $conflictTc->update(['tc_no' => null]);
+                }
+
+                if (!empty($incomingRegNo)) {
+                    $conflictReg = User::withTrashed()->where('registration_no', $incomingRegNo)->where('id', '!=', $targetId)->first();
+                    if ($conflictReg) $conflictReg->update(['registration_no' => null]);
+                }
+
+                $newEmail = $centralUser['email'];
+                if ($user) {
+                    if (preg_match('/^[0-9]{10,11}@/', $newEmail) && !preg_match('/^[0-9]{10,11}@/', $user->email ?? '')) {
+                        $newEmail = $user->email; 
+                    }
+                }
+
+                if (!empty($newEmail)) {
+                    $conflictEmail = User::withTrashed()->where('email', $newEmail)->where('id', '!=', $targetId)->first();
+                    if ($conflictEmail) $conflictEmail->update(['email' => 'conflict_' . time() . '_' . $conflictEmail->email]);
+                }
+                // ------------------------------------------
 
                 if ($user) {
                     // 1. MEVCUT KULLANICIYI GÜNCELLE
@@ -56,15 +81,9 @@ class UserSyncService
                         $user->restore();
                     }
 
-                    // Asıl hesaptaki düzgün (isim.soyisim) e-postanın, rakamlı çöp e-postayla ezilmesini engelle
-                    $newEmail = $centralUser['email'];
-                    if (preg_match('/^[0-9]{10,11}@/', $newEmail) && !preg_match('/^[0-9]{10,11}@/', $user->email ?? '')) {
-                        $newEmail = $user->email; 
-                    }
-
                     $user->update([
                         'tc_no'           => $incomingTc ?? $user->tc_no,
-                        'registration_no' => $centralUser['registration_no'] ?? $user->registration_no,
+                        'registration_no' => $incomingRegNo ?? $user->registration_no,
                         'name'            => $centralUser['name'],
                         'email'           => $newEmail,
                         'is_active'       => $centralUser['is_active'] ?? true,
@@ -75,10 +94,10 @@ class UserSyncService
                     // 2. YENİ KULLANICI EKLE
                     User::create([
                         'name'            => $centralUser['name'],
-                        'email'           => $centralUser['email'],
+                        'email'           => $newEmail,
                         'password'        => $dummyPassword,
                         'tc_no'           => $incomingTc,
-                        'registration_no' => $centralUser['registration_no'] ?? null,
+                        'registration_no' => $incomingRegNo,
                         'is_active'       => $centralUser['is_active'] ?? true,
                         'department_id'   => $centralUser['department']['id'] ?? null,
                     ]);
