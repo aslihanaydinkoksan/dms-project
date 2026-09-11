@@ -825,9 +825,10 @@ class DocumentController extends Controller
 
             $result = $compareService->compare($document, $oldVersion, $newVersion);
             return response()->json($result);
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Diff Viewer Hatası: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Diff Viewer Hatası: ' . $e->getMessage() . ' File: ' . $e->getFile() . ' Line: ' . $e->getLine());
+            // Sunucudaki Nginx/Apache'nin 400/500 hatalarını yakalayıp HTML sayfaya çevirmesini engellemek için HTTP 200 (OK) dönüyoruz.
+            return response()->json(['success' => false, 'message' => $e->getMessage()]);
         }
     }
 }
